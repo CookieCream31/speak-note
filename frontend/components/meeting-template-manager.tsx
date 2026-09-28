@@ -1,0 +1,238 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import styles from "./meeting-template-manager.module.css";
+import type { MeetingTemplate, MeetingTemplateCard, MeetingTemplateDefinition, MeetingTemplateField, TemplateFieldType } from "@/lib/api";
+
+const blankDefinition: MeetingTemplateDefinition = { realtime: [], final: [] };
+const viewNames = { realtime: "リアルタイム", final: "確定後" } as const;
+const fieldTypeNames: Record<TemplateFieldType, string> = {
+  short_text: "短文", long_text: "長文", number: "数値", date: "日付",
+  boolean: "はい／いいえ", single_select: "単一選択",
+};
+const coreKinds = [
+  ["", "独自カード"], ["summary", "要約"], ["decision", "決定事項"],
+  ["action_item", "次のアクション"], ["open_question", "確認ポイント"],
+  ["important_point", "重要情報"], ["chapter", "チャプター"],
+  ["suggested_question", "質問候補"], ["highlight", "重要箇所"],
+] as const;
+
+function stableId(): string { return crypto.randomUUID().replaceAll("-", ""); }
+
+async function send(path: string, method: string, body?: unknown): Promise<MeetingTemplate | null> {
+  const response = await fetch("/api/v1" + path, {
+    method, headers: { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!response.ok) {
+    let message = "保存できませんでした (" + response.status + ")";
+    try {
+      const payload = await response.json() as { detail?: unknown };
+      if (typeof payload.detail === "string") message = payload.detail;
+      else if (Array.isArray(payload.detail)) {
+        const first = payload.detail[0] as { msg?: unknown } | undefined;
+        if (typeof first?.msg === "string") message = first.msg;
+      }
+    } catch { /* status message is enough */ }
+    throw new Error(message);
+  }
+  return response.status === 204 ? null : await response.json() as MeetingTemplate;
+}
+
+export function MeetingTemplateManager({ initialTemplates }: { initialTemplates: MeetingTemplate[] }) {
+  const [templates, setTemplates] = useState(initialTemplates);
+  const [selectedId, setSelectedId] = useState((initialTemplates.find((item) => item.is_default) ?? initialTemplates[0])?.id ?? "");
+  const [name, setName] = useState((initialTemplates.find((item) => item.is_default) ?? initialTemplates[0])?.name ?? "");
+  const [definition, setDefinition] = useState<MeetingTemplateDefinition>((initialTemplates.find((item) => item.is_default) ?? initialTemplates[0])?.definition ?? blankDefinition);
+  const [view, setView] = useState<"realtime" | "final">("realtime");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const selected = useMemo(() => templates.find((item) => item.id === selectedId) ?? null, [templates, selectedId]);
+
+  function selectTemplate(id: string) {
+    const item = templates.find((template) => template.id === id);
+    setSelectedId(id); setName(item?.name ?? ""); setDefinition(item?.definition ?? blankDefinition);
+    setMessage(""); setError("");
+  }
+  function updateCards(update: (cards: MeetingTemplateCard[]) => MeetingTemplateCard[]) {
+    setDefinition((current) => ({ ...current, [view]: update(current[view]) }));
+  }
+  function updateCard(id: string, update: (card: MeetingTemplateCard) => MeetingTemplateCard) {
+    updateCards((cards) => cards.map((card) => card.id === id ? update(card) : card));
+  }
+  function addCard() {
+    updateCards((cards) => [...cards, { id: stableId(), title: "新しいカード", visible: true,
+      show_when_empty: false, core_kind: null, fields: [] }]);
+  }
+  function addField(card: MeetingTemplateCard) {
+    const field: MeetingTemplateField = { id: stableId(), name: "新しい項目", type: "short_text", options: [], required: false };
+    updateCard(card.id, (current) => ({ ...current, fields: [...current.fields, field] }));
+  }
+  function moveCard(index: number, delta: number) {
+    updateCards((cards) => {
+      const target = index + delta;
+      if (target < 0 || target >= cards.length) return cards;
+      const next = [...cards]; [next[index], next[target]] = [next[target], next[index]]; return next;
+    });
+  }
+  function moveField(card: MeetingTemplateCard, index: number, delta: number) {
+    updateCard(card.id, (current) => {
+      const target = index + delta;
+      if (target < 0 || target >= current.fields.length) return current;
+      const fields = [...current.fields];
+      [fields[index], fields[target]] = [fields[target], fields[index]];
+      return { ...current, fields };
+    });
+  }
+  async function save() {
+    if (!name.trim()) { setError("テンプレート名を入力してください"); return; }
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const updated = await send(selectedId ? "/meeting-templates/" + selectedId : "/meeting-templates",
+        selectedId ? "PATCH" : "POST",
+        selectedId ? { name: name.trim(), definition, expected_revision: selected?.revision } : { name: name.trim(), definition });
+      if (updated) {
+        setTemplates((items) => selectedId ? items.map((item) => item.id === updated.id ? updated : item) : [...items, updated]);
+        setSelectedId(updated.id); setName(updated.name); setDefinition(updated.definition);
+      }
+      setMessage("保存しました。新しい会議や、このテンプレートを選び直した再生成に適用されます。");
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "保存できませんでした"); }
+    finally { setBusy(false); }
+  }
+  async function makeDefault() {
+    if (!selected) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const updated = await send("/meeting-templates/" + selected.id, "PATCH", { is_default: true, expected_revision: selected.revision });
+      if (updated) setTemplates((items) => items.map((item) => item.id === updated.id ? updated : { ...item, is_default: false }));
+      setMessage("既定テンプレートを変更しました。");
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "変更できませんでした"); }
+    finally { setBusy(false); }
+  }
+  async function remove() {
+    if (!selected || selected.is_default || !window.confirm("「" + selected.name + "」を削除しますか？")) return;
+    setBusy(true); setError("");
+    try {
+      await send("/meeting-templates/" + selected.id, "DELETE");
+      const remaining = templates.filter((item) => item.id !== selected.id);
+      setTemplates(remaining); selectTemplate(remaining[0]?.id ?? "");
+      setMessage("削除しました。既存会議のsnapshotは保持されます。");
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "削除できませんでした"); }
+    finally { setBusy(false); }
+  }
+  const cards = definition[view];
+
+  return (
+    <section className={styles.section} aria-label="議事録テンプレート">
+      <header className={styles.heading}>
+        <div>
+          <p className={styles.eyebrow}>03 / TEMPLATES</p>
+          <h2>議事録テンプレート</h2>
+        </div>
+        <span>リアルタイム・確定版の表示を設定</span>
+      </header>
+      <p className={styles.intro}>リアルタイム表示と確定後の構成を別々に編集できます。会議作成時にテンプレートを選びます。</p>
+      {error && <p className={styles.error} role="alert">{error}</p>}
+      {message && <p className={styles.success} role="status">{message}</p>}
+
+      <div className={styles.toolbar}>
+        <label className={styles.templatePicker}>
+          <span>編集するテンプレート</span>
+          <select aria-label="編集するテンプレート" value={selectedId} onChange={(event) => selectTemplate(event.target.value)}>
+            {selectedId === "" && <option value="">{templates.length ? "新規テンプレート" : "テンプレートなし"}</option>}
+            {templates.map((item) => <option key={item.id} value={item.id}>{item.name}{item.is_default ? "（既定）" : ""}</option>)}
+          </select>
+        </label>
+        <div className={styles.toolbarActions}>
+          <button className={styles.secondaryButton} type="button" onClick={() => { setSelectedId(""); setName(""); setDefinition(selected?.definition ?? initialTemplates.find((item) => item.is_default)?.definition ?? initialTemplates[0]?.definition ?? blankDefinition); setMessage(""); setError(""); }}>新規作成</button>
+          {selected && !selected.is_default && <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => void makeDefault()}>既定にする</button>}
+          {selected && !selected.is_default && <button className={styles.deleteButton} type="button" disabled={busy} onClick={() => void remove()}>削除</button>}
+        </div>
+      </div>
+
+      <div className={styles.details}>
+        <label className={styles.nameField}>
+          <span>テンプレート名</span>
+          <input aria-label="テンプレート名" value={name} maxLength={100} onChange={(event) => setName(event.target.value)} />
+        </label>
+        <div className={styles.tabs} role="tablist" aria-label="編集する表示">
+          {(["realtime", "final"] as const).map((item) => (
+            <button className={styles.tab} key={item} type="button" role="tab" aria-selected={view === item} onClick={() => setView(item)}>{viewNames[item]}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className={styles.cards}>
+        {cards.map((card, index) => (
+          <article className={styles.card} key={card.id}>
+            <div className={styles.cardHeader}>
+              <div className={styles.cardOrder}>
+                <span className={styles.cardNumber}>{String(index + 1).padStart(2, "0")}</span>
+                <button className={styles.orderButton} type="button" aria-label="上へ" disabled={index === 0} onClick={() => moveCard(index, -1)}>↑</button>
+                <button className={styles.orderButton} type="button" aria-label="下へ" disabled={index === cards.length - 1} onClick={() => moveCard(index, 1)}>↓</button>
+              </div>
+              <div className={styles.cardMain}>
+                <label className={styles.cardName}>
+                  <input aria-label="カード名" value={card.title} onChange={(event) => updateCard(card.id, (value) => ({ ...value, title: event.target.value }))} />
+                </label>
+                <div className={styles.cardMeta}>
+                  <label className={styles.visibility}>
+                    <input type="checkbox" checked={card.visible} onChange={(event) => updateCard(card.id, (value) => ({ ...value, visible: event.target.checked }))} />
+                    表示
+                  </label>
+                  <label className={styles.coreType}>
+                    <span>既存項目</span>
+                    <select value={card.core_kind ?? ""} onChange={(event) => updateCard(card.id, (value) => ({ ...value, core_kind: (event.target.value || null) as MeetingTemplateCard["core_kind"] }))}>
+                      {coreKinds.filter(([kind]) => view === "final" || !["chapter", "suggested_question", "highlight"].includes(kind)).map(([kind, label]) => <option key={kind} value={kind}>{label}</option>)}
+                    </select>
+                  </label>
+                </div>
+              </div>
+              <button className={styles.cardDelete} type="button" onClick={() => updateCards((items) => items.filter((item) => item.id !== card.id))}>カード削除</button>
+            </div>
+            <label className={styles.instructions}>
+              <span>AIへの指示</span>
+              <textarea aria-label="AIへの指示" value={card.instructions ?? ""} maxLength={2000}
+                onChange={(event) => updateCard(card.id, (value) => ({ ...value, instructions: event.target.value }))}
+                placeholder="このカードにまとめる内容や書き方" />
+            </label>
+            <div className={styles.fieldSection}>
+              <div className={styles.fieldHeading}><span>追加項目</span><small>このカードに表示する情報を設定</small></div>
+              {card.fields.length === 0 && <p className={styles.fieldEmpty}>追加項目はありません</p>}
+              {card.fields.map((field, fieldIndex) => (
+                <div className={styles.fieldRow} key={field.id}>
+                  <div className={styles.fieldOrder}>
+                    <button className={styles.orderButton} type="button" aria-label="項目を上へ" disabled={fieldIndex === 0} onClick={() => moveField(card, fieldIndex, -1)}>↑</button>
+                    <button className={styles.orderButton} type="button" aria-label="項目を下へ" disabled={fieldIndex === card.fields.length - 1} onClick={() => moveField(card, fieldIndex, 1)}>↓</button>
+                  </div>
+                  <div className={styles.fieldName}>
+                    <input aria-label="項目名" value={field.name} onChange={(event) => updateCard(card.id, (value) => ({ ...value, fields: value.fields.map((item) => item.id === field.id ? { ...item, name: event.target.value } : item) }))} />
+                  </div>
+                  <div className={styles.fieldType}>
+                    <select aria-label="項目型" value={field.type} onChange={(event) => updateCard(card.id, (value) => ({ ...value, fields: value.fields.map((item) => item.id === field.id ? { ...item, type: event.target.value as TemplateFieldType, options: event.target.value === "single_select" ? ["高", "中", "低"] : [] } : item) }))}>
+                      {Object.entries(fieldTypeNames).map(([type, label]) => <option key={type} value={type}>{label}</option>)}
+                    </select>
+                  </div>
+                  {field.type === "single_select" && (
+                    <div className={styles.fieldOptions}>
+                      <input aria-label="選択肢" value={field.options.join(", ")} onChange={(event) => updateCard(card.id, (value) => ({ ...value, fields: value.fields.map((item) => item.id === field.id ? { ...item, options: event.target.value.split(",").map((option) => option.trim()).filter(Boolean) } : item) }))} placeholder="選択肢をカンマ区切り" />
+                    </div>
+                  )}
+                  <button className={styles.fieldDelete} type="button" aria-label="項目を削除" onClick={() => updateCard(card.id, (value) => ({ ...value, fields: value.fields.filter((item) => item.id !== field.id) }))}>削除</button>
+                </div>
+              ))}
+              <button className={styles.addFieldButton} type="button" onClick={() => addField(card)}>＋ 項目を追加</button>
+            </div>
+          </article>
+        ))}
+        <button className={styles.addCardButton} type="button" onClick={addCard}>＋ カードを追加</button>
+      </div>
+
+      <footer className={styles.footer}>
+        <span>過去の議事録は変わりません。新しい会議・再生成で適用します。</span>
+        <button className={styles.primaryButton} type="button" disabled={busy} onClick={() => void save()}>保存</button>
+      </footer>
+    </section>
+  );
+}

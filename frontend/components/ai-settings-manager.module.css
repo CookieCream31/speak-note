@@ -1,0 +1,538 @@
+.page {
+  min-height: 100vh;
+  color: var(--ink);
+  background: var(--panel);
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: none;
+  margin: 0;
+  padding: 0 max(28px, calc((100vw - 1240px) / 2));
+  background: var(--surface-glass);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(10px);
+}
+
+.header > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header > div span {
+  padding: 5px 9px;
+  color: var(--muted);
+  background: var(--surface-hover);
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .13em;
+}
+
+.header a {
+  color: inherit;
+}
+
+.header > div a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 11px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-radius: 7px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.header > div a:hover {
+  color: var(--blue);
+  background: var(--blue-soft-hover);
+}
+
+.hero {
+  max-width: 1184px;
+  margin: 0 auto;
+  padding: 44px 4px 30px;
+}
+
+.hero p,
+.sectionHeading p {
+  margin: 0 0 7px;
+  color: var(--blue);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .16em;
+}
+
+.hero h1 {
+  margin: 0 0 12px;
+  font: 700 clamp(30px, 4vw, 42px)/1.15 Inter, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  letter-spacing: -.035em;
+}
+
+.hero h1 br {
+  display: none;
+}
+
+.hero > span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.message,
+.error {
+  max-width: 1184px;
+  margin: 0 auto 14px;
+  padding: 12px 15px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.message {
+  color: var(--success);
+  background: var(--success-soft);
+  border: 1px solid var(--success-border);
+}
+
+.error {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-border);
+}
+
+.section {
+  max-width: 1184px;
+  margin: 0 auto 18px;
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 2px 10px var(--shadow-soft);
+}
+
+.dark {
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.section:last-child {
+  margin-bottom: 48px;
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 20px;
+  padding-bottom: 17px;
+  border-bottom: 1px solid var(--line);
+}
+
+.sectionHeading h2 {
+  margin: 0;
+  font: 700 20px/1.25 Inter, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  letter-spacing: -.02em;
+}
+
+.sectionHeading > span {
+  color: var(--text-subtle);
+  font-size: 9px;
+}
+
+.createForm {
+  display: grid;
+  grid-template-columns: 140px minmax(150px, .8fr) minmax(260px, 1.4fr) auto auto;
+  align-items: center;
+  gap: 9px;
+  padding: 15px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+.dark .createForm {
+  grid-template-columns: minmax(130px, .8fr) minmax(130px, .8fr) minmax(180px, 1fr) 100px auto auto;
+}
+
+.geminiField {
+  display: none;
+}
+
+.createForm:has(select[name="provider_type"] option[value="gemini"]:checked) .ollamaField {
+  display: none;
+}
+
+.createForm:has(select[name="provider_type"] option[value="gemini"]:checked) .geminiField {
+  display: block;
+}
+
+.createForm input,
+.createForm select,
+.card input,
+.card select,
+.usageList select {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 11px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--control-border);
+  border-radius: 6px;
+  outline: 0;
+  font-size: 10px;
+}
+
+.createForm input:focus,
+.createForm select:focus,
+.card input:focus,
+.card select:focus,
+.usageList select:focus {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.createForm label,
+.card label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.createForm label input[type="checkbox"],
+.card label input[type="checkbox"] {
+  width: 16px;
+  min-height: 16px;
+  margin: 0;
+  accent-color: var(--primary-bg);
+}
+
+.createForm button,
+.card button {
+  min-height: 40px;
+  padding: 0 14px;
+  color: var(--on-primary);
+  background: var(--primary-bg);
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 800;
+  transition: background .15s, transform .15s, box-shadow .15s;
+}
+
+.createForm button:hover,
+.card form button:hover {
+  background: var(--primary-hover);
+  box-shadow: 0 5px 14px var(--focus-ring);
+  transform: translateY(-1px);
+}
+
+.createForm button:disabled,
+.card button:disabled,
+.usageList select:disabled {
+  cursor: wait;
+  opacity: .55;
+  transform: none;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.card {
+  min-width: 0;
+  padding: 18px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.card:hover {
+  border-color: var(--blue-border);
+  box-shadow: 0 7px 22px var(--focus-ring);
+}
+
+.speechForm {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.speechForm > label {
+  align-items: stretch;
+  flex-direction: column;
+  gap: 7px;
+  white-space: normal;
+}
+
+.speechForm > label > span {
+  color: var(--text-secondary);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.speechForm input:disabled {
+  color: var(--text-subtle);
+  background: var(--surface-hover);
+  cursor: not-allowed;
+}
+
+.speechActions {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 9px;
+}
+
+.speechActions button {
+  min-width: 140px;
+}
+
+.speechActions .secondaryButton {
+  color: var(--blue);
+  background: var(--blue-soft);
+}
+
+.speechActions .secondaryButton:hover {
+  background: var(--blue-soft-hover);
+}
+
+.settingNote {
+  margin: 12px 2px 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.7;
+}
+
+.cardTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.cardTitle span {
+  padding: 4px 7px;
+  color: var(--blue);
+  background: var(--blue-soft);
+  border-radius: 999px;
+  font: 800 8px/1.2 Inter, sans-serif;
+  text-transform: uppercase;
+}
+
+.cardTitle strong {
+  overflow: hidden;
+  font: 700 16px/1.25 Inter, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 9px;
+}
+
+.cardActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.cardActions button {
+  min-height: 32px;
+  padding: 0 10px;
+  color: var(--blue);
+  background: var(--blue-soft);
+  border: 1px solid var(--blue-border);
+}
+
+.cardActions button:hover {
+  background: var(--blue-soft-hover);
+  transform: none;
+}
+
+.card .danger,
+.danger {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-border);
+}
+
+.card .danger:hover,
+.danger:hover {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.usageList {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+.usageList label {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(260px, 420px);
+  align-items: center;
+  gap: 20px;
+  padding: 13px 15px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.usageList label:nth-child(even) {
+  background: var(--blue-soft);
+}
+
+.usageList label:last-child {
+  border-bottom: 0;
+}
+
+@media (max-width: 1220px) {
+  .hero,
+  .message,
+  .error,
+  .section {
+    margin-right: 24px;
+    margin-left: 24px;
+  }
+}
+
+@media (max-width: 900px) {
+  .createForm,
+  .dark .createForm {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .createForm .ollamaField,
+  .createForm .geminiField {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .header {
+    height: 64px;
+    padding: 0 16px;
+  }
+
+  .header > div span {
+    display: none;
+  }
+
+  .hero {
+    margin-right: 16px;
+    margin-left: 16px;
+    padding: 30px 0 22px;
+  }
+
+  .message,
+  .error,
+  .section {
+    margin-right: 16px;
+    margin-left: 16px;
+  }
+
+  .section {
+    padding: 18px;
+  }
+
+  .cards {
+    grid-template-columns: 1fr;
+  }
+
+  .sectionHeading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .card form,
+  .usageList label {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .createForm,
+  .dark .createForm {
+    grid-template-columns: 1fr;
+  }
+
+  .createForm .ollamaField,
+  .createForm .geminiField {
+    grid-column: auto;
+  }
+
+  .card form {
+    grid-template-columns: 1fr;
+  }
+
+  .speechForm {
+    grid-template-columns: 1fr;
+  }
+
+  .speechActions {
+    flex-direction: column;
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .header {
+    padding-right: max(10px, env(safe-area-inset-right));
+    padding-left: max(10px, env(safe-area-inset-left));
+  }
+  .header > div { min-width: 0; gap: 4px; }
+  .header > div a { min-height: 40px; padding: 0 8px; font-size: 9px; }
+  .hero { margin-right: 8px; margin-left: 8px; padding: 24px 0 18px; }
+  .hero h1 { font-size: 28px; }
+  .message,
+  .error,
+  .section { margin-right: 8px; margin-left: 8px; }
+  .section { padding: 14px 12px; border-radius: 9px; }
+  .sectionHeading h2 { font-size: 18px; }
+  .createForm { padding: 11px; }
+  .createForm input,
+  .createForm select,
+  .createForm button,
+  .card input,
+  .card select,
+  .card button,
+  .usageList select { min-height: 44px; }
+  .usageList label { gap: 8px; padding: 12px 10px; }
+}
+
+@media (max-width: 360px) {
+  .header > div a:first-of-type { display: none; }
+}
+
+.header > div > label > span { padding: 0; background: transparent; color: var(--muted); font-size: 11px; letter-spacing: normal; font-weight: 650; }
+@media (max-width: 720px) { .header { height: auto; min-height: 72px; flex-wrap: wrap; gap: 8px; padding-top: 8px; padding-bottom: 8px; } .header > div { flex-wrap: wrap; } }

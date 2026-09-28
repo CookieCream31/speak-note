@@ -1,0 +1,18 @@
+.settings { display: grid; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.heading { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 800; }
+.heading small { padding: 2px 6px; color: var(--muted); background: var(--surface-hover); border-radius: 999px; font-size: 8px; }
+.fields { display: grid; grid-template-columns: repeat(2, minmax(80px, 120px)) auto; align-items: end; gap: 8px; }
+.fields label { display: grid; gap: 5px; margin: 0; }
+.fields label span { color: var(--muted); font-size: 9px; }
+.fields input { width: 100%; min-height: 38px; padding: 6px 9px; color: var(--ink); background: var(--blue-soft); border: 1px solid var(--line); border-radius: 6px; }
+.fields input:focus { border-color: var(--focus); outline: 3px solid var(--focus-ring); }
+.fields button { min-height: 38px; padding: 0 13px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 6px; cursor: pointer; font-size: 10px; font-weight: 800; }
+.fields button:disabled, .fields input:disabled { cursor: not-allowed; opacity: .55; }
+.settings p, .settings output { margin: 0; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.settings output { color: var(--blue); }
+@media (max-width: 620px) { .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } .fields button { grid-column: 1 / -1; } }
+
+@media (max-width: 520px) {
+  .fields input,
+  .fields button { min-height: 44px; }
+}

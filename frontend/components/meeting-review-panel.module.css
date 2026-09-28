@@ -1,0 +1,105 @@
+.panel { min-width: 0; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 0 0 11px 11px; }
+.heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 18px; border-bottom: 1px solid var(--line); }
+.heading p { margin: 0 0 5px; color: var(--blue); font-size: 9px; font-weight: 900; letter-spacing: .17em; }
+.heading h2 { margin: 0; font: 600 21px/1.1 Inter, "Yu Gothic", sans-serif; }
+.heading > span { max-width: 130px; overflow: hidden; color: var(--muted); font: 9px/1.4 monospace; text-overflow: ellipsis; white-space: nowrap; }
+.notice { margin: 14px 14px 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+.message, .error { margin: 12px 14px 0; padding: 10px; font-size: 11px; font-weight: 800; line-height: 1.5; }
+.message { color: var(--success); background: var(--success-soft); }
+.error { color: var(--on-primary); background: var(--danger-solid); }
+.generate { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; padding: 14px; }
+.generate select, .versionPicker select, .analysisItem textarea, .analysisItem input { min-height: 38px; padding: 8px 9px; color: var(--ink); background: var(--blue-soft); border: 1px solid var(--line); border-radius: 6px; }
+.generate button, .reviewControls button, .editActions button { padding: 8px 12px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 800; }
+.versionPicker { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; padding: 0 14px 14px; color: var(--muted); font-size: 10px; font-weight: 800; }
+.reviewControls { display: grid; grid-template-columns: .6fr 1.4fr; gap: 7px; padding: 0 14px 14px; }
+.reviewControls button:first-child { color: var(--ink); background: var(--surface-hover); }
+.empty { display: grid; gap: 5px; margin: 0 14px 14px; padding: 28px 16px; color: var(--muted); text-align: center; background: var(--blue-soft); border: 1px dashed var(--line); border-radius: 7px; }
+.empty strong { color: var(--ink); font-size: 13px; }
+.empty span { font-size: 11px; }
+.analysisGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+.analysisSection {
+  min-width: 0;
+  padding: 17px;
+  background: var(--blue-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.summarySection {
+  grid-column: 1 / -1;
+  background: var(--blue-soft);
+  border-color: var(--blue-border);
+}
+.analysisSection > h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 13px;
+  font-size: 13px;
+}
+.analysisSection > h3 small {
+  min-width: 20px;
+  padding: 2px 6px;
+  color: var(--muted);
+  background: var(--surface-hover);
+  border-radius: 999px;
+  text-align: center;
+}
+.itemList { display: grid; }
+.analysisItem { padding: 14px 0; border-top: 1px solid var(--line); }
+.analysisItem:first-child { padding-top: 0; border-top: 0; }
+.analysisItem:last-child { padding-bottom: 0; }
+.none { margin: 0; color: var(--text-subtle); font-size: 11px; }
+.itemMeta { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 9px; }
+.itemMeta > span { padding: 3px 6px; color: var(--muted); background: var(--surface-hover); border-radius: 999px; font-size: 8px; font-weight: 800; }
+.itemMeta > span[data-state="confirmed"] { color: var(--success); background: var(--success-soft); }
+.itemMeta button, .itemActions button, .evidence button { color: inherit; background: transparent; border: 0; cursor: pointer; }
+.itemMeta button { color: var(--blue); font: 700 10px monospace; }
+.itemContent { margin: 0; white-space: pre-wrap; font: 14px/1.75 Georgia, "Yu Mincho", serif; overflow-wrap: anywhere; }
+.analysisItem form { display: grid; gap: 8px; }
+.analysisItem textarea { width: 100%; resize: vertical; font: 13px/1.65 Georgia, "Yu Mincho", serif; }
+.actionFields { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.actionMeta { display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; margin: 10px 0 0; font-size: 10px; }
+.actionMeta dt { color: var(--muted); }
+.actionMeta dd { margin: 0; font-weight: 700; }
+.itemActions, .editActions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.itemActions button { padding: 4px 0; color: var(--muted); border-bottom: 1px solid; font-size: 9px; font-weight: 800; }
+.itemActions button:last-child { color: var(--success); }
+.editActions button:last-child { color: var(--ink); background: var(--surface-hover); }
+.evidence { margin-top: 12px; }
+.evidence summary { color: var(--muted); cursor: pointer; font-size: 9px; font-weight: 700; }
+.evidence button { width: 100%; display: flex; flex-direction: column; gap: 4px; padding: 9px 0; text-align: left; border-bottom: 1px solid var(--control-border); }
+.evidence button strong { color: var(--blue); font-size: 9px; }
+.evidence button span { color: var(--muted); font-size: 10px; line-height: 1.55; }
+@media (max-width: 1180px) {
+  .heading { padding: 15px; }
+  .analysisGrid { padding: 12px; }
+  .analysisSection { padding: 14px; }
+}
+@media (max-width: 720px) {
+  .generate, .actionFields, .reviewControls { grid-template-columns: 1fr; }
+  .analysisGrid { grid-template-columns: 1fr; }
+  .summarySection { grid-column: auto; }
+}
+
+@media (max-width: 520px) {
+  .heading { align-items: flex-start; flex-direction: column; padding: 14px 12px; }
+  .heading > span { max-width: 100%; }
+  .generate,
+  .versionPicker,
+  .reviewControls { padding-right: 10px; padding-left: 10px; }
+  .versionPicker { grid-template-columns: 1fr; }
+  .generate button,
+  .reviewControls button,
+  .editActions button { min-height: 44px; }
+  .analysisGrid { gap: 8px; padding: 10px; }
+  .analysisSection { padding: 12px; }
+  .itemMeta { align-items: flex-start; flex-direction: column; }
+  .actionMeta { grid-template-columns: 1fr; }
+}

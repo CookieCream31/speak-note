@@ -1,0 +1,67 @@
+.launcher { margin: 0 14px 14px; padding: 11px; background: var(--blue-soft); border: 1px solid var(--line); border-radius: 7px; }
+.openButton { width: 100%; display: flex; flex-direction: column; gap: 3px; padding: 0; color: var(--ink); text-align: left; background: transparent; border: 0; cursor: pointer; font-size: 11px; font-weight: 800; }
+.openButton span { color: var(--blue); font-size: 8px; letter-spacing: .12em; text-transform: uppercase; }
+.launcher > p { margin: 6px 0 0; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.overlay { position: fixed; inset: 0; z-index: 100; display: grid; padding: 28px; place-items: center; background: var(--overlay); backdrop-filter: blur(5px); }
+.dialog { width: min(960px, 100%); max-height: calc(100vh - 56px); overflow: auto; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 24px 80px var(--shadow-strong); }
+.dialogHeader { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 20px 24px; background: var(--surface-glass); border-bottom: 1px solid var(--line); backdrop-filter: blur(8px); }
+.dialogHeader p { margin: 0 0 4px; color: var(--blue); font-size: 9px; font-weight: 900; letter-spacing: .16em; }
+.dialogHeader h2 { margin: 0; font-size: 22px; }
+.dialogHeader > button { width: 36px; height: 36px; color: var(--ink); background: var(--surface-hover); border: 0; border-radius: 50%; cursor: pointer; font-size: 22px; }
+.stepper { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin: 0; padding: 0; list-style: none; background: var(--line); border-bottom: 1px solid var(--line); }
+.stepper li { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 8px; color: var(--muted); background: var(--panel); font-size: 10px; font-weight: 800; }
+.stepper li span { display: grid; width: 21px; height: 21px; place-items: center; color: var(--on-primary); background: var(--primary-bg); border-radius: 50%; font-size: 9px; }
+.stepper li[data-complete="true"] { color: var(--success); background: var(--success-soft); }
+.stepper li[data-complete="true"] span { background: var(--success-solid); }
+.content { display: grid; gap: 16px; padding: 24px; }
+.description, .warning, .message, .error { margin: 0; font-size: 12px; line-height: 1.7; }
+.description { color: var(--muted); }
+.warning { padding: 13px; color: var(--danger); background: var(--danger-soft); border-left: 4px solid var(--danger-solid); }
+.confirm { display: flex; align-items: flex-start; gap: 9px; color: var(--ink); font-size: 12px; font-weight: 800; line-height: 1.5; }
+.confirm input { width: 17px; height: 17px; margin-top: 1px; accent-color: var(--primary-bg); }
+.message, .error { padding: 11px; font-weight: 800; }
+.message { color: var(--success); background: var(--success-soft); }
+.error { color: var(--on-primary); background: var(--danger-solid); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.actions button, .fileButton, .preview > button { min-height: 40px; padding: 10px 14px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 900; }
+.actions button:disabled, .preview > button:disabled { cursor: not-allowed; opacity: .45; }
+.fileButton { position: relative; overflow: hidden; color: var(--ink); background: var(--surface-hover); }
+.fileButton input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.responseLabel { margin-top: 5px; color: var(--ink); font-size: 13px; font-weight: 900; }
+.content textarea { width: 100%; min-height: 300px; padding: 15px; resize: vertical; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 7px; font: 12px/1.65 monospace; }
+.content textarea:focus { border-color: var(--blue); outline: 3px solid var(--focus-ring); }
+.preview { display: grid; gap: 12px; padding: 18px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 7px; }
+.preview h4, .preview p { margin: 0; }
+.preview h4 { font-size: 15px; }
+.preview p { font: 16px/1.75 Georgia, "Yu Mincho", serif; }
+.counts { display: flex; flex-wrap: wrap; gap: 7px 16px; margin: 0; padding: 0; list-style: none; font-size: 11px; }
+.chapters { display: grid; gap: 7px; margin: 0; padding-left: 22px; font-size: 12px; }
+.chapters time { margin-right: 9px; color: var(--blue); font-family: monospace; }
+.preview > button { justify-self: stretch; }
+@media (max-width: 680px) {
+  .overlay { padding: 0; place-items: stretch; }
+  .dialog { width: 100%; max-height: 100vh; border: 0; border-radius: 0; }
+  .dialogHeader, .content { padding: 16px; }
+  .stepper li { flex-direction: column; gap: 4px; font-size: 8px; }
+  .content textarea { min-height: 240px; }
+}
+
+@media (max-width: 520px) {
+  .overlay {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .dialog { max-height: 100dvh; overscroll-behavior: contain; }
+  .dialogHeader { padding: 14px 12px; }
+  .dialogHeader h2 { font-size: 18px; }
+  .content { padding: 12px; }
+  .stepper li { min-width: 0; padding: 9px 2px; }
+  .stepper li span { width: 19px; height: 19px; }
+  .actions { display: grid; grid-template-columns: 1fr; }
+  .actions button,
+  .fileButton,
+  .preview > button { width: 100%; min-height: 44px; }
+  .content textarea { min-height: 42dvh; padding: 11px; font-size: 11px; }
+  .preview { padding: 13px; }
+  .preview p { font-size: 14px; }
+}

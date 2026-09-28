@@ -1,0 +1,13 @@
+.field { display: grid; gap: 8px; min-width: 0; }
+.heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.heading label, .editor label { color: var(--ink); font-size: 10px; font-weight: 800; }
+.heading button { padding: 5px 8px; border: 0; border-radius: 6px; background: var(--blue-soft); color: var(--blue); font: inherit; font-size: 10px; font-weight: 700; cursor: pointer; }
+.field select, .editor input { width: 100%; min-width: 0; min-height: 42px; padding: 9px 12px; color: var(--ink); background: var(--blue-soft); border: 1px solid var(--control-border); border-radius: 6px; font: inherit; font-size: 10px; }
+.field select:focus-visible, .editor input:focus-visible { border-color: var(--focus); outline: 3px solid var(--focus-ring); }
+.field button:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.field button:disabled, .field select:disabled, .editor input:disabled { opacity: .55; cursor: not-allowed; }
+.editor { display: grid; gap: 8px; padding: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+.editor p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+.editor .error { color: var(--danger); }
+.editor .create { justify-self: end; min-height: 38px; padding: 0 14px; border: 0; border-radius: 6px; background: var(--primary-bg); color: var(--on-primary); font: inherit; font-size: 10px; font-weight: 800; cursor: pointer; }
+@media (max-width: 600px) { .field select, .editor input { font-size: 16px; min-height: 44px; } .editor .create { width: 100%; min-height: 44px; } }

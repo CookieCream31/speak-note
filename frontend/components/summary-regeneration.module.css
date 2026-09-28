@@ -1,0 +1,15 @@
+.entry { display: grid; justify-items: start; gap: 8px; padding: 14px; }
+.entry > span, .entry > p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.entry button, .dialog button { min-height: 40px; padding: 10px 16px; border: 0; border-radius: 8px; background: var(--primary-bg); color: var(--on-primary); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.entry button:disabled, .dialog button:disabled { opacity: .5; cursor: default; }
+.dialog { width: min(480px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); padding: 0; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 24px 80px var(--shadow-strong); }
+.dialog::backdrop { background: var(--overlay); backdrop-filter: blur(3px); }
+.dialog form { display: grid; gap: 18px; padding: 24px; }
+.dialog header h2 { margin: 0 0 8px; font-size: 20px; }
+.dialog header p, .hint { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+.dialog label { display: grid; gap: 8px; min-width: 0; font-size: 12px; font-weight: 700; }
+.dialog select { width: 100%; min-width: 0; min-height: 44px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--blue-soft); color: var(--ink); font: inherit; }
+.dialog footer { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin: 0; padding: 6px 0 0; background: transparent; border: 0; }
+.dialog footer button:first-child { background: var(--surface-hover); color: var(--ink); }
+.error { margin: 0; padding: 12px; border-radius: 8px; color: var(--danger); background: var(--danger-soft); font-size: 12px; overflow-wrap: anywhere; }
+@media (max-width: 520px) { .dialog form { gap: 16px; padding: 20px 16px; } .dialog footer { display: grid; grid-template-columns: 1fr; } .dialog footer button { min-height: 44px; } }

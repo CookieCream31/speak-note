@@ -1,0 +1,203 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-speak_note}
+      POSTGRES_USER: ${POSTGRES_USER:-speak_note}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - speak-note-postgres:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+    user: "${SPEAK_NOTE_UID:-1000}:${SPEAK_NOTE_GID:-1000}"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://speak_note:change-me@postgres:5432/speak_note}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      STORAGE_ROOT: ${STORAGE_ROOT:-/app/storage}
+      MAX_AUDIO_UPLOAD_MB: ${MAX_AUDIO_UPLOAD_MB:-1024}
+      MAX_VIDEO_UPLOAD_MB: ${MAX_VIDEO_UPLOAD_MB:-4096}
+      UPLOAD_CHUNK_MB: ${UPLOAD_CHUNK_MB:-50}
+      REALTIME_CHUNK_MS: ${REALTIME_CHUNK_MS:-15000}
+      REALTIME_WINDOW_MS: ${REALTIME_WINDOW_MS:-30000}
+      REALTIME_MAX_CHUNK_MB: ${REALTIME_MAX_CHUNK_MB:-64}
+      REALTIME_ANALYSIS_INTERVAL_MS: ${REALTIME_ANALYSIS_INTERVAL_MS:-30000}
+      AZURE_SPEECH_TIMEOUT_SECONDS: ${AZURE_SPEECH_TIMEOUT_SECONDS:-60}
+      AZURE_SPEECH_MAX_ATTEMPTS: ${AZURE_SPEECH_MAX_ATTEMPTS:-3}
+      AZURE_SPEECH_RETRY_DELAY_SECONDS: ${AZURE_SPEECH_RETRY_DELAY_SECONDS:-1}
+      MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY:-}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-1800}
+      OLLAMA_NUM_CTX: ${OLLAMA_NUM_CTX:-65536}
+      OLLAMA_ALLOWED_HOSTS: ${OLLAMA_ALLOWED_HOSTS:-host.docker.internal,localhost,127.0.0.1}
+    command: >-
+      sh -c "alembic upgrade head &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload --ws-max-size 67108864"
+    ports:
+      - "${BACKEND_PORT:-8001}:8001"
+    volumes:
+      - ./backend:/app
+      - ./storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/api/v1/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./backend
+    user: "${SPEAK_NOTE_UID:-1000}:${SPEAK_NOTE_GID:-1000}"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://speak_note:change-me@postgres:5432/speak_note}
+      WORKER_POLL_INTERVAL_SECONDS: ${WORKER_POLL_INTERVAL_SECONDS:-2}
+      REALTIME_ANALYSIS_INTERVAL_MS: ${REALTIME_ANALYSIS_INTERVAL_MS:-30000}
+      STORAGE_ROOT: ${STORAGE_ROOT:-/app/storage}
+      MAX_AUDIO_UPLOAD_MB: ${MAX_AUDIO_UPLOAD_MB:-1024}
+      MAX_VIDEO_UPLOAD_MB: ${MAX_VIDEO_UPLOAD_MB:-4096}
+      WHISPERX_BASE_URL: ${WHISPERX_BASE_URL:-http://host.docker.internal:8000}
+      WHISPERX_API_KEY: ${WHISPERX_API_KEY:-}
+      WHISPERX_MODEL: ${WHISPERX_MODEL:-large-v3}
+      WHISPERX_LANGUAGE: ${WHISPERX_LANGUAGE:-ja}
+      WHISPERX_TIMEOUT_SECONDS: ${WHISPERX_TIMEOUT_SECONDS:-7200}
+      WHISPERX_MAX_ATTEMPTS: ${WHISPERX_MAX_ATTEMPTS:-3}
+      WHISPERX_RETRY_DELAY_SECONDS: ${WHISPERX_RETRY_DELAY_SECONDS:-1}
+      AZURE_SPEECH_TIMEOUT_SECONDS: ${AZURE_SPEECH_TIMEOUT_SECONDS:-60}
+      AZURE_SPEECH_MAX_ATTEMPTS: ${AZURE_SPEECH_MAX_ATTEMPTS:-3}
+      AZURE_SPEECH_RETRY_DELAY_SECONDS: ${AZURE_SPEECH_RETRY_DELAY_SECONDS:-1}
+      MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY:-}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-1800}
+      OLLAMA_NUM_CTX: ${OLLAMA_NUM_CTX:-65536}
+      OLLAMA_ALLOWED_HOSTS: ${OLLAMA_ALLOWED_HOSTS:-host.docker.internal,localhost,127.0.0.1}
+    command: python -m app.workers.main
+    volumes:
+      - ./backend:/app
+      - ./storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  realtime-ai-worker:
+    build:
+      context: ./backend
+    user: "${SPEAK_NOTE_UID:-1000}:${SPEAK_NOTE_GID:-1000}"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://speak_note:change-me@postgres:5432/speak_note}
+      WORKER_POLL_INTERVAL_SECONDS: ${WORKER_POLL_INTERVAL_SECONDS:-2}
+      REALTIME_ANALYSIS_INTERVAL_MS: ${REALTIME_ANALYSIS_INTERVAL_MS:-30000}
+      MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY:-}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-1800}
+      REALTIME_ANALYSIS_TIMEOUT_SECONDS: ${REALTIME_ANALYSIS_TIMEOUT_SECONDS:-300}
+      REALTIME_ANALYSIS_DRAFT_TAIL_MS: ${REALTIME_ANALYSIS_DRAFT_TAIL_MS:-2000}
+      OLLAMA_NUM_CTX: ${OLLAMA_NUM_CTX:-65536}
+      OLLAMA_ALLOWED_HOSTS: ${OLLAMA_ALLOWED_HOSTS:-host.docker.internal,localhost,127.0.0.1}
+    command: python -m app.workers.realtime_ai
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  answer-worker:
+    build:
+      context: ./backend
+    user: "${SPEAK_NOTE_UID:-1000}:${SPEAK_NOTE_GID:-1000}"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://speak_note:change-me@postgres:5432/speak_note}
+      MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY:-}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-1800}
+      OLLAMA_NUM_CTX: ${OLLAMA_NUM_CTX:-65536}
+      OLLAMA_ALLOWED_HOSTS: ${OLLAMA_ALLOWED_HOSTS:-host.docker.internal,localhost,127.0.0.1}
+      WORKER_POLL_INTERVAL_SECONDS: ${WORKER_POLL_INTERVAL_SECONDS:-2}
+    command: python -m app.workers.answer_assist
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL:-http://backend:8001}
+      NEXT_ALLOWED_DEV_ORIGINS: ${NEXT_ALLOWED_DEV_ORIGINS:-localhost}
+      WATCHPACK_POLLING: "true"
+    command: sh /app/dev-entrypoint.sh
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    volumes:
+      - ./frontend:/app
+      - speak-note-node-modules:/app/node_modules
+      - speak-note-next-cache:/app/.next
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2.10-alpine
+    environment:
+      SPEAK_NOTE_HTTPS_HOST: ${SPEAK_NOTE_HTTPS_HOST:-192.168.0.126}
+    ports:
+      - "${HTTPS_PORT:-3443}:3443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - speak-note-caddy-data:/data
+      - speak-note-caddy-config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    profiles: ["tunnel"]
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    command: tunnel --no-autoupdate run
+    depends_on:
+      caddy:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  speak-note-postgres:
+    name: speak-note-postgres
+  speak-note-node-modules:
+    name: speak-note-node-modules
+  speak-note-next-cache:
+    name: speak-note-next-cache
+  speak-note-caddy-data:
+    name: speak-note-caddy-data
+  speak-note-caddy-config:
+    name: speak-note-caddy-config

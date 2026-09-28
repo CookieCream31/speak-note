@@ -1,0 +1,41 @@
+.env
+.env.*
+!.env.example
+.DS_Store
+*.orig
+*.rej
+*.bak
+*.swp
+*~
+*.log
+*.pem
+*.key
+*.p12
+*.pfx
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+.coverage
+htmlcov/
+build/
+*.egg-info/
+*.db
+
+# Node.js / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Local storage and database data
+storage/*
+!storage/.gitkeep
+backend/storage/*
+postgres-data/

@@ -1,0 +1,423 @@
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background:
+    linear-gradient(var(--background-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--background-grid) 1px, transparent 1px),
+    var(--paper);
+  background-size: 28px 28px;
+  font-family: Inter, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.topbar {
+  height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 32px;
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink);
+  font-family: Georgia, "Yu Mincho", serif;
+  font-size: 22px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.brandMark {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: var(--ink);
+  border-radius: 50%;
+}
+
+.brandMark i {
+  width: 3px;
+  display: block;
+  background: var(--paper);
+  border-radius: 4px;
+}
+
+.brandMark i:nth-child(1) { height: 9px; }
+.brandMark i:nth-child(2) { height: 17px; }
+.brandMark i:nth-child(3) { height: 12px; }
+
+.phaseBadge,
+.eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.phaseBadge {
+  padding: 7px 12px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+}
+
+.hero {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 92px 32px 108px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.8fr);
+  gap: 88px;
+  align-items: center;
+}
+
+.eyebrow {
+  margin: 0 0 22px;
+  color: var(--accent);
+}
+
+.hero h1 {
+  margin: 0;
+  font-family: Georgia, "Yu Mincho", serif;
+  font-size: clamp(54px, 7vw, 94px);
+  font-weight: 400;
+  letter-spacing: -0.055em;
+  line-height: 1.04;
+}
+
+.hero h1 em {
+  position: relative;
+  color: var(--blue);
+  font-weight: 400;
+}
+
+.hero h1 em::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -8px;
+  left: 0;
+  height: 7px;
+  background: var(--primary-bg);
+  transform: rotate(-1deg);
+}
+
+.lead {
+  max-width: 530px;
+  margin: 42px 0 0;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1.9;
+}
+
+.createPanel {
+  padding: 32px;
+  background: var(--panel);
+  border: 1px solid var(--ink);
+  box-shadow: 10px 10px 0 var(--ink);
+}
+
+.panelHeading,
+.sectionHeading,
+.cardMeta,
+.cardActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panelHeading {
+  margin-bottom: 30px;
+}
+
+.panelHeading > div {
+  display: flex;
+  align-items: baseline;
+  gap: 13px;
+}
+
+.panelHeading h2,
+.sectionHeading h2 {
+  margin: 0;
+  font-family: Georgia, "Yu Mincho", serif;
+}
+
+.panelHeading h2 { font-size: 30px; }
+.step { color: var(--accent); font: 700 12px/1 monospace; }
+.spark { color: var(--blue); font-size: 30px; }
+
+.createPanel > label,
+.createPanel legend {
+  display: block;
+  margin-bottom: 9px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.createPanel > input,
+.editForm input {
+  width: 100%;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  outline: none;
+}
+
+.createPanel > input {
+  height: 52px;
+  margin-bottom: 24px;
+  padding: 0 15px;
+}
+
+.createPanel input:focus,
+.editForm input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+fieldset {
+  margin: 0 0 28px;
+  padding: 0;
+  border: 0;
+}
+
+.sourceOptions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid var(--line);
+}
+
+.sourceOptions label {
+  cursor: pointer;
+  padding: 13px 8px;
+  border-right: 1px solid var(--line);
+  text-align: center;
+  font-size: 12px;
+}
+
+.sourceOptions label:last-child { border-right: 0; }
+.sourceOptions label.selected { color: var(--on-primary); background: var(--primary-bg); }
+.sourceOptions input { position: absolute; opacity: 0; pointer-events: none; }
+
+.primaryButton {
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  color: var(--on-primary);
+  background: var(--primary-bg);
+  border: 0;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.primaryButton:hover { background: var(--primary-hover); }
+.primaryButton:disabled { cursor: not-allowed; opacity: 0.5; }
+.primaryButton span { font-size: 23px; }
+
+.meetingsSection {
+  padding: 78px max(32px, calc((100vw - 1176px) / 2)) 100px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.sectionHeading { margin-bottom: 36px; }
+.sectionHeading .eyebrow { margin-bottom: 10px; color: var(--success); }
+.sectionHeading h2 { font-size: 44px; font-weight: 400; }
+
+.refreshButton,
+.cardActions button,
+.editForm button {
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.meetingGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+
+.meetingCard {
+  min-height: 230px;
+  display: grid;
+  grid-template-columns: 54px 1fr;
+  grid-template-rows: 1fr auto;
+  padding: 26px;
+  background: var(--surface);
+  transition: background 160ms ease;
+}
+
+.meetingCard:hover { background: var(--surface-hover); }
+.cardIndex { color: var(--muted); font: 12px/1 monospace; }
+.cardBody { min-width: 0; }
+.cardMeta { justify-content: flex-start; gap: 13px; color: var(--text-subtle); font-size: 12px; }
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--success);
+}
+
+.status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  background: currentColor;
+  border-radius: 50%;
+}
+
+.status-failed { color: var(--danger); }
+.status-completed { color: var(--success); }
+
+.cardBody h3 {
+  margin: 28px 0 24px;
+  overflow: hidden;
+  font-family: Georgia, "Yu Mincho", serif;
+  font-size: 27px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardBody time { color: var(--text-subtle); font-size: 12px; }
+.cardActions { grid-column: 2; justify-content: flex-end; gap: 18px; margin-top: 22px; }
+.cardActions .dangerButton { color: var(--danger); }
+
+.editForm {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  margin: 22px 0 18px;
+}
+
+.editForm input { height: 40px; padding: 0 10px; color: var(--ink); }
+
+.errorBanner {
+  margin-bottom: 24px;
+  padding: 14px 16px;
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-left: 5px solid var(--danger);
+}
+
+.emptyState {
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  color: var(--text-subtle);
+  text-align: center;
+}
+
+.emptyState > span { color: var(--success); font-size: 50px; }
+.emptyState h3 { margin: 12px 0 5px; color: var(--ink); font-family: Georgia, serif; font-size: 25px; }
+.emptyState p { margin: 0; font-size: 13px; }
+
+footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 30px max(32px, calc((100vw - 1176px) / 2));
+  color: var(--muted);
+  background: var(--paper);
+  font-size: 12px;
+}
+
+footer span { color: var(--ink); font-family: Georgia, serif; font-size: 18px; font-weight: 700; }
+
+@media (max-width: 820px) {
+  .topbar { padding: 0 20px; }
+  .hero { grid-template-columns: 1fr; gap: 58px; padding: 64px 20px 80px; }
+  .hero h1 { font-size: clamp(49px, 15vw, 72px); }
+  .createPanel { box-shadow: 7px 7px 0 var(--ink); }
+  .meetingsSection { padding: 64px 20px 78px; }
+  .meetingGrid { grid-template-columns: 1fr; }
+  footer { padding: 25px 20px; }
+}
+
+@media (max-width: 480px) {
+  .phaseBadge { display: none; }
+  .hero { padding-top: 48px; }
+  .hero h1 { font-size: 47px; }
+  .createPanel { padding: 24px 20px; }
+  .sourceOptions { grid-template-columns: 1fr; }
+  .sourceOptions label { border-right: 0; border-bottom: 1px solid var(--line); }
+  .sourceOptions label:last-child { border-bottom: 0; }
+  .meetingCard { grid-template-columns: 38px 1fr; padding: 22px 18px; }
+  .sectionHeading h2 { font-size: 37px; }
+  footer p { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { transition: none !important; }
+}
+
+
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100%;
+  overflow-x: clip;
+}
+
+body { min-height: 100dvh; }
+img, video, canvas { max-width: 100%; }
+input, select, textarea, button { max-width: 100%; font: inherit; }
+input, select, textarea { min-width: 0; }
+
+@supports not (overflow: clip) {
+  html, body { overflow-x: hidden; }
+}
+
+@media (max-width: 520px) {
+  body { background-size: 20px 20px; }
+}
+
+/* Native controls and uncommon/error paths share the application theme too. */
+a { color: var(--blue); }
+input, select, textarea { color: var(--ink); background-color: var(--surface); accent-color: var(--primary-bg); }
+input::placeholder, textarea::placeholder { color: var(--text-subtle); opacity: 1; }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--primary-bg); }
+:where(button, a, input, select, textarea, summary):focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+::selection { color: var(--ink); background: var(--blue-soft-hover); }

@@ -1,0 +1,56 @@
+.nameButton {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 3px 5px;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+}
+.nameButton span { color: var(--blue); opacity: .55; transition: opacity .15s ease; }
+.nameButton:hover { color: var(--ink); background: var(--blue-soft-hover); border-color: var(--blue-border); }
+.nameButton:hover span,
+.nameButton:focus-visible span { opacity: 1; }
+.nameButton:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.form { display: grid; width: 100%; gap: 6px; }
+.form input {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  padding: 0 8px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--blue);
+  border-radius: 5px;
+  font: 700 12px/1 sans-serif;
+}
+.form input:focus { outline: 2px solid var(--focus-ring); }
+.actions { display: flex; gap: 5px; }
+.actions button {
+  min-height: 27px;
+  padding: 0 8px;
+  color: var(--on-primary);
+  background: var(--primary-bg);
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 800;
+}
+.actions button[type="button"] { color: var(--muted); background: var(--surface-hover); }
+.actions button:disabled { cursor: wait; opacity: .6; }
+.error { color: var(--danger); font-size: 10px; line-height: 1.4; }
+
+@media (max-width: 520px) {
+  .nameButton { min-height: 44px; padding: 7px 5px; }
+  .form input { height: 44px; }
+  .actions button { min-height: 40px; }
+}
