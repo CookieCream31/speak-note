@@ -72,22 +72,25 @@ def seed(session: Session, provider_type=AIProviderType.OLLAMA):
 
 class FakeProvider:
     def __init__(self, source_id, callback=None):
-        self.source_id = source_id
+        self.source_ids = source_id if isinstance(source_id, list) else [source_id]
         self.callback = callback
         self.calls = 0
+        self.prompts = []
 
     async def generate_structured(self, system_prompt, prompt, schema):
         self.calls += 1
+        self.prompts.append(prompt)
         assert "捏造せず" in system_prompt
         assert "Python" in prompt
         if self.callback:
             self.callback()
+        source_id = self.source_ids[min(self.calls - 1, len(self.source_ids) - 1)]
         return schema.model_validate(
             {
                 "short_answer": "Pythonの経験があります。",
                 "detailed_answer": "会話に基づく回答です。",
                 "insufficient_information": False,
-                "source_ids": [self.source_id],
+                "source_ids": [source_id] if source_id else [],
             }
         )
 
@@ -164,17 +167,65 @@ def test_latest_request_supersedes_queued_and_inflight(session_factory: sessionm
         assert second.status == "superseded"
 
 
+@pytest.mark.parametrize("bad_id", ["fake-id", ""])
+def test_invalid_evidence_is_corrected_once(
+    session_factory: sessionmaker[Session], bad_id: str
+):
+    with session_factory() as session:
+        meeting, profile, _ = seed(session)
+        assist = start_assistance(session, meeting, profile.id, consent=True)
+        answer = request_answer(session, meeting, assist.id, uuid.uuid4(), "経験は？")
+        valid_id = answer.input_snapshot["sources"][0]["id"]
+        provider = FakeProvider([bad_id, valid_id])
+        process_answer(
+            session, session.get(Job, answer.job_id), get_settings(), provider_override=provider
+        )
+        assert provider.calls == 2
+        assert valid_id in provider.prompts[1]
+        assert answer.status == "completed"
+        assert answer.source_ids == [valid_id]
+
+
+def test_invalid_evidence_does_not_retry_after_recording_stops(
+    session_factory: sessionmaker[Session],
+):
+    with session_factory() as session:
+        meeting, profile, capture = seed(session)
+        assist = start_assistance(session, meeting, profile.id, consent=True)
+        answer = request_answer(session, meeting, assist.id, uuid.uuid4(), "経験は？")
+
+        def stop_recording():
+            capture.status = RealtimeSessionStatus.COMPLETED
+            session.commit()
+
+        provider = FakeProvider("fake-id", callback=stop_recording)
+        process_answer(
+            session, session.get(Job, answer.job_id), get_settings(), provider_override=provider
+        )
+        assert provider.calls == 1
+        assert answer.status == "superseded"
+
+
 def test_unknown_evidence_fails_only_answer(session_factory: sessionmaker[Session]):
     with session_factory() as session:
         meeting, profile, _ = seed(session)
         initial_status = meeting.status
         assist = start_assistance(session, meeting, profile.id, consent=True)
-        answer = request_answer(session, meeting, assist.id, uuid.uuid4(), "経験は？")
+        previous = request_answer(session, meeting, assist.id, uuid.uuid4(), "経験は？")
+        valid_id = previous.input_snapshot["sources"][0]["id"]
+        process_answer(
+            session, session.get(Job, previous.job_id), get_settings(),
+            provider_override=FakeProvider(valid_id),
+        )
+        answer = request_answer(session, meeting, assist.id, uuid.uuid4(), "次の経験は？")
         job = session.get(Job, answer.job_id)
+        provider = FakeProvider("fake-id")
         with pytest.raises(AnswerAssistError, match="存在しない"):
-            process_answer(session, job, get_settings(), provider_override=FakeProvider("fake-id"))
+            process_answer(session, job, get_settings(), provider_override=provider)
         fail_job(session, job, "根拠エラー")
+        assert provider.calls == 2
         assert answer.status == "failed"
+        assert previous.status == "completed"
         assert meeting.status == initial_status
         assert meeting.status != MeetingStatus.FAILED
 
