@@ -27,7 +27,7 @@ WhisperXを確定版の文字起こし・話者分離に、Ollama / Geminiを要
 
 このディレクトリはGitの `main` ブランチで管理します。現在の実装を初回の基準点とし、今後は機能・修正ごとにコード、テスト、必要なREADME・docs更新をまとめてcommitします。作業前後に既存変更を確認し、対象ファイルだけを追加して差分・秘密情報・検証結果を確認します。詳しい手順は[Git運用ガイド](docs/git-workflow.md)を参照してください。
 
-`origin` に `https://github.com/CookieCream31/speak-note.git` を設定しています。認証と初回pushが完了してから、以降は機能単位のcommitをpushします。`.env`、録音・録画、DB、生成物、古い `.orig` バックアップは追跡しません。リモートのURLや認証情報をソースに書き込まないでください。
+`origin` はSSHの `git@github.com:CookieCream31/speak-note.git` です。初回commitはGitHubの `origin/main` にpush済みです。このリポジトリ専用のDeploy keyを書き込み許可で登録しており、以降は機能単位のcommitをpushします。`.env`、録音・録画、DB、生成物、古い `.orig` バックアップは追跡しません。認証情報をソースに書き込まないでください。
 
 DESIGNの「推奨ディレクトリ」「実装Phase」は設計上の説明を含みます。
 実ファイルの場所は開発ガイドを参照し、仕様と実装の差を見つけても独断で仕様変更しないでください。
