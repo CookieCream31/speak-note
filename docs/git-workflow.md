@@ -33,7 +33,7 @@ git push origin main
 
 GitHubの `CookieCream31/speak-note` を作成し、`origin` のSSH URLを確認しました。このサーバー専用のEd25519鍵は `.git/keys/speak-note_ed25519` に保存し、権限を0600にしています。公開鍵は同名の `.pub` ファイルです。GitHubのリポジトリで **Settings → Deploy keys → Add deploy key** を開き、公開鍵を **Allow write access** で登録済みです。[GitHub公式手順](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys)。
 
-秘密鍵はGitに追加されず、このチェックアウトの `.git/` にだけあります。自動push用なのでパスフレーズは設定していません。サーバーへのアクセス権を限定し、不要になった場合や漏えいが疑われる場合はGitHubのDeploy keyを削除して鍵を更新します。ホスト鍵は[GitHub公式のEd25519指紋](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints)と照合したうえで `.git/keys/known_hosts` に固定しています。
+秘密鍵はGitに追加されず、このチェックアウトの `.git/` にだけあります。新しい環境へのcloneにはこの鍵を含めず、新しいホストで別のSSH鍵を作成・登録します。[新規環境での起動手順](../README.md#fresh-install)。自動push用なのでこのサーバーの鍵にパスフレーズは設定していません。サーバーへのアクセス権を限定し、不要になった場合や漏えいが疑われる場合はGitHubのDeploy keyを削除して鍵を更新します。ホスト鍵は[GitHub公式のEd25519指紋](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints)と照合したうえで `.git/keys/known_hosts` に固定しています。
 
 認証情報をREADMEや`.env`へ保存しません。初回push前の `git ls-remote` でリモートに既存ブランチがないことを確認しました。今後も履歴の競合をforce pushで上書きしません。
 

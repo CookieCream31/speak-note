@@ -4,7 +4,7 @@
 WhisperXを確定版の文字起こし・話者分離に、Ollama / Geminiを要約・質問回答に使用します。
 録音中の文字起こしはWhisperXまたはAzure AI Speechを選べます。
 
-最終照合: **2026-09-28**（現行機能・Migration 0023・Frontend配信状況・Git管理手順を照合）。この文書は現在のソースコードとCompose設定を説明します。
+最終照合: **2026-09-28**（現行機能・Migration 0023・Frontend配信状況・Git管理・新規環境の起動手順を照合）。この文書は現在のソースコードとCompose設定を説明します。
 外部APIの実接続、認識精度、すべての端末での動作を保証するものではありません。
 
 今後の機能追加・修正では毎回、実装とこのREADMEを照合し、操作・構成・設定・制約などの説明に影響する変更を同じ作業で反映します。詳しい作業ルールは[AGENTS.md](AGENTS.md)と[開発ガイド](docs/development.md)を参照してください。
@@ -98,52 +98,88 @@ Dockerfileだけで判断せず、[docker-compose.yml](docker-compose.yml)のcom
 WhisperX（ホスト8000）とOllama（ホスト11434）は既存の別サービスです。このComposeでは起動・変更しません。
 コンテナからは `host.docker.internal` を使います。
 
-## 初回起動
+<a id="fresh-install"></a>
+## 新しいUbuntu環境でGitから起動
 
-Ubuntu Serverで実行します。Mac等はブラウザ・Remote SSHの操作端末です。
+アプリはUbuntu Server上で実行します。以下はユーザー `llm`、配置先 `/home/llm/speak-note` の例です。別のユーザーならホームディレクトリと `.env` のUID/GIDを読み替えてください。Mac等はブラウザ・Remote SSHの操作端末です。
 
-必要なもの:
+### 1. 前提とSSHでclone
 
-- Docker EngineとComposeプラグイン（v2以降の `docker compose` 形式）。
-- 確定文字起こしを使うためのWhisperX API ServerとAPI Key。
-- AI解析にはOllama接続先またはGemini API Key。AIなしでも文字起こしできます。
-- Azure Liveを使う場合はSpeech Resource、リージョン、API Key。
-
-`.env` が既にある場合は上書きしないでください。
+- UbuntuにGit、Python 3、curl、OpenSSH client、[Docker Engine](https://docs.docker.com/engine/install/ubuntu/)と[Docker Composeプラグイン](https://docs.docker.com/compose/install/linux/)を用意します。Dockerはリンク先の公式手順で導入してください。
+- 確定文字起こしには、このリポジトリに含まれないWhisperX API ServerとAPI Keyが必要です。既定の接続先はホストの8000番です。AI解析には別途Ollama（既定はホストの11434番）かGemini API Keyを用意します。Azure Liveを使う場合はSpeech Resource、リージョン、API Keyも必要です。外部サービスの導入・設定はそれぞれの手順に従ってください。
+- GitHubの `CookieCream31/speak-note` へのSSH読み取り権限が必要です。新しいホストでは新しい鍵を作り、**公開鍵だけ**をリポジトリの **Settings → Deploy keys** に登録します。cloneだけなら読み取り権限、以後このホストからpushするなら **Allow write access** を有効にします。既存の鍵を上書きせず、必要ならファイル名を変えてください。[GitHubのDeploy key手順](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys)。
 
 ```bash
-cd /home/llm/speak-note
+sudo apt update
+sudo apt install -y git python3 curl openssh-client
+git --version
+python3 --version
+sudo docker compose version
+```
+
+```bash
+install -d -m 700 "$HOME/.ssh"
+ssh-keygen -t ed25519 -C "speak-note on new host" -f "$HOME/.ssh/speak-note_ed25519"
+cat "$HOME/.ssh/speak-note_ed25519.pub"
+```
+
+公開鍵の登録後にcloneします。初回接続時は表示されたGitHubのホスト鍵指紋を[GitHub公式一覧](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints)と照合してから承認してください。秘密鍵をGitHubやこのリポジトリに登録しないでください。
+
+```bash
+cd "$HOME"
+git -c core.sshCommand="ssh -i $HOME/.ssh/speak-note_ed25519 -o IdentitiesOnly=yes" clone git@github.com:CookieCream31/speak-note.git
+cd speak-note
+git config --local core.sshCommand "ssh -i $HOME/.ssh/speak-note_ed25519 -o IdentitiesOnly=yes"
+git status --short --branch
+```
+
+このホストから変更をpushする場合は、Deploy keyの書き込み権限に加え、リポジトリ内で `git config --local user.name "cookie"` と `git config --local user.email "74705675+CookieCream31@users.noreply.github.com"` を設定します。鍵やGit設定はcloneに含まれません。[Git運用ガイド](docs/git-workflow.md)も参照してください。
+
+### 2. ローカル設定
+
+`.env` はGitに含まれません。既にある場合は上書きしないでください。
+
+```bash
+cd "$HOME/speak-note"
 test -e .env || cp .env.example .env
 mkdir -p storage
 id -u
 id -g
+python3 -c "import base64,secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())"
 ```
 
-[.env.example](.env.example)を参考に `.env` を編集します。
+[.env.example](.env.example)を参考に `.env` を編集します。最後のコマンドの出力は `MASTER_ENCRYPTION_KEY` に設定し、安全に保管します。
 
-- `POSTGRES_PASSWORD` と `DATABASE_URL` 内の認証情報を一致させる。
-- `SPEAK_NOTE_UID/GID` を上記のホストユーザーに合わせ、`storage/` を書き込み可能にする。
-- `WHISPERX_API_KEY` のダミー値を実値へ変更する。
-- Gemini / Azureのキー保存には `MASTER_ENCRYPTION_KEY` を設定する。以下で生成し、安全に保管する。
-- LAN HTTPSを使う場合は `SPEAK_NOTE_HTTPS_HOST` と `NEXT_ALLOWED_DEV_ORIGINS` を自分の環境に合わせる。
+- `POSTGRES_PASSWORD` をダミー値から変更し、`DATABASE_URL` 内の認証情報と一致させる。
+- `SPEAK_NOTE_UID` / `SPEAK_NOTE_GID` を上記のホストユーザーに合わせ、`storage/` を書き込み可能にする。
+- `WHISPERX_API_KEY` のダミー値を実値へ変更し、必要なら `WHISPERX_BASE_URL` を接続先に合わせる。
+- `MASTER_ENCRYPTION_KEY` を設定する。Gemini / Azure等の暗号化された設定を別環境へ移す場合は、元環境と**同じ鍵**が必要です。
+- 利用するホスト名・ポートに合わせて `FRONTEND_PORT`、`BACKEND_PORT`、`SPEAK_NOTE_HTTPS_HOST`、`NEXT_ALLOWED_DEV_ORIGINS`、必要なら `CORS_ORIGINS` を確認する。Cloudflare Tunnelを使わない初回起動では `tunnel` profileを指定しません。
+
+### 3. 起動と確認
 
 ```bash
-python3 -c "import base64,secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())"
+cd "$HOME/speak-note"
 sudo docker compose config --quiet
 sudo docker compose up --build -d
 sudo docker compose ps
+curl --fail http://localhost:8001/api/v1/health
+sudo docker compose exec -T backend alembic current
 ```
 
-`config --quiet` は構文確認のみです。値を展開する `docker compose config` の出力にはSecretが含まれ得るため、共有しないでください。
+`config --quiet` は構文確認のみです。値を展開する `docker compose config` の出力にはSecretが含まれ得るため、共有しないでください。Backendは起動時にAlembic Migrationを実行します。現行ソースのheadは `20260927_0023` です。Frontendは起動時にlockfileを確認し、必要なら `npm ci` を実行します。初回ビルド中はヘルスチェックが通るまで待ってから確認してください。エラー時は[障害調査](docs/operations.md#troubleshooting)を参照してください。
 
 - 画面（Compose既定）: [http://localhost:3000](http://localhost:3000)。`FRONTEND_PORT` を変えた場合はそのホスト側ポートを使用します。2026-09-28のユーザー提供ログでは3001→コンテナ3000です。
 - APIドキュメント: [http://localhost:8001/docs](http://localhost:8001/docs)
 - ヘルスチェック: [http://localhost:8001/api/v1/health](http://localhost:8001/api/v1/health)
 
-Backendが起動時にAlembic Migrationを実行します。Frontendは起動時にlockfileを確認し、必要なら `npm ci` を実行します。
-録音・画面共有にはHTTPSまたはlocalhostのSecure Contextが必要です。
-長時間録画や外部アクセスは、WebSocketをBackendへ直接振り分けるCaddy経由を使います。
-[LAN HTTPS / Cloudflareの手順](docs/operations.md#https)。
+上の `localhost` はUbuntuホスト自身からの接続です。`FRONTEND_PORT` / `BACKEND_PORT` を変更した場合はURLと `curl` コマンドのポートも読み替えます。Macなど別端末のブラウザからは[LAN HTTPS設定](docs/operations.md#https)後にUbuntuホストのIPアドレスでアクセスしてください。
+
+画面が開いたら[操作ガイド](docs/usage.md)に従ってAI設定・Profileを登録し、短いファイルをアップロードして会議・Job・Final文字起こしを確認します。WhisperXへ接続できない場合は上記の外部サービスとAPI Keyを確認してください。録音・画面共有にはHTTPSまたはlocalhostのSecure Contextが必要です。別端末からの録音や長時間録画は、WebSocketをBackendへ直接振り分けるCaddy経由を使います。[LAN HTTPS / Cloudflareの手順](docs/operations.md#https)。
+
+### 既存環境の会議データを移す場合
+
+Gitからcloneしただけでは**空の新規環境**です。`.env`、PostgreSQL volume内の会議・文字起こし・AI設定、`storage/` の原本、CaddyのローカルCAはGitに入りません。移行時はDBと `storage/` の整合するバックアップ、元の `MASTER_ENCRYPTION_KEY` を含む設定を用意し、新環境で復旧してから起動してください。鍵を変えると保存済みのAPI Keyは復号できません。[永続データと保護](docs/operations.md#永続データと保護)。volumeや既存サービスを削除して初期化しないでください。
 
 ### 表示テーマ（ダークモード）
 
