@@ -168,9 +168,7 @@ def test_latest_request_supersedes_queued_and_inflight(session_factory: sessionm
 
 
 @pytest.mark.parametrize("bad_id", ["fake-id", ""])
-def test_invalid_evidence_is_corrected_once(
-    session_factory: sessionmaker[Session], bad_id: str
-):
+def test_invalid_evidence_is_corrected_once(session_factory: sessionmaker[Session], bad_id: str):
     with session_factory() as session:
         meeting, profile, _ = seed(session)
         assist = start_assistance(session, meeting, profile.id, consent=True)
@@ -214,7 +212,9 @@ def test_unknown_evidence_fails_only_answer(session_factory: sessionmaker[Sessio
         previous = request_answer(session, meeting, assist.id, uuid.uuid4(), "経験は？")
         valid_id = previous.input_snapshot["sources"][0]["id"]
         process_answer(
-            session, session.get(Job, previous.job_id), get_settings(),
+            session,
+            session.get(Job, previous.job_id),
+            get_settings(),
             provider_override=FakeProvider(valid_id),
         )
         answer = request_answer(session, meeting, assist.id, uuid.uuid4(), "次の経験は？")
