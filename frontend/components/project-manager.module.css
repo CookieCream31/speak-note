@@ -1,38 +1,97 @@
-.shell { min-height: 100vh; background: var(--blue-soft); color: var(--ink); padding: 32px clamp(16px, 4vw, 64px) 80px; }
-.header { max-width: 1440px; margin: auto auto 28px; }
-.header h1 { margin: 8px 0; font-size: clamp(24px, 3vw, 28px); font-weight: 600; letter-spacing: -.01em; }
-.header p, .muted { color: var(--muted); line-height: 1.6; }
-.back { display: inline-block; text-decoration: none; color: var(--blue); margin-bottom: 26px; font-weight: 700; }
-.eyebrow { display: block; color: var(--blue); font-size: 11px; font-weight: 800; letter-spacing: .16em; }
-.grid { max-width: 1440px; margin: auto; display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); gap: 22px; align-items: start; }
-.stack { display: grid; gap: 22px; min-width: 0; }
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: clamp(20px, 3vw, 34px); box-shadow: 0 8px 28px var(--focus-ring); }
-.panel h2 { margin: 8px 0 20px; font-size: 18px; font-weight: 600; }
-.panelTitle { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
-.panelTitle h2 { margin: 0 0 12px; font-size: 16px; }
-.panelTitle button { border: 0; color: var(--blue); background: transparent; cursor: pointer; font-weight: 700; }
-.projectItem { display: block; width: 100%; text-align: left; border: 0; border-radius: 8px; background: transparent; padding: 11px 13px; cursor: pointer; color: inherit; }
-.projectItem:hover, .active { background: var(--blue-soft-hover); color: var(--ink); }
-.child { padding-left: 29px; }
-.divider { border-top: 1px solid var(--line); margin: 20px 0; }
-.form { display: grid; gap: 18px; }
-.form label { display: grid; gap: 8px; font-size: 13px; font-weight: 700; }
-.form input:not([type=file]), .form select, .form textarea { width: 100%; border: 1px solid var(--control-border); border-radius: 12px; background: var(--blue-soft); color: var(--ink); padding: 12px 14px; font: inherit; font-weight: 400; }
-.form textarea { resize: vertical; }
-.form button { justify-self: start; border: 1px solid var(--control-border); background: var(--surface); color: var(--blue); padding: 11px 22px; border-radius: 12px; font-weight: 700; cursor: pointer; }
-.form .primary { background: var(--primary-bg); color: var(--on-primary); border-color: var(--focus); }
-.form button:disabled { opacity: .6; cursor: wait; }
-.twoColumns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.documentRow { display: flex; justify-content: space-between; align-items: center; gap: 12px; border: 1px solid var(--line-soft); border-radius: 12px; padding: 12px 15px; margin-bottom: 10px; }
-.documentRow small { display: block; color: var(--text-subtle); margin-top: 4px; }
-.documentRow label { white-space: nowrap; }
-.meetingLink { display: flex; justify-content: space-between; text-decoration: none; color: var(--blue); padding: 12px; border-top: 1px solid var(--line-soft); }
-.error, .notice { max-width: 1440px; margin: 0 auto 16px; padding: 12px 18px; border-radius: 12px; }
-.error { background: var(--danger-soft); color: var(--danger); }
-.notice { background: var(--success-soft); color: var(--success); }
-@media (max-width: 760px) { .grid, .twoColumns { grid-template-columns: 1fr; } .shell { padding: 20px 15px 60px; } }
-.documentEdit { border: 0; padding: 0; color: var(--blue); background: transparent; font: inherit; font-weight: 700; cursor: pointer; }
-.documentActions { display: flex; flex-wrap: wrap; gap: 10px; }
+.shell { min-height: 100vh; display: grid; grid-template-columns: 240px minmax(0, 1fr); color: var(--ink); background: var(--paper); }
+.main { min-width: 0; }
+.header { position: sticky; top: 0; z-index: 30; min-height: 64px; display: flex; align-items: center; gap: 12px; padding: 0 40px; background: var(--surface-glass); border-bottom: 1px solid var(--line); backdrop-filter: blur(10px); }
+.header h1 { flex: 1; margin: 0; font-size: 18px; font-weight: 600; }
+.primaryButton { min-height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; white-space: nowrap; }
+.primaryButton:hover { background: var(--primary-hover); }
+.primaryButton:disabled { cursor: wait; opacity: .6; }
+.content { max-width: 1400px; display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 24px; align-items: start; margin: 0 auto; padding: 28px 40px 64px; }
+.muted { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
 
-.header { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
-@media (max-width: 760px) { .header { flex-direction: column; gap: 8px; } }
+/* Project tree and shared profiles */
+.list { position: sticky; top: 92px; display: grid; gap: 12px; }
+.tree { display: grid; gap: 2px; }
+.projectItem { width: 100%; min-height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 10px; color: var(--ink); text-align: left; background: transparent; border: 0; border-radius: 8px; cursor: pointer; font-size: 14px; }
+.projectItem > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.projectItem:hover, .active { background: var(--surface-hover); }
+.active { font-weight: 500; }
+.projectItem:disabled { cursor: wait; }
+.child { padding-left: 32px; color: var(--text-secondary); }
+.expander { color: var(--muted); }
+.expanderSpace { width: 14px; flex: 0 0 auto; }
+.divider { height: 1px; margin: 8px 0; background: var(--line); }
+.listTitle { display: flex; align-items: center; justify-content: space-between; padding: 0 10px; color: var(--muted); font-size: 12px; font-weight: 500; }
+.listTitle button { width: 28px; height: 28px; display: grid; place-items: center; color: var(--muted); background: transparent; border: 0; border-radius: 8px; cursor: pointer; }
+.listTitle button:hover { color: var(--ink); background: var(--surface-hover); }
+
+/* Detail */
+.detail { min-width: 0; display: grid; gap: 20px; }
+.detailTitle { display: grid; gap: 6px; }
+.detailTitle > div { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.detailTitle h2 { flex: 1; margin: 0; font-size: clamp(22px, 2.4vw, 26px); font-weight: 600; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.secondaryButton { min-height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; color: var(--ink); text-decoration: none; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; }
+.secondaryButton:hover { background: var(--surface-hover); }
+.detailGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+.column { display: grid; gap: 20px; }
+.card { min-width: 0; display: grid; gap: 14px; padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.card h2 { margin: 0; font-size: 18px; font-weight: 600; }
+.card h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.cardTitle { display: flex; align-items: center; gap: 8px; }
+.cardTitle h3 { flex: 1; }
+.smallButton { min-height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-size: 13px; }
+.smallButton:hover { background: var(--surface-hover); }
+
+.form { display: grid; gap: 14px; }
+.form label { display: grid; gap: 6px; font-size: 13px; font-weight: 500; }
+.form input:not([type=file]), .form select, .form textarea { width: 100%; min-height: 38px; padding: 0 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 14px; font-weight: 400; }
+.form textarea { padding: 10px 12px; resize: vertical; line-height: 1.6; }
+.form input:focus, .form select:focus, .form textarea:focus { border-color: var(--focus); outline: 3px solid var(--focus-ring); }
+.form input[type=file] { font-size: 13px; font-weight: 400; }
+.form button { justify-self: end; min-height: 36px; padding: 0 16px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-size: 14px; }
+.form .primary { color: var(--on-primary); background: var(--primary-bg); border-color: var(--primary-bg); font-weight: 500; }
+.form button:disabled { cursor: wait; opacity: .6; }
+.twoColumns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+
+.documentRow { display: flex; align-items: center; gap: 12px; padding: 10px 0; color: var(--text-secondary); border-top: 1px solid var(--line-soft); }
+.documentRow > div { min-width: 0; flex: 1; }
+.documentRow small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+.documentEdit { max-width: 100%; overflow: hidden; padding: 0; color: var(--ink); text-align: left; text-overflow: ellipsis; white-space: nowrap; background: transparent; border: 0; cursor: pointer; font: inherit; font-size: 14px; }
+.documentEdit[data-included="false"] { color: var(--muted); }
+.documentEdit:hover { text-decoration: underline; }
+.switchLabel { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; white-space: nowrap; cursor: pointer; }
+/* Native checkbox drawn as a switch. */
+.switchLabel input { position: relative; width: 36px; height: 22px; margin: 0; background: var(--control-border); border-radius: 999px; cursor: pointer; appearance: none; transition: background-color .15s; }
+.switchLabel input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: var(--surface); border-radius: 50%; transition: transform .15s; }
+.switchLabel input:checked { background: var(--blue); }
+.switchLabel input:checked::after { transform: translateX(14px); }
+.switchLabel input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.switchLabel input:disabled { cursor: wait; opacity: .6; }
+.documentForm { padding: 14px; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; }
+.documentActions { display: flex; justify-content: flex-end; gap: 8px; }
+
+.meetingLink { display: flex; align-items: center; gap: 10px; padding: 10px 0; color: var(--ink); text-decoration: none; border-top: 1px solid var(--line-soft); font-size: 14px; }
+.meetingLink > span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meetingLink .lucide { color: var(--muted); }
+.meetingLink:hover span { text-decoration: underline; }
+
+.error, .notice { margin: 0; padding: 10px 14px; border-radius: 8px; font-size: 13px; }
+.error { color: var(--danger); background: var(--danger-soft); }
+.notice { color: var(--success); background: var(--success-soft); }
+
+@media (max-width: 1220px) {
+  .detailGrid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 1000px) {
+  .shell { grid-template-columns: 72px minmax(0, 1fr); }
+  .header, .content { padding-right: 24px; padding-left: 24px; }
+  .content { grid-template-columns: 220px minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  .shell { display: block; }
+  .header { top: 60px; flex-wrap: wrap; padding: 10px 16px; }
+  .content { grid-template-columns: minmax(0, 1fr); padding: 16px 16px 48px; }
+  .list { position: static; }
+  .twoColumns { grid-template-columns: 1fr; }
+  .projectItem { min-height: 44px; }
+  .form input:not([type=file]), .form select, .form textarea { min-height: 44px; font-size: 16px; }
+}

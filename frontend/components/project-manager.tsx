@@ -1,9 +1,11 @@
 "use client";
 
+import { ChevronRight, FileText, Plus, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 import { knowledgeApi, meetingsApi, type Meeting, type PersonalProfile, type Project, type ProjectDocument } from "@/lib/api";
+import { AppSidebar } from "./app-sidebar";
 import styles from "./project-manager.module.css";
 import { ThemeSelector } from "./theme-selector";
 
@@ -26,6 +28,9 @@ export function ProjectManager() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  // The right-hand side edits either the selected project or a shared profile.
+  const [detail, setDetail] = useState<"project" | "profile">("project");
+  const [documentFormOpen, setDocumentFormOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     const [nextProfiles, nextProjects] = await Promise.all([
@@ -66,6 +71,8 @@ export function ProjectManager() {
     setSelectedId(project?.id ?? null);
     if ((project?.id ?? null) !== selectedId) { setDocuments([]); setMeetings([]); }
     setDocumentId(null); setDocumentName(""); setDocumentContent("");
+    setDocumentFormOpen(false);
+    setDetail("project");
     setName(project?.name ?? "");
     setNotes(project?.notes ?? "");
     setParentId(project?.parent_id ?? "");
@@ -78,6 +85,9 @@ export function ProjectManager() {
     setProfileId(profile?.id ?? null);
     setProfileName(profile?.name ?? "");
     setProfileBody(profile?.body ?? "");
+    setDetail("profile");
+    setError("");
+    setNotice("");
   }
 
   async function saveProject(event: FormEvent<HTMLFormElement>) {
@@ -118,6 +128,7 @@ export function ProjectManager() {
       });
       setDocuments(await knowledgeApi.documents(selectedId));
       setDocumentId(null); setDocumentName(""); setDocumentContent("");
+      setDocumentFormOpen(false);
       setNotice("資料を保存しました");
     } catch (caught) { setError(caught instanceof Error ? caught.message : String(caught)); }
     finally { setBusy(false); }
@@ -153,70 +164,147 @@ export function ProjectManager() {
   const selected = projects.find((project) => project.id === selectedId);
   const projectMeetings = meetings.filter((meeting) => meeting.project_id === selectedId);
 
-  return <main className={styles.shell}>
-    <header className={styles.header}>
-      <div><Link href="/" className={styles.back}>← ホーム</Link><h1>プロジェクト</h1>
-        <p>親プロジェクトと子プロジェクトで情報を整理します。子は親の情報を引き継ぎ、他の子の資料は参照しません。</p></div>
-      <ThemeSelector />
-    </header>
-    {error && <p className={styles.error} role="alert">{error}</p>}
-    {notice && <p className={styles.notice} role="status">{notice}</p>}
-    <div className={styles.grid}>
-      <aside className={styles.panel}>
-        <div className={styles.panelTitle}><h2>プロジェクト一覧</h2><button type="button" disabled={busy} onClick={() => selectProject(null)}>＋ 新規</button></div>
-        {projects.filter((project) => !project.parent_id).map((project) => <div key={project.id}>
-          <button type="button" disabled={busy} className={`${styles.projectItem} ${selectedId === project.id ? styles.active : ""}`} onClick={() => selectProject(project)}>{project.name}</button>
-          {projects.filter((child) => child.parent_id === project.id).map((child) =>
-            <button key={child.id} type="button" disabled={busy} className={`${styles.projectItem} ${styles.child} ${selectedId === child.id ? styles.active : ""}`} onClick={() => selectProject(child)}>↳ {child.name}</button>)}
-        </div>)}
-        {projects.length === 0 && <p className={styles.muted}>まだプロジェクトがありません。</p>}
-        <div className={styles.divider} />
-        <div className={styles.panelTitle}><h2>共通プロフィール</h2><button type="button" disabled={busy} onClick={() => selectProfile(null)}>＋ 新規</button></div>
-        {profiles.map((profile) => <button key={profile.id} type="button" disabled={busy} className={`${styles.projectItem} ${profileId === profile.id ? styles.active : ""}`} onClick={() => selectProfile(profile)}>{profile.name}</button>)}
-      </aside>
-      <div className={styles.stack}>
-        <section className={styles.panel}>
-          <h2>{selected ? selected.name : "プロジェクトを作成"}</h2>
-          <form onSubmit={(event) => void saveProject(event)} className={styles.form}>
-            <label>名前<input value={name} onChange={(event) => setName(event.target.value)} maxLength={100} required placeholder="例：就職活動 / A社" /></label>
-            <div className={styles.twoColumns}>
-              <label>親プロジェクト<select value={parentId} onChange={(event) => setParentId(event.target.value)}><option value="">なし（親として作成）</option>
-                {projects.filter((project) => !project.parent_id && project.id !== selectedId && !projects.some((child) => child.parent_id === selectedId)).map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
-              </select></label>
-              <label>共通プロフィール<select value={projectProfileId} onChange={(event) => setProjectProfileId(event.target.value)}><option value="">{parentId ? "親の設定を引き継ぐ" : "使用しない"}</option>
-                {profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
-              </select></label>
+  const parent = selected?.parent_id ? projects.find((project) => project.id === selected.parent_id) : undefined;
+  const closeDocumentForm = () => {
+    setDocumentId(null); setDocumentName(""); setDocumentContent(""); setDocumentFormOpen(false);
+  };
+
+  return <div className={styles.shell}>
+    <AppSidebar current="projects" />
+    <main className={styles.main}>
+      <header className={styles.header}>
+        <h1>プロジェクト</h1>
+        <ThemeSelector />
+        <button type="button" className={styles.primaryButton} disabled={busy} onClick={() => selectProject(null)}>
+          <Plus size={16} aria-hidden="true" />新しいプロジェクト
+        </button>
+      </header>
+      <div className={styles.content}>
+        <aside className={styles.list}>
+          <p className={styles.muted}>親と子の2階層で整理します。子は親の情報を引き継ぎ、兄弟の資料は参照しません。</p>
+          <nav className={styles.tree} aria-label="プロジェクト一覧">
+            {projects.filter((project) => !project.parent_id).map((project) => <div key={project.id}>
+              <button type="button" disabled={busy}
+                className={`${styles.projectItem} ${detail === "project" && selectedId === project.id ? styles.active : ""}`}
+                aria-current={detail === "project" && selectedId === project.id ? "true" : undefined}
+                onClick={() => selectProject(project)}>
+                {projects.some((child) => child.parent_id === project.id)
+                  ? <ChevronRight size={14} aria-hidden="true" className={styles.expander} />
+                  : <span className={styles.expanderSpace} aria-hidden="true" />}
+                <span>{project.name}</span>
+              </button>
+              {projects.filter((child) => child.parent_id === project.id).map((child) =>
+                <button key={child.id} type="button" disabled={busy}
+                  className={`${styles.projectItem} ${styles.child} ${detail === "project" && selectedId === child.id ? styles.active : ""}`}
+                  aria-current={detail === "project" && selectedId === child.id ? "true" : undefined}
+                  onClick={() => selectProject(child)}>
+                  <span>{child.name}</span>
+                </button>)}
+            </div>)}
+            {projects.length === 0 && <p className={styles.muted}>まだプロジェクトがありません。</p>}
+          </nav>
+          <div className={styles.divider} />
+          <div className={styles.listTitle}>
+            <span>共通プロフィール</span>
+            <button type="button" disabled={busy} aria-label="共通プロフィールを追加" title="共通プロフィールを追加" onClick={() => selectProfile(null)}>
+              <Plus size={14} aria-hidden="true" />
+            </button>
+          </div>
+          {profiles.map((profile) => <button key={profile.id} type="button" disabled={busy}
+            className={`${styles.projectItem} ${detail === "profile" && profileId === profile.id ? styles.active : ""}`}
+            aria-current={detail === "profile" && profileId === profile.id ? "true" : undefined}
+            onClick={() => selectProfile(profile)}>
+            <UserRound size={16} aria-hidden="true" /><span>{profile.name}</span>
+          </button>)}
+        </aside>
+
+        <div className={styles.detail}>
+          {error && <p className={styles.error} role="alert">{error}</p>}
+          {notice && <p className={styles.notice} role="status">{notice}</p>}
+          {detail === "profile" ? (
+            <section className={styles.card}>
+              <h2>{profileId ? "プロフィールを編集" : "共通プロフィールを作成"}</h2>
+              <p className={styles.muted}>AIモデル設定とは別の、経歴・スキル・自己紹介などの事実です。プロジェクトごとに利用するプロフィールを選びます。</p>
+              <form onSubmit={(event) => void saveProfile(event)} className={styles.form}>
+                <label>名前<input value={profileName} onChange={(event) => setProfileName(event.target.value)} required maxLength={100} placeholder="例：自分の経歴" /></label>
+                <label>内容<textarea value={profileBody} onChange={(event) => setProfileBody(event.target.value)} rows={8} maxLength={30000} placeholder="職務経歴、経験、実績など" /></label>
+                <button className={styles.primary} disabled={busy}>保存</button>
+              </form>
+            </section>
+          ) : <>
+            <div className={styles.detailTitle}>
+              {parent && <span className={styles.muted}>{parent.name} /</span>}
+              <div>
+                <h2>{selected ? selected.name : "新しいプロジェクト"}</h2>
+                {selected && <Link className={styles.secondaryButton} href={`/?create=1&project_id=${selected.id}`}>
+                  <Plus size={16} aria-hidden="true" />この中で会議を作成
+                </Link>}
+              </div>
             </div>
-            <label>背景・会社情報<textarea value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={30000} rows={5} placeholder="応募先、目的、前提など" /></label>
-            <button className={styles.primary} disabled={busy}>保存</button>
-          </form>
-        </section>
-        {selected && <section className={styles.panel}>
-          <h2>資料</h2>
-          <p className={styles.muted}>このプロジェクトの資料です。親の資料も子で利用できます。除外した資料は回答支援の参照対象になりません。</p>
-          {documents.map((document) => <div key={document.id} className={styles.documentRow}><div><button type="button" disabled={busy} className={styles.documentEdit} onClick={() => { setDocumentId(document.id); setDocumentName(document.name); setDocumentContent(document.content); }}>{document.name}</button><small>v{document.revision} · {document.content.length.toLocaleString()}文字</small></div>
-            <label><input type="checkbox" checked={document.included} disabled={busy} onChange={() => void toggleDocument(document)} /> 参照する</label></div>)}
-          <form onSubmit={(event) => void addDocument(event)} className={styles.form}>
-            <label>資料名<input value={documentName} onChange={(event) => setDocumentName(event.target.value)} maxLength={200} required /></label>
-            <label>テキストを読み込む<input type="file" accept=".txt,.md,text/plain,text/markdown" onChange={(event) => void readFile(event.target.files?.[0])} /></label>
-            <label>本文<textarea value={documentContent} onChange={(event) => setDocumentContent(event.target.value)} rows={5} maxLength={100000} required /></label>
-            <div className={styles.documentActions}><button disabled={busy}>{documentId ? "変更を保存" : "資料を追加"}</button>{documentId && <button type="button" disabled={busy} onClick={() => { setDocumentId(null); setDocumentName(""); setDocumentContent(""); }}>キャンセル</button>}</div>
-          </form>
-        </section>}
-        <section className={styles.panel}>
-          <h2>{profileId ? "プロフィールを編集" : "共通プロフィールを作成"}</h2>
-          <p className={styles.muted}>AIモデル設定とは別の、経歴・スキル・自己紹介などの事実です。プロジェクトごとに利用するプロフィールを選びます。</p>
-          <form onSubmit={(event) => void saveProfile(event)} className={styles.form}>
-            <label>名前<input value={profileName} onChange={(event) => setProfileName(event.target.value)} required maxLength={100} placeholder="例：自分の経歴" /></label>
-            <label>内容<textarea value={profileBody} onChange={(event) => setProfileBody(event.target.value)} rows={5} maxLength={30000} placeholder="職務経歴、経験、実績など" /></label>
-            <button disabled={busy}>保存</button>
-          </form>
-        </section>
-        {selected && <section className={styles.panel}><div className={styles.panelTitle}><h2>このプロジェクトの会議</h2><Link href={`/?create=1&project_id=${selected.id}`}>＋ 会議を作成</Link></div>
-          {projectMeetings.length === 0 ? <p className={styles.muted}>会議はまだありません。ホームから会議を作成し、プロジェクトを選択してください。</p> :
-            projectMeetings.map((meeting) => <Link key={meeting.id} className={styles.meetingLink} href={`/meetings/${meeting.id}`}>{meeting.title} <span>→</span></Link>)}
-        </section>}
+            <div className={styles.detailGrid}>
+              <section className={styles.card}>
+                <h3>基本情報</h3>
+                <form onSubmit={(event) => void saveProject(event)} className={styles.form}>
+                  <label>名前<input value={name} onChange={(event) => setName(event.target.value)} maxLength={100} required placeholder="例：就職活動 / A社" /></label>
+                  <div className={styles.twoColumns}>
+                    <label>親プロジェクト<select value={parentId} onChange={(event) => setParentId(event.target.value)}><option value="">なし（親として作成）</option>
+                      {projects.filter((project) => !project.parent_id && project.id !== selectedId && !projects.some((child) => child.parent_id === selectedId)).map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+                    </select></label>
+                    <label>共通プロフィール<select value={projectProfileId} onChange={(event) => setProjectProfileId(event.target.value)}><option value="">{parentId ? "親の設定を引き継ぐ" : "使用しない"}</option>
+                      {profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
+                    </select></label>
+                  </div>
+                  <label>背景・会社情報<textarea value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={30000} rows={6} placeholder="目的、前提、関係者など" /></label>
+                  <button className={styles.primary} disabled={busy}>保存</button>
+                </form>
+              </section>
+              {selected ? <div className={styles.column}>
+                <section className={styles.card}>
+                  <div className={styles.cardTitle}>
+                    <h3>資料</h3>
+                    {!documentFormOpen && <button type="button" className={styles.smallButton} disabled={busy} onClick={() => setDocumentFormOpen(true)}>
+                      <Plus size={14} aria-hidden="true" />追加
+                    </button>}
+                  </div>
+                  <p className={styles.muted}>.txt / .md（100KBまで）か貼り付けたテキスト。親の資料も利用できます。オフにした資料は回答支援で参照しません。</p>
+                  {documents.map((document) => <div key={document.id} className={styles.documentRow}>
+                    <FileText size={16} aria-hidden="true" />
+                    <div>
+                      <button type="button" disabled={busy} className={styles.documentEdit} data-included={document.included}
+                        onClick={() => { setDocumentId(document.id); setDocumentName(document.name); setDocumentContent(document.content); setDocumentFormOpen(true); }}>{document.name}</button>
+                      <small>v{document.revision} · {document.content.length.toLocaleString()}文字</small>
+                    </div>
+                    <label className={styles.switchLabel}>
+                      <span>{document.included ? "参照する" : "参照しない"}</span>
+                      <input type="checkbox" role="switch" checked={document.included} disabled={busy}
+                        aria-label={`${document.name}を参照する`} onChange={() => void toggleDocument(document)} />
+                    </label>
+                  </div>)}
+                  {documentFormOpen && <form onSubmit={(event) => void addDocument(event)} className={`${styles.form} ${styles.documentForm}`}>
+                    <label>資料名<input value={documentName} onChange={(event) => setDocumentName(event.target.value)} maxLength={200} required /></label>
+                    <label>テキストを読み込む<input type="file" accept=".txt,.md,text/plain,text/markdown" onChange={(event) => void readFile(event.target.files?.[0])} /></label>
+                    <label>本文<textarea value={documentContent} onChange={(event) => setDocumentContent(event.target.value)} rows={5} maxLength={100000} required /></label>
+                    <div className={styles.documentActions}>
+                      <button type="button" disabled={busy} onClick={closeDocumentForm}>キャンセル</button>
+                      <button className={styles.primary} disabled={busy}>{documentId ? "変更を保存" : "資料を追加"}</button>
+                    </div>
+                  </form>}
+                </section>
+                <section className={styles.card}>
+                  <h3>このプロジェクトの会議</h3>
+                  {projectMeetings.length === 0 ? <p className={styles.muted}>会議はまだありません。「この中で会議を作成」から作成できます。</p> :
+                    projectMeetings.map((meeting) => <Link key={meeting.id} className={styles.meetingLink} href={`/meetings/${meeting.id}`}>
+                      <span>{meeting.title}</span><ChevronRight size={16} aria-hidden="true" />
+                    </Link>)}
+                </section>
+              </div> : <section className={styles.card}>
+                <h3>資料と会議</h3>
+                <p className={styles.muted}>プロジェクトを保存すると、資料の追加とこのプロジェクトの会議の確認ができます。</p>
+              </section>}
+            </div>
+          </>}
+        </div>
       </div>
-    </div>
-  </main>;
+    </main>
+  </div>;
 }

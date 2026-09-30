@@ -1,0 +1,29 @@
+/* Matches the home sidebar (meetings-manager.module.css). */
+.sidebar { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 20px; padding: 20px 12px; overflow-y: auto; background: var(--surface); border-right: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px; color: var(--ink); text-decoration: none; font-size: 16px; font-weight: 600; letter-spacing: -.01em; }
+.brandMark { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; gap: 2px; flex: 0 0 auto; background: var(--primary-bg); border-radius: 8px; }
+.brandMark i { width: 2.5px; display: block; background: var(--on-primary); border-radius: 2px; }
+.brandMark i:nth-child(1) { height: 7px; }
+.brandMark i:nth-child(2) { height: 14px; }
+.brandMark i:nth-child(3) { height: 10px; }
+.navigation { display: flex; flex-direction: column; gap: 2px; }
+.navigation a { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 10px; color: var(--text-secondary); text-decoration: none; border-radius: 8px; font-size: 14px; }
+.navigation a:hover { color: var(--ink); background: var(--surface-hover); }
+.navigation .active { color: var(--ink); background: var(--surface-hover); font-weight: 500; }
+.status { display: grid; gap: 2px; margin-top: auto; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
+.status strong { font-size: 13px; font-weight: 500; }
+.status small { color: var(--muted); font-size: 12px; }
+@media (max-width: 1000px) {
+  .sidebar { align-items: center; padding: 20px 10px; }
+  .brand { padding: 4px; }
+  .brand > span:last-child, .status { display: none; }
+  .navigation a { width: 44px; min-height: 44px; justify-content: center; padding: 0; }
+  .navigation a > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+@media (max-width: 760px) {
+  .sidebar { position: sticky; z-index: 40; width: 100%; height: 60px; flex-direction: row; align-items: center; gap: 8px; padding: 8px max(10px, env(safe-area-inset-right)) 8px max(10px, env(safe-area-inset-left)); overflow: visible; border-right: 0; border-bottom: 1px solid var(--line); }
+  .brand { margin-right: auto; }
+  .brand > span:last-child { display: inline; }
+  .navigation { flex-direction: row; }
+}
+@media (max-width: 560px) { .brand > span:last-child { display: none; } }
