@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>議事録テンプレート</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;family=Noto+Sans+JP:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;font-family:"Geist","Noto Sans JP",sans-serif;-webkit-font-smoothing:antialiased}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1000px; display: flex; flex-direction: column; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Geist','Noto Sans JP',sans-serif; overflow: hidden">
+
+<header style="height: 56px; flex-shrink: 0; box-sizing: border-box; padding: 0 40px; display: flex; align-items: center; gap: 12px; background: {{c.surface}}; border-bottom: 1px solid {{c.line}}">
+<span style="width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; gap: 2px; background: {{c.primary}}; border-radius: 7px"><span style="width: 2.5px; height: 6px; background: {{c.onPrimary}}; border-radius: 2px"></span><span style="width: 2.5px; height: 13px; background: {{c.onPrimary}}; border-radius: 2px"></span><span style="width: 2.5px; height: 9px; background: {{c.onPrimary}}; border-radius: 2px"></span></span>
+<nav aria-label="パンくずリスト" style="display: flex; align-items: center; gap: 8px; font-size: 14px; flex-grow: 1"><a href="#" style="color: {{c.muted}}; text-decoration: none">AI設定</a><span style="color: {{c.muted}}" aria-hidden="true">/</span><span style="font-weight: 500">議事録テンプレート</span></nav>
+</header>
+
+<div style="flex-grow: 1; min-height: 0; box-sizing: border-box; padding: 28px 40px 0; display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 32px">
+<aside style="display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 0 10px 8px"><span style="font-size: 12px; font-weight: 500; color: {{c.muted}}">テンプレート</span><button type="button" aria-label="新しいテンプレート" style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: {{c.muted}}; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></button></div>
+<a href="#" aria-current="page" style="display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; border-radius: 8px; background: {{c.sub}}; color: {{c.ink}}; text-decoration: none; font-size: 14px; font-weight: 500"><span style="flex-grow: 1">[テンプレート名 1]</span><span style="padding: 0 6px; background: {{c.accentSoft}}; border-radius: 4px; font-size: 11px; color: {{c.accent}}">既定</span></a>
+<a href="#" style="display: flex; align-items: center; height: 36px; padding: 0 10px; border-radius: 8px; color: {{c.text2}}; text-decoration: none; font-size: 14px">[テンプレート名 2]</a>
+<a href="#" style="display: flex; align-items: center; height: 36px; padding: 0 10px; border-radius: 8px; color: {{c.text2}}; text-decoration: none; font-size: 14px">[テンプレート名 3]</a>
+</aside>
+
+<div style="display: flex; flex-direction: column; gap: 18px; min-width: 0; max-width: 900px">
+<div style="display: flex; align-items: flex-end; gap: 12px">
+<label style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 500">テンプレート名<input type="text" value="[テンプレート名 1]" style="height: 40px; box-sizing: border-box; padding: 0 12px; background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 8px; font: inherit; font-size: 15px; font-weight: 500; color: {{c.ink}}; outline: 0"></label>
+<button type="button" style="height: 40px; padding: 0 14px; background: transparent; border: 1px solid {{c.line}}; border-radius: 8px; font: inherit; font-size: 13px; color: {{c.text2}}; cursor: pointer">複製</button>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px">
+<div role="tablist" aria-label="編集する構成" style="display: flex; padding: 3px; background: {{c.sub}}; border-radius: 8px">
+<button type="button" role="tab" aria-selected="false" style="height: 30px; padding: 0 14px; background: transparent; border: 0; border-radius: 6px; font: inherit; font-size: 13px; color: {{c.text2}}; cursor: pointer">リアルタイム</button>
+<button type="button" role="tab" aria-selected="true" style="height: 30px; padding: 0 14px; background: {{c.surface}}; border: 0; border-radius: 6px; font: inherit; font-size: 13px; font-weight: 500; color: {{c.ink}}; cursor: pointer">確定後</button>
+</div>
+<span style="font-size: 13px; color: {{c.muted}}">会議後の議事録に表示するカードと順番</span>
+</div>
+
+<div style="display: flex; flex-direction: column; background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 12px; overflow: hidden">
+<div style="display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 14px; border-bottom: 1px solid {{c.lineSoft}}">
+<span aria-hidden="true" style="color: {{c.muted}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"></circle><circle cx="15" cy="6" r="1.5"></circle><circle cx="9" cy="12" r="1.5"></circle><circle cx="15" cy="12" r="1.5"></circle><circle cx="9" cy="18" r="1.5"></circle><circle cx="15" cy="18" r="1.5"></circle></svg></span>
+<span style="flex-grow: 1; font-size: 14px; font-weight: 500">要約</span><span style="font-size: 12px; color: {{c.muted}}">既存項目：要約</span>
+<button type="button" role="switch" aria-checked="true" aria-label="要約を表示" style="width: 36px; height: 22px; padding: 2px; display: flex; justify-content: flex-end; background: {{c.accent}}; border: 0; border-radius: 999px; cursor: pointer"><span style="width: 18px; height: 18px; background: {{c.knob}}; border-radius: 50%"></span></button>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{c.muted}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+</div>
+
+<div style="display: flex; flex-direction: column; background: {{c.bg}}; border-bottom: 1px solid {{c.lineSoft}}">
+<div style="display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 14px">
+<span aria-hidden="true" style="color: {{c.muted}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"></circle><circle cx="15" cy="6" r="1.5"></circle><circle cx="9" cy="12" r="1.5"></circle><circle cx="15" cy="12" r="1.5"></circle><circle cx="9" cy="18" r="1.5"></circle><circle cx="15" cy="18" r="1.5"></circle></svg></span>
+<input type="text" value="決定事項" aria-label="カード名" style="flex-grow: 1; height: 32px; padding: 0 8px; background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 6px; font: inherit; font-size: 14px; font-weight: 500; color: {{c.ink}}; outline: 0">
+<button type="button" style="height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 10px; background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 6px; font: inherit; font-size: 12px; color: {{c.ink}}; cursor: pointer">既存項目：決定事項<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{c.muted}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+<button type="button" role="switch" aria-checked="true" aria-label="決定事項を表示" style="width: 36px; height: 22px; padding: 2px; display: flex; justify-content: flex-end; background: {{c.accent}}; border: 0; border-radius: 999px; cursor: pointer"><span style="width: 18px; height: 18px; background: {{c.knob}}; border-radius: 50%"></span></button>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{c.muted}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+</div>
+<div style="padding: 4px 14px 16px 42px; display: flex; flex-direction: column; gap: 12px">
+<label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: {{c.text2}}"><input type="checkbox" style="width: 15px; height: 15px; margin: 0; accent-color: {{c.ink}}">空でも表示する</label>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: {{c.muted}}">AIへの指示<textarea rows="2" placeholder="このカードにまとめる内容や書き方" style="box-sizing: border-box; padding: 8px 10px; background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 8px; font: inherit; font-size: 13px; color: {{c.ink}}; resize: none; outline: 0"></textarea></label>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12px; color: {{c.muted}}">追加項目</span>
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) 150px 80px 28px; align-items: center; gap: 8px"><input type="text" value="影響範囲" aria-label="項目名" style="height: 32px; padding: 0 8px; background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 6px; font: inherit; font-size: 13px; color: {{c.ink}}; outline: 0"><button type="button" style="height: 32px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 6px; font: inherit; font-size: 12px; color: {{c.ink}}; cursor: pointer">短いテキスト<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{c.muted}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button><label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: {{c.text2}}"><input type="checkbox" style="width: 14px; height: 14px; margin: 0; accent-color: {{c.ink}}">必須</label><button type="button" aria-label="項目を削除" style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: {{c.muted}}; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+<button type="button" style="align-self: flex-start; padding: 4px 0 0; background: transparent; border: 0; font: inherit; font-size: 13px; color: {{c.text2}}; cursor: pointer">＋ 項目を追加</button>
+</div>
+<button type="button" style="align-self: flex-start; padding: 0; background: transparent; border: 0; font: inherit; font-size: 12px; color: {{c.err}}; cursor: pointer">カードを削除</button>
+</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 14px; border-bottom: 1px solid {{c.lineSoft}}">
+<span aria-hidden="true" style="color: {{c.muted}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"></circle><circle cx="15" cy="6" r="1.5"></circle><circle cx="9" cy="12" r="1.5"></circle><circle cx="15" cy="12" r="1.5"></circle><circle cx="9" cy="18" r="1.5"></circle><circle cx="15" cy="18" r="1.5"></circle></svg></span>
+<span style="flex-grow: 1; font-size: 14px; font-weight: 500">Action Item</span><span style="font-size: 12px; color: {{c.muted}}">既存項目：Action Item</span>
+<button type="button" role="switch" aria-checked="true" aria-label="Action Itemを表示" style="width: 36px; height: 22px; padding: 2px; display: flex; justify-content: flex-end; background: {{c.accent}}; border: 0; border-radius: 999px; cursor: pointer"><span style="width: 18px; height: 18px; background: {{c.knob}}; border-radius: 50%"></span></button>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{c.muted}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+</div>
+<div style="display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 14px">
+<span aria-hidden="true" style="color: {{c.muted}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"></circle><circle cx="15" cy="6" r="1.5"></circle><circle cx="9" cy="12" r="1.5"></circle><circle cx="15" cy="12" r="1.5"></circle><circle cx="9" cy="18" r="1.5"></circle><circle cx="15" cy="18" r="1.5"></circle></svg></span>
+<span style="flex-grow: 1; font-size: 14px; font-weight: 500; color: {{c.muted}}">質問候補</span><span style="font-size: 12px; color: {{c.muted}}">非表示</span>
+<button type="button" role="switch" aria-checked="false" aria-label="質問候補を表示" style="width: 36px; height: 22px; padding: 2px; display: flex; background: {{c.line2}}; border: 0; border-radius: 999px; cursor: pointer"><span style="width: 18px; height: 18px; background: #FFFFFF; border-radius: 50%"></span></button>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{c.muted}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+</div>
+</div>
+<button type="button" style="align-self: flex-start; height: 34px; display: flex; align-items: center; gap: 6px; padding: 0 12px; background: {{c.surface}}; border: 1px dashed {{c.line2}}; border-radius: 8px; font: inherit; font-size: 13px; color: {{c.text2}}; cursor: pointer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>カードを追加</button>
+</div>
+</div>
+
+<footer style="flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 14px 40px; background: {{c.surface}}; border-top: 1px solid {{c.line}}">
+<span style="flex-grow: 1; font-size: 13px; color: {{c.muted}}">過去の議事録は変わりません。新しい会議・再生成で適用します。</span>
+<button type="button" style="height: 36px; padding: 0 14px; background: transparent; border: 0; font: inherit; font-size: 13px; color: {{c.err}}; cursor: pointer">テンプレートを削除</button>
+<button type="button" style="height: 36px; padding: 0 16px; background: {{c.primary}}; border: 0; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 500; color: {{c.onPrimary}}; cursor: pointer">保存</button>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+renderVals() {
+var dark = !!this.props.dark;
+var L = { bg: '#FAFAFA', surface: '#FFFFFF', sub: '#F4F4F5', line: '#E4E4E7', lineSoft: '#F1F1F3', line2: '#D4D4D8', ink: '#09090B', text2: '#3F3F46', muted: '#6B6B73', primary: '#09090B', onPrimary: '#FFFFFF', accent: '#047857', accentSoft: '#E7F5EF', knob: '#FFFFFF', err: '#B42318' };
+var D = { bg: '#09090B', surface: '#111113', sub: '#1C1C1F', line: '#27272A', lineSoft: '#1F1F22', line2: '#3F3F46', ink: '#FAFAFA', text2: '#D4D4D8', muted: '#A1A1AA', primary: '#FAFAFA', onPrimary: '#09090B', accent: '#6EE7B7', accentSoft: '#0E2A20', knob: '#09090B', err: '#F87171' };
+return { c: dark ? D : L };
+}
+}
+</script>
+</body>
+</html>

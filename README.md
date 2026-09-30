@@ -4,7 +4,7 @@
 WhisperXを確定版の文字起こし・話者分離に、Ollama / Geminiを要約・質問回答に使用します。
 録音中の文字起こしはWhisperXまたはAzure AI Speechを選べます。
 
-最終照合: **2026-09-28**（現行機能・Migration 0023・回答支援の根拠検証と再試行・Git管理・新規環境の起動手順を照合）。この文書は現在のソースコードとCompose設定を説明します。
+最終照合: **2026-09-30**（現行機能・Migration 0023・回答支援の根拠検証と再試行・Git管理・新規環境の起動手順・リデザイン計画の追加を照合）。この文書は現在のソースコードとCompose設定を説明します。
 外部APIの実接続、認識精度、すべての端末での動作を保証するものではありません。
 
 今後の機能追加・修正では毎回、実装とこのREADMEを照合し、操作・構成・設定・制約などの説明に影響する変更を同じ作業で反映します。詳しい作業ルールは[AGENTS.md](AGENTS.md)と[開発ガイド](docs/development.md)を参照してください。
@@ -15,6 +15,7 @@ WhisperXを確定版の文字起こし・話者分離に、Ollama / Geminiを要
 | --- | --- |
 | [README（この文書）](README.md) | 概要、起動、現在できること、注意点 |
 | [AGENTS.md](AGENTS.md) | 人間・AIエージェントの作業範囲と安全ルール |
+| [CLAUDE.md](CLAUDE.md) | Claude Code向けの入口。AGENTS.mdを読み込み、リデザインの進め方を示す |
 | [DESIGN.md](DESIGN.md) | 仕様の正。変更前に対象機能の設計を確認する |
 | [開発ガイド](docs/development.md) | 実際のコード配置、変更箇所、テスト、引き継ぎ |
 | [運用ガイド](docs/operations.md) | Dockerへの反映、環境変数、HTTPS、障害調査 |
@@ -22,6 +23,7 @@ WhisperXを確定版の文字起こし・話者分離に、Ollama / Geminiを要
 | [議事録テンプレートガイド](docs/meeting-templates.md) | テンプレートの管理、会議ごとのsnapshot、表示 |
 | [要約再生成の実装・検証記録](docs/summary-regeneration.md) | 変更ファイル、テスト結果、未検証事項 |
 | [表示テーマガイド](docs/dark-mode.md) | ダークモード、設定の保存、全画面の対応範囲と検証 |
+| [リデザイン実装ガイド](docs/redesign.md) | 画面デザイン変更の段階・配色・レイアウト（未実装の計画。モックアップは `docs/redesign/mockups/`） |
 
 ## バージョン管理
 

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>スタイルガイド</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;family=Noto+Sans+JP:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;font-family:"Geist","Noto Sans JP",sans-serif;color:#09090B;background:#FAFAFA;-webkit-font-smoothing:antialiased}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1100px; box-sizing: border-box; padding: 56px 64px; display: flex; flex-direction: column; gap: 40px; background: #FAFAFA; color: #09090B; font-family: 'Geist','Noto Sans JP',sans-serif; overflow: hidden">
+
+<div style="display: flex; align-items: baseline; gap: 16px">
+<h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.02em">スタイルガイド</h1>
+<span style="font-size: 14px; color: #6B6B73">モノクロ基調 ＋ 差し色1色 · 赤はエラー専用 · theme.css のトークンを置き換える値</span>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px">
+<section style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 13px; font-weight: 500; color: #6B6B73">カラー — ライト</h2>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px">
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="height: 56px; background: #FAFAFA; border: 1px solid #E4E4E7; border-radius: 10px"></span><span style="font-size: 12px; font-weight: 500">--paper</span><span style="font-family: 'Geist Mono',monospace; font-size: 11px; color: #6B6B73">#FAFAFA</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="height: 56px; background: #FFFFFF; border: 1px solid #E4E4E7; border-radius: 10px"></span><span style="font-size: 12px; font-weight: 500">--surface</span><span style="font-family: 'Geist Mono',monospace; font-size: 11px; color: #6B6B73">#FFFFFF</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="height: 56px; background: #F4F4F5; border-radius: 10px"></span><span style="font-size: 12px; font-weight: 500">--surface-hover / 選択</span><span style="font-family: 'Geist Mono',monospace; font-size: 11px; color: #6B6B73">#F4F4F5</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="height: 56px; background: #E4E4E7; border-radius: 10px"></span><span style="font-size: 12px; font-weight: 500">--line</span><span style="font-family: 'Geist Mono',monospace; font-size: 11px; color: #6B6B73">#E4E4E7</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="height: 56px; background: #09090B; border-radius: 10px"></span><span style="font-size: 12px; font-weight: 500">--ink / primary / accent</span><span style="font-family: 'Geist Mono',monospace; font-size: 11px; color: #6B6B73">#09090B</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="height: 56px; background: #3F3F46; border-radius: 10px"></span><span style="font-size: 12px; font-weight: 500">--text-secondary</span><span style="font-family: 'Geist Mono',monospace; font-size: 11px; color: #6B6B73">#3F3F46</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="height: 56px; background: #6B6B73; border-radius: 10px"></span><span style="font-size: 12px; font-weight: 500">--muted</span><span style="font-family: 'Geist Mono',monospace; font-size: 11px; color: #6B6B73">#6B6B73</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="height: 56px; background: #B42318; border-radius: 10px"></span><span style="font-size: 12px; font-weight: 500">--danger（唯一の色）</span><span style="font-family: 'Geist Mono',monospace; font-size: 11px; color: #6B6B73">#B42318</span></div>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 13px; font-weight: 500; color: #6B6B73">カラー — ダーク</h2>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 14px; background: #09090B; border-radius: 12px">
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="height: 42px; background: #09090B; border: 1px solid #27272A; border-radius: 8px"></span><span style="font-size: 12px; font-weight: 500; color: #FAFAFA">--paper</span><span style="font-family: 'Geist Mono',monospace; font-size: 11px; color: #A1A1AA">#09090B</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="height: 42px; background: #111113; border: 1px solid #27272A; border-radius: 8px"></span><span style="font-size: 12px; font-weight: 500; color: #FAFAFA">--surface</span><span style="font-family: 'Geist Mono',monospace; font-size: 11px; color: #A1A1AA">#111113</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="height: 42px; background: #1C1C1F; border-radius: 8px"></span><span style="font-size: 12px; font-weight: 500; color: #FAFAFA">--surface-hover / 選択</span><span style="font-family: 'Geist Mono',monospace; font-size: 11px; color: #A1A1AA">#1C1C1F</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="height: 42px; background: #27272A; border-radius: 8px"></span><span style="font-size: 12px; font-weight: 500; color: #FAFAFA">--line</span><span style="font-family: 'Geist Mono',monospace; font-size: 11px; color: #A1A1AA">#27272A</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="height: 42px; background: #FAFAFA; border-radius: 8px"></span><span style="font-size: 12px; font-weight: 500; color: #FAFAFA">--ink / primary / accent</span><span style="font-family: 'Geist Mono',monospace; font-size: 11px; color: #A1A1AA">#FAFAFA</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="height: 42px; background: #D4D4D8; border-radius: 8px"></span><span style="font-size: 12px; font-weight: 500; color: #FAFAFA">--text-secondary</span><span style="font-family: 'Geist Mono',monospace; font-size: 11px; color: #A1A1AA">#D4D4D8</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="height: 42px; background: #A1A1AA; border-radius: 8px"></span><span style="font-size: 12px; font-weight: 500; color: #FAFAFA">--muted</span><span style="font-family: 'Geist Mono',monospace; font-size: 11px; color: #A1A1AA">#A1A1AA</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="height: 42px; background: #F87171; border-radius: 8px"></span><span style="font-size: 12px; font-weight: 500; color: #FAFAFA">--danger</span><span style="font-family: 'Geist Mono',monospace; font-size: 11px; color: #A1A1AA">#F87171</span></div>
+</div>
+</section>
+</div>
+
+<section style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 13px; font-weight: 500; color: #6B6B73">差し色：エメラルド — 再生中・現在位置・根拠・処理中のドットにだけ使う。ボタンは黒のまま</h2>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px">
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: #FFFFFF; border: 1.5px solid #09090B; border-radius: 12px"><span style="width: 36px; height: 36px; border-radius: 8px; background: #047857"></span><span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13px; font-weight: 500">--accent（ライト）</span><span style="font-family: 'Geist Mono',monospace; font-size: 11px; color: #6B6B73">#047857</span></span></div>
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: #FFFFFF; border: 1px solid #E4E4E7; border-radius: 12px"><span style="width: 36px; height: 36px; border-radius: 8px; background: #E7F5EF"></span><span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13px; font-weight: 500">--accent-soft（ライト）</span><span style="font-family: 'Geist Mono',monospace; font-size: 11px; color: #6B6B73">#E7F5EF</span></span></div>
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: #111113; border: 1px solid #27272A; border-radius: 12px"><span style="width: 36px; height: 36px; border-radius: 8px; background: #6EE7B7"></span><span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13px; font-weight: 500; color: #FAFAFA">--accent（ダーク）</span><span style="font-family: 'Geist Mono',monospace; font-size: 11px; color: #A1A1AA">#6EE7B7</span></span></div>
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: #111113; border: 1px solid #27272A; border-radius: 12px"><span style="width: 36px; height: 36px; border-radius: 8px; background: #0E2A20"></span><span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13px; font-weight: 500; color: #FAFAFA">--accent-soft（ダーク）</span><span style="font-family: 'Geist Mono',monospace; font-size: 11px; color: #A1A1AA">#0E2A20</span></span></div>
+</div>
+</section>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px">
+<section style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 13px; font-weight: 500; color: #6B6B73">タイポグラフィ — Geist + Noto Sans JP / 数値は Geist Mono</h2>
+<div style="background: #FFFFFF; border: 1px solid #E4E4E7; border-radius: 12px; padding: 8px 20px">
+<div style="display: flex; align-items: baseline; gap: 20px; padding: 12px 0; border-bottom: 1px solid #F1F1F3"><span style="width: 96px; flex-shrink: 0; font-family: 'Geist Mono',monospace; font-size: 11px; color: #6B6B73">28 / 600</span><span style="font-size: 28px; font-weight: 600; letter-spacing: -0.02em">会議タイトル</span></div>
+<div style="display: flex; align-items: baseline; gap: 20px; padding: 12px 0; border-bottom: 1px solid #F1F1F3"><span style="width: 96px; flex-shrink: 0; font-family: 'Geist Mono',monospace; font-size: 11px; color: #6B6B73">18 / 600</span><span style="font-size: 18px; font-weight: 600">セクション見出し</span></div>
+<div style="display: flex; align-items: baseline; gap: 20px; padding: 12px 0; border-bottom: 1px solid #F1F1F3"><span style="width: 96px; flex-shrink: 0; font-family: 'Geist Mono',monospace; font-size: 11px; color: #6B6B73">15 / 400</span><span style="font-size: 15px; line-height: 1.7">本文・議事録の内容</span></div>
+<div style="display: flex; align-items: baseline; gap: 20px; padding: 12px 0; border-bottom: 1px solid #F1F1F3"><span style="width: 96px; flex-shrink: 0; font-family: 'Geist Mono',monospace; font-size: 11px; color: #6B6B73">14 / 500</span><span style="font-size: 14px; font-weight: 500">ボタン・ナビゲーション・一覧の項目</span></div>
+<div style="display: flex; align-items: baseline; gap: 20px; padding: 12px 0"><span style="width: 96px; flex-shrink: 0; font-family: 'Geist Mono',monospace; font-size: 11px; color: #6B6B73">12 / mono</span><span style="font-family: 'Geist Mono',monospace; font-size: 12px; color: #3F3F46">00:48:12 · 18:02〜18:30</span></div>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 13px; font-weight: 500; color: #6B6B73">コンポーネント</h2>
+<div style="background: #FFFFFF; border: 1px solid #E4E4E7; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; align-items: center; gap: 10px">
+<button type="button" style="height: 36px; padding: 0 14px; background: #09090B; border: 0; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 500; color: #FFFFFF">主要ボタン</button>
+<button type="button" style="height: 36px; padding: 0 14px; background: #FFFFFF; border: 1px solid #E4E4E7; border-radius: 8px; font: inherit; font-size: 14px; color: #09090B">通常ボタン</button>
+<button type="button" style="height: 36px; padding: 0 14px; background: transparent; border: 0; border-radius: 8px; font: inherit; font-size: 14px; color: #3F3F46">テキスト</button>
+<button type="button" style="height: 36px; padding: 0 14px; background: #B42318; border: 0; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 500; color: #FFFFFF">削除</button>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; border-radius: 999px; background: #F4F4F5; color: #6B6B73; font-size: 12px; font-weight: 500"><span style="width: 6px; height: 6px; border-radius: 50%; background: #6B6B73"></span>完了</span>
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; border-radius: 999px; background: #F4F4F5; color: #09090B; font-size: 12px; font-weight: 500"><span style="width: 6px; height: 6px; border-radius: 50%; background: #047857"></span>文字起こし中</span>
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; border-radius: 999px; background: #FEF2F2; color: #B42318; font-size: 12px; font-weight: 500"><span style="width: 6px; height: 6px; border-radius: 50%; background: #B42318"></span>失敗</span>
+<span style="padding: 1px 8px; background: #F4F4F5; border-radius: 999px; font-size: 12px; color: #3F3F46"># タグ</span>
+<span style="padding: 2px 7px; background: #F4F4F5; border-radius: 5px; font-family: 'Geist Mono',monospace; font-size: 12px; color: #09090B">18:02</span>
+<span style="padding: 2px 7px; background: #047857; border-radius: 5px; font-family: 'Geist Mono',monospace; font-size: 12px; color: #FFFFFF">16:40 再生中</span>
+</div>
+<div style="display: flex; gap: 6px">
+<button type="button" style="height: 32px; padding: 0 14px; border: 0; border-radius: 8px; background: #09090B; color: #FFFFFF; font: inherit; font-size: 13px; font-weight: 500">チャプター</button>
+<button type="button" style="height: 32px; padding: 0 14px; border: 0; border-radius: 8px; background: #F4F4F5; color: #3F3F46; font: inherit; font-size: 13px; font-weight: 500">文字起こし</button>
+</div>
+<div style="display: flex; gap: 24px; font-size: 12px; color: #6B6B73">
+<span>状態は文字とドットで区別</span><span>再生中・現在位置は差し色</span><span>影は基本なし</span>
+</div>
+</div>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

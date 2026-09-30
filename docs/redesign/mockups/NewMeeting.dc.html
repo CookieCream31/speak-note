@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>新しい会議</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;family=Noto+Sans+JP:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;font-family:"Geist","Noto Sans JP",sans-serif;-webkit-font-smoothing:antialiased}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1000px; position: relative; display: flex; align-items: center; justify-content: center; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Geist','Noto Sans JP',sans-serif; overflow: hidden">
+<div style="position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: {{c.scrim}}"></div>
+
+<section role="dialog" aria-modal="true" aria-labelledby="nm-title" style="position: relative; width: 560px; max-height: 920px; box-sizing: border-box; display: flex; flex-direction: column; background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 16px; box-shadow: 0 24px 64px {{c.shadow}}; overflow: hidden">
+<header style="display: flex; align-items: center; gap: 12px; padding: 20px 24px 16px">
+<h2 id="nm-title" style="margin: 0; flex-grow: 1; font-size: 18px; font-weight: 600">新しい会議</h2>
+<button type="button" aria-label="閉じる" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 8px; color: {{c.muted}}; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+</header>
+
+<div style="padding: 0 24px 20px; display: flex; flex-direction: column; gap: 18px">
+<fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 8px">
+<legend style="padding: 0 0 8px; font-size: 13px; font-weight: 500">取り込み方法</legend>
+<div role="radiogroup" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+<button type="button" role="radio" aria-checked="{{isUpload}}" onClick="{{pickUpload}}" style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px; background: {{srcBg.upload}}; border: 1.5px solid {{srcBorder.upload}}; border-radius: 10px; text-align: left; font: inherit; color: {{c.ink}}; cursor: pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4M7 9l5-5 5 5M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"></path></svg>
+<span style="font-size: 13px; font-weight: 500">音声・動画ファイル</span></button>
+<button type="button" role="radio" aria-checked="{{isLive}}" onClick="{{pickLive}}" style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px; background: {{srcBg.live}}; border: 1.5px solid {{srcBorder.live}}; border-radius: 10px; text-align: left; font: inherit; color: {{c.ink}}; cursor: pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"></rect><path d="M8 20h8M12 16v4"></path></svg>
+<span style="font-size: 13px; font-weight: 500">画面共有を録画</span></button>
+<button type="button" role="radio" aria-checked="{{isMic}}" onClick="{{pickMic}}" style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px; background: {{srcBg.mic}}; border: 1.5px solid {{srcBorder.mic}}; border-radius: 10px; text-align: left; font: inherit; color: {{c.ink}}; cursor: pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3"></path></svg>
+<span style="font-size: 13px; font-weight: 500">マイク音声を録音</span></button>
+</div>
+</fieldset>
+
+<sc-if value="{{isUpload}}" hint-placeholder-val="{{ true }}">
+<label style="display: flex; align-items: center; gap: 14px; padding: 16px; background: {{c.bg}}; border: 1.5px dashed {{c.line2}}; border-radius: 12px; cursor: pointer">
+<span style="width: 40px; height: 40px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 10px; color: {{c.text2}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4M7 9l5-5 5 5M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"></path></svg></span>
+<span style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1"><span style="font-size: 14px; font-weight: 500">ファイルを選択</span><span style="font-size: 12px; color: {{c.muted}}">mp4・mov・webm・m4a・mp3・wav・flac · 大きなファイルは分割してアップロード</span></span>
+<input type="file" aria-label="音声・動画ファイル" style="width: 1px; height: 1px; opacity: 0">
+</label>
+</sc-if>
+<sc-if value="{{isLive}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<button type="button" style="height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px; background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 10px; font: inherit; font-size: 14px; font-weight: 500; color: {{c.ink}}; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"></rect><path d="M8 20h8M12 16v4"></path></svg>共有する画面・ウィンドウを選択</button>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: {{c.accent}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>[選択した画面名]</span>
+<p style="margin: 0; font-size: 12px; line-height: 1.6; color: {{c.muted}}">録画開始を押すと会議ページへ移動し、選んだ内容を録画します。</p>
+</div>
+</sc-if>
+<sc-if value="{{isMic}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0; padding: 14px 16px; background: {{c.bg}}; border-radius: 12px; font-size: 13px; line-height: 1.6; color: {{c.text2}}">マイク音声だけを録音します。画面共有や映像の保存は行いません。録音開始を押すと会議ページへ移動し、マイクの許可後に録音とリアルタイム文字起こしを開始します。</p>
+</sc-if>
+
+<sc-if value="{{notUpload}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid {{c.line}}; border-radius: 10px">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{c.text2}}" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"></rect><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M3 3l18 18"></path></svg>
+<span style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1"><span style="font-size: 14px; font-weight: 500">マイク：ミュートで開始</span><span style="font-size: 12px; color: {{c.muted}}">会議中に解除できます</span></span>
+<button type="button" role="switch" aria-checked="false" aria-label="開始時のマイクミュートを解除" style="width: 40px; height: 24px; padding: 2px; display: flex; background: {{c.line2}}; border: 0; border-radius: 999px; cursor: pointer"><span style="width: 20px; height: 20px; background: #FFFFFF; border-radius: 50%"></span></button>
+</div>
+</sc-if>
+
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 500">会議タイトル
+<input type="text" placeholder="例：プロダクト定例" style="height: 40px; box-sizing: border-box; padding: 0 12px; background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 400; color: {{c.ink}}; outline: 0">
+</label>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; align-items: center; justify-content: space-between"><label style="font-size: 13px; font-weight: 500">プロジェクト</label><button type="button" style="padding: 0; background: transparent; border: 0; font: inherit; font-size: 12px; color: {{c.muted}}; cursor: pointer">＋ 新規作成</button></div>
+<button type="button" style="height: 40px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 8px; font: inherit; font-size: 14px; color: {{c.ink}}; cursor: pointer">指定しない<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{c.muted}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label style="font-size: 13px; font-weight: 500">議事録テンプレート</label>
+<button type="button" style="height: 40px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 8px; font: inherit; font-size: 14px; color: {{c.ink}}; cursor: pointer">[テンプレート名]（既定）<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{c.muted}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+</div>
+</div>
+
+<sc-if value="{{showSummary}}" hint-placeholder-val="{{ true }}">
+<fieldset style="margin: 0; padding: 14px; border: 1px solid {{c.line}}; border-radius: 12px; display: flex; flex-direction: column; gap: 12px">
+<legend style="position: absolute; width: 1px; height: 1px; overflow: hidden">AI要約</legend>
+<div style="display: flex; align-items: center; gap: 12px">
+<span style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1"><span style="font-size: 14px; font-weight: 500">文字起こし後にAI要約を自動作成</span><span style="font-size: 12px; color: {{c.muted}}">オフにすると文字起こしのみ行います</span></span>
+<button type="button" role="switch" aria-checked="true" aria-label="AI要約を自動作成" style="width: 40px; height: 24px; padding: 2px; display: flex; justify-content: flex-end; background: {{c.accent}}; border: 0; border-radius: 999px; cursor: pointer"><span style="width: 20px; height: 20px; background: {{c.knob}}; border-radius: 50%"></span></button>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 12px; color: {{c.muted}}">要約に使うAI</span><button type="button" style="height: 38px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 8px; font: inherit; font-size: 13px; color: {{c.ink}}; cursor: pointer">既定のAI設定<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{c.muted}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 12px; color: {{c.muted}}">要約形式</span><button type="button" style="height: 38px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 8px; font: inherit; font-size: 13px; color: {{c.ink}}; cursor: pointer">標準 — 要点と経緯<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{c.muted}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+</div>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: {{c.muted}}">会議の背景・内容（任意）
+<textarea rows="3" placeholder="例：採用面接。候補者はバックエンドエンジニア。専門用語や参加者名、会議の目的などを書くと理解の補助になります。" style="box-sizing: border-box; padding: 10px 12px; background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 8px; font: inherit; font-size: 13px; line-height: 1.6; color: {{c.ink}}; resize: none; outline: 0"></textarea>
+</label>
+</fieldset>
+</sc-if>
+
+<button type="button" aria-expanded="false" style="align-self: flex-start; display: flex; align-items: center; gap: 6px; padding: 0; background: transparent; border: 0; font: inherit; font-size: 13px; color: {{c.text2}}; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>詳細設定（話者数）</button>
+</div>
+
+<footer style="display: flex; justify-content: flex-end; gap: 8px; padding: 14px 24px; border-top: 1px solid {{c.line}}; background: {{c.bg}}">
+<button type="button" style="height: 38px; padding: 0 16px; background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 8px; font: inherit; font-size: 14px; color: {{c.ink}}; cursor: pointer">キャンセル</button>
+<button type="submit" style="height: 38px; padding: 0 16px; background: {{c.primary}}; border: 0; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 500; color: {{c.onPrimary}}; cursor: pointer">{{submitLabel}}</button>
+</footer>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+renderVals() {
+var dark = !!this.props.dark;
+var L = { bg: '#FAFAFA', surface: '#FFFFFF', sub: '#F4F4F5', line: '#E4E4E7', line2: '#D4D4D8', ink: '#09090B', text2: '#3F3F46', muted: '#6B6B73', primary: '#09090B', onPrimary: '#FFFFFF', accent: '#047857', accentSoft: '#E7F5EF', knob: '#FFFFFF', scrim: 'rgba(9,9,11,0.35)', shadow: 'rgba(9,9,11,0.18)' };
+var D = { bg: '#09090B', surface: '#111113', sub: '#1C1C1F', line: '#27272A', line2: '#3F3F46', ink: '#FAFAFA', text2: '#D4D4D8', muted: '#A1A1AA', primary: '#FAFAFA', onPrimary: '#09090B', accent: '#6EE7B7', accentSoft: '#0E2A20', knob: '#09090B', scrim: 'rgba(0,0,0,0.6)', shadow: 'rgba(0,0,0,0.6)' };
+var c = dark ? D : L;
+var src = this.state && this.state.src ? this.state.src : 'upload';
+var self = this;
+var bg = function (k) { return src === k ? c.sub : c.surface; };
+var bd = function (k) { return src === k ? c.ink : c.line; };
+var labels = { upload: '作成してアップロード', live: '作成して録画開始', mic: '作成して録音開始' };
+return {
+c: c,
+isUpload: src === 'upload', isLive: src === 'live', isMic: src === 'mic', notUpload: src !== 'upload', showSummary: src !== 'live',
+srcBg: { upload: bg('upload'), live: bg('live'), mic: bg('mic') },
+srcBorder: { upload: bd('upload'), live: bd('live'), mic: bd('mic') },
+submitLabel: labels[src],
+pickUpload: function () { self.setState({ src: 'upload' }); },
+pickLive: function () { self.setState({ src: 'live' }); },
+pickMic: function () { self.setState({ src: 'mic' }); }
+};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>スマホ 会議詳細</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;family=Noto+Sans+JP:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;font-family:"Geist","Noto Sans JP",sans-serif;-webkit-font-smoothing:antialiased}
+</style>
+</helmet>
+<div style="width: 390px; height: 1300px; display: flex; flex-direction: column; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Geist','Noto Sans JP',sans-serif; overflow: hidden">
+
+<header style="height: 52px; flex-shrink: 0; display: flex; align-items: center; gap: 4px; padding: 0 4px; background: {{c.surface}}; border-bottom: 1px solid {{c.line}}">
+<a href="#" style="height: 44px; display: flex; align-items: center; gap: 2px; padding: 0 8px; font-size: 15px; color: {{c.ink}}; text-decoration: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>会議</a>
+<span style="flex-grow: 1"></span>
+<button type="button" aria-label="ダウンロード" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; color: {{c.text2}}"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M4 19h16"></path></svg></button>
+<button type="button" aria-label="その他の操作（要約を再生成・設定など）" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; color: {{c.text2}}"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="19" cy="12" r="1.7"></circle></svg></button>
+</header>
+
+<section style="padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 8px">
+<h1 style="margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.02em">プロダクト定例</h1>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 12px; color: {{c.muted}}"><span style="display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; background: {{c.sub}}; border-radius: 999px; color: {{c.muted}}"><span style="width: 6px; height: 6px; border-radius: 50%; background: {{c.muted}}"></span>完了</span><span>9月29日 10:00</span><span style="font-family: 'Geist Mono',monospace">48:12</span><span>画面共有</span></div>
+<div style="display: flex; gap: 6px; overflow: hidden; margin-right: -16px">
+<button type="button" style="flex-shrink: 0; height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 10px; background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 8px; font: inherit; font-size: 12px; color: {{c.ink}}"><span style="color: {{c.muted}}">プロジェクト</span>プロジェクトA</button>
+<button type="button" style="flex-shrink: 0; height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 10px; background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 8px; font: inherit; font-size: 12px; color: {{c.ink}}"><span style="color: {{c.muted}}">AI</span>Default Profile</button>
+<button type="button" style="flex-shrink: 0; height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 10px; background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 8px; font: inherit; font-size: 12px; color: {{c.ink}}"><span style="color: {{c.muted}}">話者数</span>自動</button>
+</div>
+</section>
+
+<div aria-label="会議動画プレイヤー" style="height: 219px; flex-shrink: 0; position: relative; background: #111318; display: flex; flex-direction: column; justify-content: flex-end">
+<div style="padding: 16px 12px 10px; display: flex; flex-direction: column; gap: 8px; background: linear-gradient(transparent, rgba(0,0,0,0.6))">
+<div style="display: flex; gap: 2px"><div style="width: 8.7%; height: 3px; background: #FFFFFF; border-radius: 2px"></div><div style="width: 25.9%; height: 3px; background: #FFFFFF; border-radius: 2px"></div><div style="width: 22.5%; height: 3px; background: rgba(255,255,255,0.3); border-radius: 2px"><div style="width: 15.5%; height: 3px; background: #FFFFFF"></div></div><div style="width: 17.8%; height: 3px; background: rgba(255,255,255,0.3); border-radius: 2px"></div><div style="width: 19.5%; height: 3px; background: rgba(255,255,255,0.3); border-radius: 2px"></div><div style="flex-grow: 1; height: 3px; background: rgba(255,255,255,0.3); border-radius: 2px"></div></div>
+<div style="display: flex; align-items: center; gap: 4px; color: #FFFFFF; font-size: 12px">
+<button type="button" aria-label="再生" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; color: #FFFFFF"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5v14l11-7z"></path></svg></button>
+<span style="font-family: 'Geist Mono',monospace">18:21 / 48:12</span>
+<span style="flex-grow: 1"></span>
+<button type="button" aria-label="再生速度" style="height: 36px; padding: 0 6px; background: transparent; border: 0; font-family: 'Geist Mono',monospace; font-size: 12px; color: #FFFFFF">1×</button>
+<button type="button" aria-label="字幕を非表示" style="height: 36px; padding: 0 6px; background: transparent; border: 0; font: inherit; font-size: 11px; font-weight: 600; color: #FFFFFF"><span style="padding: 1px 4px; border: 1.5px solid currentColor; border-radius: 3px">CC</span></button>
+<button type="button" aria-label="全画面表示" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; color: #FFFFFF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"></path></svg></button>
+</div>
+</div>
+</div>
+
+<nav role="tablist" aria-label="会議ノートの表示切り替え" style="flex-shrink: 0; display: flex; gap: 20px; padding: 0 16px; background: {{c.surface}}; border-bottom: 1px solid {{c.line}}; overflow: hidden">
+<button type="button" role="tab" aria-selected="{{on.summary}}" onClick="{{go.summary}}" style="flex-shrink: 0; height: 46px; padding: 0; background: transparent; border: 0; border-bottom: 2px solid {{tb.summary}}; font: inherit; font-size: 14px; font-weight: 500; color: {{tf.summary}}">要約</button>
+<button type="button" role="tab" aria-selected="{{on.chapters}}" onClick="{{go.chapters}}" style="flex-shrink: 0; height: 46px; padding: 0; background: transparent; border: 0; border-bottom: 2px solid {{tb.chapters}}; font: inherit; font-size: 14px; font-weight: 500; color: {{tf.chapters}}">チャプター</button>
+<button type="button" role="tab" aria-selected="{{on.transcript}}" onClick="{{go.transcript}}" style="flex-shrink: 0; height: 46px; padding: 0; background: transparent; border: 0; border-bottom: 2px solid {{tb.transcript}}; font: inherit; font-size: 14px; font-weight: 500; color: {{tf.transcript}}">文字起こし</button>
+<button type="button" role="tab" aria-selected="false" style="flex-shrink: 0; height: 46px; padding: 0; background: transparent; border: 0; border-bottom: 2px solid transparent; font: inherit; font-size: 14px; font-weight: 500; color: {{c.muted}}">質問</button>
+<button type="button" role="tab" aria-selected="false" style="flex-shrink: 0; height: 46px; padding: 0; background: transparent; border: 0; border-bottom: 2px solid transparent; font: inherit; font-size: 14px; font-weight: 500; color: {{c.muted}}">ツール</button>
+</nav>
+
+<sc-if value="{{on.summary}}" hint-placeholder-val="{{ true }}">
+<div role="tabpanel" style="padding: 18px 16px; display: flex; flex-direction: column; gap: 22px">
+<div style="display: flex; align-items: center; gap: 8px"><h2 style="margin: 0; flex-grow: 1; font-size: 17px; font-weight: 600">AI議事録</h2><button type="button" style="height: 32px; display: flex; align-items: center; gap: 4px; padding: 0 10px; background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 8px; font: inherit; font-size: 12px; color: {{c.text2}}">確定版 v2<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+<button type="button" style="height: 40px; display: flex; align-items: center; justify-content: center; gap: 6px; background: {{c.sub}}; border: 0; border-radius: 10px; font: inherit; font-size: 13px; color: {{c.ink}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4v16l13-8z"></path></svg>重要箇所だけ再生</button>
+<section style="display: flex; flex-direction: column; gap: 6px"><h3 style="margin: 0; font-size: 13px; font-weight: 500; color: {{c.muted}}">要約</h3><p style="margin: 0; font-size: 15px; line-height: 1.8; color: {{c.text2}}">[AIが生成した会議の要約]</p></section>
+<section style="display: flex; flex-direction: column; gap: 2px"><h3 style="margin: 0 0 4px; font-size: 13px; font-weight: 500; color: {{c.muted}}">決定事項 <span style="font-family: 'Geist Mono',monospace">2</span></h3>
+<article style="display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-bottom: 1px solid {{c.lineSoft}}"><p style="margin: 0; font-size: 15px; line-height: 1.6">[決定事項 1]</p><div style="display: flex; align-items: center; gap: 8px; font-size: 12px"><span style="padding: 1px 7px; background: {{c.sub}}; border-radius: 4px; color: {{c.muted}}">確認済み</span><button type="button" style="height: 28px; display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; background: {{c.accentSoft}}; border: 0; border-radius: 6px; font-family: 'Geist Mono',monospace; font-size: 12px; color: {{c.accent}}"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4v16l13-8z"></path></svg>05:31</button><span style="flex-grow: 1"></span><button type="button" style="height: 28px; padding: 0; background: transparent; border: 0; font: inherit; font-size: 12px; color: {{c.muted}}">根拠 1件</button></div></article>
+<article style="display: flex; flex-direction: column; gap: 8px; padding: 12px 0"><p style="margin: 0; font-size: 15px; line-height: 1.6">[決定事項 2]</p><div style="display: flex; align-items: center; gap: 8px; font-size: 12px"><span style="padding: 1px 7px; background: {{c.sub}}; border-radius: 4px; color: {{c.muted}}">AI生成</span><button type="button" style="height: 28px; display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; background: {{c.accentSoft}}; border: 0; border-radius: 6px; font-family: 'Geist Mono',monospace; font-size: 12px; color: {{c.accent}}"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4v16l13-8z"></path></svg>18:02</button><span style="flex-grow: 1"></span><button type="button" style="height: 28px; padding: 0; background: transparent; border: 0; font: inherit; font-size: 12px; color: {{c.muted}}">根拠 2件</button></div></article>
+</section>
+<section style="display: flex; flex-direction: column; gap: 2px"><h3 style="margin: 0 0 4px; font-size: 13px; font-weight: 500; color: {{c.muted}}">Action Item <span style="font-family: 'Geist Mono',monospace">2</span></h3>
+<article style="display: flex; flex-direction: column; gap: 6px; padding: 12px 0; border-bottom: 1px solid {{c.lineSoft}}"><p style="margin: 0; font-size: 15px; line-height: 1.6">[Action Item 1]</p><span style="font-size: 12px; color: {{c.muted}}">担当 [担当者] · 期限 [期限] · <span style="font-family: 'Geist Mono',monospace; color: {{c.accent}}">36:40</span></span></article>
+<article style="display: flex; flex-direction: column; gap: 6px; padding: 12px 0"><p style="margin: 0; font-size: 15px; line-height: 1.6">[Action Item 2]</p><span style="font-size: 12px; color: {{c.muted}}">担当者不明 · <span style="font-family: 'Geist Mono',monospace; color: {{c.accent}}">41:15</span></span></article>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{on.chapters}}" hint-placeholder-val="{{ false }}">
+<div role="tabpanel" style="padding: 8px; display: flex; flex-direction: column; gap: 2px">
+<button type="button" style="display: grid; grid-template-columns: 104px minmax(0, 1fr); align-items: center; gap: 12px; padding: 8px; background: transparent; border: 0; border-radius: 10px; text-align: left; font: inherit"><span style="width: 104px; height: 58px; display: flex; align-items: flex-end; justify-content: flex-end; padding: 4px; box-sizing: border-box; background: {{c.thumb}}; border-radius: 8px"><span style="padding: 1px 5px; background: rgba(0,0,0,0.7); border-radius: 4px; font-family: 'Geist Mono',monospace; font-size: 10px; color: #FFFFFF">4:12</span></span><span style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px"><span style="font-size: 14px; line-height: 1.45; color: {{c.text2}}">導入・前回の振り返り</span><span style="padding: 2px 7px; background: {{c.accentSoft}}; border-radius: 5px; font-family: 'Geist Mono',monospace; font-size: 12px; color: {{c.accent}}">00:00</span></span></button>
+<button type="button" style="display: grid; grid-template-columns: 104px minmax(0, 1fr); align-items: center; gap: 12px; padding: 8px; background: transparent; border: 0; border-radius: 10px; text-align: left; font: inherit"><span style="width: 104px; height: 58px; display: flex; align-items: flex-end; justify-content: flex-end; padding: 4px; box-sizing: border-box; background: {{c.thumb}}; border-radius: 8px"><span style="padding: 1px 5px; background: rgba(0,0,0,0.7); border-radius: 4px; font-family: 'Geist Mono',monospace; font-size: 10px; color: #FFFFFF">12:28</span></span><span style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px"><span style="font-size: 14px; line-height: 1.45; color: {{c.text2}}">リリース日程の確認</span><span style="padding: 2px 7px; background: {{c.accentSoft}}; border-radius: 5px; font-family: 'Geist Mono',monospace; font-size: 12px; color: {{c.accent}}">04:12</span></span></button>
+<div aria-current="true" style="display: grid; grid-template-columns: 104px minmax(0, 1fr) 40px; align-items: center; gap: 12px; padding: 8px; background: {{c.sub}}; border-radius: 10px"><span style="position: relative; width: 104px; height: 58px; display: flex; align-items: flex-end; justify-content: flex-end; padding: 4px; box-sizing: border-box; background: {{c.thumb}}; border-radius: 8px; overflow: hidden"><span style="padding: 1px 5px; background: rgba(0,0,0,0.7); border-radius: 4px; font-family: 'Geist Mono',monospace; font-size: 10px; color: #FFFFFF">10:50</span><span style="position: absolute; left: 0; bottom: 0; width: 15%; height: 3px; background: {{c.accent}}"></span></span><span style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px"><span style="font-size: 14px; line-height: 1.45; font-weight: 600">通知基盤の方針</span><span style="display: flex; align-items: center; gap: 6px"><span style="padding: 2px 7px; background: {{c.accent}}; border-radius: 5px; font-family: 'Geist Mono',monospace; font-size: 12px; color: {{c.onAccent}}">16:40</span><span style="font-size: 12px; color: {{c.accent}}">再生中</span></span></span><button type="button" aria-label="このチャプターを繰り返し再生" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; color: {{c.text2}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l3 3-3 3"></path><path d="M4 11V9a4 4 0 0 1 4-4h12"></path><path d="M7 22l-3-3 3-3"></path><path d="M20 13v2a4 4 0 0 1-4 4H4"></path></svg></button></div>
+<button type="button" style="display: grid; grid-template-columns: 104px minmax(0, 1fr); align-items: center; gap: 12px; padding: 8px; background: transparent; border: 0; border-radius: 10px; text-align: left; font: inherit"><span style="width: 104px; height: 58px; display: flex; align-items: flex-end; justify-content: flex-end; padding: 4px; box-sizing: border-box; background: {{c.thumb}}; border-radius: 8px"><span style="padding: 1px 5px; background: rgba(0,0,0,0.7); border-radius: 4px; font-family: 'Geist Mono',monospace; font-size: 10px; color: #FFFFFF">8:35</span></span><span style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px"><span style="font-size: 14px; line-height: 1.45; color: {{c.text2}}">負荷試験の結果と対応方針</span><span style="padding: 2px 7px; background: {{c.accentSoft}}; border-radius: 5px; font-family: 'Geist Mono',monospace; font-size: 12px; color: {{c.accent}}">27:30</span></span></button>
+<button type="button" style="display: grid; grid-template-columns: 104px minmax(0, 1fr); align-items: center; gap: 12px; padding: 8px; background: transparent; border: 0; border-radius: 10px; text-align: left; font: inherit"><span style="width: 104px; height: 58px; display: flex; align-items: flex-end; justify-content: flex-end; padding: 4px; box-sizing: border-box; background: {{c.thumb}}; border-radius: 8px"><span style="padding: 1px 5px; background: rgba(0,0,0,0.7); border-radius: 4px; font-family: 'Geist Mono',monospace; font-size: 10px; color: #FFFFFF">9:25</span></span><span style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px"><span style="font-size: 14px; line-height: 1.45; color: {{c.text2}}">担当と次回までのTODO</span><span style="padding: 2px 7px; background: {{c.accentSoft}}; border-radius: 5px; font-family: 'Geist Mono',monospace; font-size: 12px; color: {{c.accent}}">36:05</span></span></button>
+</div>
+</sc-if>
+
+<sc-if value="{{on.transcript}}" hint-placeholder-val="{{ false }}">
+<div role="tabpanel" style="padding: 8px; display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; align-items: center; gap: 8px; padding: 6px 8px"><span style="font-size: 12px; color: {{c.muted}}; flex-grow: 1">高精度版 · v1 · 再生位置に追従</span><button type="button" style="height: 32px; padding: 0 10px; background: transparent; border: 1px solid {{c.line}}; border-radius: 8px; font: inherit; font-size: 12px; color: {{c.text2}}">修正</button></div>
+<div style="display: flex; align-items: center; gap: 8px; padding: 6px 8px 2px"><span style="font-family: 'Geist Mono',monospace; font-size: 11px; color: {{c.muted}}">16:40</span><span style="font-size: 12px; font-weight: 600; color: {{c.text2}}">通知基盤の方針</span><span style="flex-grow: 1; height: 1px; background: {{c.line}}"></span></div>
+<article style="display: flex; flex-direction: column; gap: 3px; padding: 10px 8px"><span style="display: flex; gap: 8px; font-size: 12px"><span style="font-family: 'Geist Mono',monospace; color: {{c.muted}}">17:48</span><span style="font-weight: 500; color: {{c.text3}}">[話者 1]</span></span><span style="font-size: 15px; line-height: 1.7; color: {{c.text2}}">[発言の本文]</span></article>
+<article style="display: flex; flex-direction: column; gap: 3px; padding: 10px 8px"><span style="display: flex; gap: 8px; font-size: 12px"><span style="font-family: 'Geist Mono',monospace; color: {{c.muted}}">18:02</span><span style="font-weight: 500; color: {{c.text3}}">[話者 2]</span></span><span style="font-size: 15px; line-height: 1.7; color: {{c.text2}}">[発言の本文]</span></article>
+<article style="display: flex; flex-direction: column; gap: 3px; padding: 10px 8px; background: {{c.sub}}; border-radius: 8px"><span style="display: flex; gap: 8px; font-size: 12px"><span style="font-family: 'Geist Mono',monospace; color: {{c.accent}}">18:21</span><span style="font-weight: 500; color: {{c.text3}}">[話者 1]</span></span><span style="font-size: 15px; line-height: 1.7; color: {{c.ink}}">[再生中の発言]</span></article>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"tab":{"editor":"enum","options":["summary","chapters","transcript"],"default":"summary"},"$preview":{"width":390,"height":1300}}'>
+class Component extends DCLogic {
+renderVals() {
+var dark = !!this.props.dark;
+var L = { bg: '#FAFAFA', surface: '#FFFFFF', sub: '#F4F4F5', line: '#E4E4E7', lineSoft: '#F1F1F3', ink: '#09090B', text2: '#3F3F46', text3: '#52525B', muted: '#6B6B73', primary: '#09090B', onPrimary: '#FFFFFF', accent: '#047857', accentSoft: '#E7F5EF', onAccent: '#FFFFFF', thumb: '#27272A' };
+var D = { bg: '#09090B', surface: '#111113', sub: '#1C1C1F', line: '#27272A', lineSoft: '#1F1F22', ink: '#FAFAFA', text2: '#D4D4D8', text3: '#B4B4BC', muted: '#A1A1AA', primary: '#FAFAFA', onPrimary: '#09090B', accent: '#6EE7B7', accentSoft: '#0E2A20', onAccent: '#09090B', thumb: '#27272A' };
+var c = dark ? D : L;
+var tab = this.state && this.state.tab ? this.state.tab : (this.props.tab || 'summary');
+var self = this;
+var keys = ['summary', 'chapters', 'transcript'];
+var on = {}, tb = {}, tf = {}, go = {};
+keys.forEach(function (k) {
+on[k] = tab === k;
+tb[k] = tab === k ? c.ink : 'transparent';
+tf[k] = tab === k ? c.ink : c.muted;
+go[k] = function () { self.setState({ tab: k }); };
+});
+return { c: c, on: on, tb: tb, tf: tf, go: go };
+}
+}
+</script>
+</body>
+</html>
