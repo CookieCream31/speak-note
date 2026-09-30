@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowDown, Download, Maximize, Pause, Play, RotateCcw, RotateCw, Volume2, VolumeX } from "lucide-react";
 import Script from "next/script";
 
 import { InlineSpeakerName } from "./inline-speaker-name";
@@ -292,7 +293,7 @@ export function TranscriptMediaPlayer({
           download
           aria-label="この動画をダウンロード"
         >
-          <span aria-hidden="true">↓</span>
+          <span aria-hidden="true"><Download size={16} /></span>
           動画をダウンロード
         </a>
       )}
@@ -333,7 +334,10 @@ export function TranscriptMediaPlayer({
             <div className={styles.controlRow}>
               <div className={styles.primaryControls}>
                 <button type="button" className={styles.controlButton} data-play-toggle>
-                  <span data-play-icon aria-hidden="true">▶</span>
+                  <span data-play-icon data-vector-play-icon aria-hidden="true">
+                    <Play size={18} data-play-glyph />
+                    <Pause size={18} data-pause-glyph />
+                  </span>
                   <span className={styles.visuallyHidden} data-play-label>再生</span>
                 </button>
                 <VideoVolumeControl />
@@ -368,7 +372,7 @@ export function TranscriptMediaPlayer({
                     data-fullscreen-toggle
                     aria-label="全画面表示"
                   >
-                    <span aria-hidden="true">⛶</span>
+                    <span aria-hidden="true"><Maximize size={18} /></span>
                   </button>
                 </div>
               </div>
@@ -403,10 +407,13 @@ export function TranscriptMediaPlayer({
                 data-skip-seconds="-10"
                 aria-label="10秒戻る"
               >
-                ↶ <span>10</span>
+                <RotateCcw size={16} aria-hidden="true" /> <span>10</span>
               </button>
               <button type="button" className={styles.audioPlayButton} data-play-toggle>
-                <span data-play-icon aria-hidden="true">▶</span>
+                <span data-play-icon data-vector-play-icon aria-hidden="true">
+                  <Play size={20} data-play-glyph />
+                  <Pause size={20} data-pause-glyph />
+                </span>
                 <span data-play-label>再生</span>
               </button>
               <button
@@ -415,7 +422,7 @@ export function TranscriptMediaPlayer({
                 data-skip-seconds="10"
                 aria-label="10秒進む"
               >
-                ↷ <span>10</span>
+                <RotateCw size={16} aria-hidden="true" /> <span>10</span>
               </button>
               <button
                 type="button"
@@ -423,7 +430,10 @@ export function TranscriptMediaPlayer({
                 data-volume-toggle
                 aria-label="ミュート"
               >
-                <span data-volume-icon aria-hidden="true">🔊</span>
+                <span data-volume-icon data-vector-volume-icon aria-hidden="true">
+                  <Volume2 size={18} data-volume-on />
+                  <VolumeX size={18} data-volume-off />
+                </span>
               </button>
               {downloadUrl && (
                 <a
@@ -433,7 +443,7 @@ export function TranscriptMediaPlayer({
                   title="この音声をダウンロード"
                   aria-label="この音声をダウンロード"
                 >
-                  <span aria-hidden="true">↓</span>
+                  <span aria-hidden="true"><Download size={16} /></span>
                   <span className={styles.visuallyHidden}>音声をダウンロード</span>
                 </a>
               )}
@@ -460,7 +470,7 @@ export function TranscriptDocument({
           <span data-follow-status>再生位置を自動追従します</span>
         </span>
         <button type="button" className={styles.resumeFollowButton} data-follow-resume hidden>
-          ↓ 自動スクロールを再開
+          <ArrowDown size={14} aria-hidden="true" /> 自動スクロールを再開
         </button>
       </div>
       <div className={styles.document} data-transcript-document aria-label="文字起こし本文">

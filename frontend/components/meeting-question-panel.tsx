@@ -1,5 +1,6 @@
 "use client";
 
+import { Sparkles } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import type { MeetingQuestion } from "@/lib/api";
@@ -129,7 +130,7 @@ export function MeetingQuestionPanel({
       <div ref={conversationRef} className={styles.conversation} aria-live="polite">
         {questions.length === 0 && (
           <div className={styles.empty}>
-            <span aria-hidden="true">✦</span>
+            <span aria-hidden="true"><Sparkles size={16} /></span>
             <strong>会議の内容を確認できます</strong>
             <p>決定理由、担当者、発言内容などを自然な文章で質問してください。</p>
           </div>
@@ -142,7 +143,7 @@ export function MeetingQuestionPanel({
             </div>
             <div className={styles.answer} data-status={question.status}>
               <div className={styles.answerHeading}>
-                <span className={styles.aiMark} aria-hidden="true">✦</span>
+                <span className={styles.aiMark} aria-hidden="true"><Sparkles size={16} /></span>
                 <strong>AI回答</strong>
                 <small>{question.model}</small>
               </div>

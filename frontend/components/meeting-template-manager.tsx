@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useMemo, useState } from "react";
 import styles from "./meeting-template-manager.module.css";
 import type { MeetingTemplate, MeetingTemplateCard, MeetingTemplateDefinition, MeetingTemplateField, TemplateFieldType } from "@/lib/api";
@@ -168,8 +169,8 @@ export function MeetingTemplateManager({ initialTemplates }: { initialTemplates:
             <div className={styles.cardHeader}>
               <div className={styles.cardOrder}>
                 <span className={styles.cardNumber}>{String(index + 1).padStart(2, "0")}</span>
-                <button className={styles.orderButton} type="button" aria-label="上へ" disabled={index === 0} onClick={() => moveCard(index, -1)}>↑</button>
-                <button className={styles.orderButton} type="button" aria-label="下へ" disabled={index === cards.length - 1} onClick={() => moveCard(index, 1)}>↓</button>
+                <button className={styles.orderButton} type="button" aria-label="上へ" disabled={index === 0} onClick={() => moveCard(index, -1)}><ChevronUp size={16} aria-hidden="true" /></button>
+                <button className={styles.orderButton} type="button" aria-label="下へ" disabled={index === cards.length - 1} onClick={() => moveCard(index, 1)}><ChevronDown size={16} aria-hidden="true" /></button>
               </div>
               <div className={styles.cardMain}>
                 <label className={styles.cardName}>
@@ -202,8 +203,8 @@ export function MeetingTemplateManager({ initialTemplates }: { initialTemplates:
               {card.fields.map((field, fieldIndex) => (
                 <div className={styles.fieldRow} key={field.id}>
                   <div className={styles.fieldOrder}>
-                    <button className={styles.orderButton} type="button" aria-label="項目を上へ" disabled={fieldIndex === 0} onClick={() => moveField(card, fieldIndex, -1)}>↑</button>
-                    <button className={styles.orderButton} type="button" aria-label="項目を下へ" disabled={fieldIndex === card.fields.length - 1} onClick={() => moveField(card, fieldIndex, 1)}>↓</button>
+                    <button className={styles.orderButton} type="button" aria-label="項目を上へ" disabled={fieldIndex === 0} onClick={() => moveField(card, fieldIndex, -1)}><ChevronUp size={16} aria-hidden="true" /></button>
+                    <button className={styles.orderButton} type="button" aria-label="項目を下へ" disabled={fieldIndex === card.fields.length - 1} onClick={() => moveField(card, fieldIndex, 1)}><ChevronDown size={16} aria-hidden="true" /></button>
                   </div>
                   <div className={styles.fieldName}>
                     <input aria-label="項目名" value={field.name} onChange={(event) => updateCard(card.id, (value) => ({ ...value, fields: value.fields.map((item) => item.id === field.id ? { ...item, name: event.target.value } : item) }))} />

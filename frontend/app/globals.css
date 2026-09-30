@@ -412,6 +412,9 @@ input, select, textarea { min-width: 0; }
   html, body { overflow-x: hidden; }
 }
 
+/* lucide-react line icons: thinner stroke and aligned with surrounding text. */
+.lucide { flex-shrink: 0; stroke-width: 1.75; vertical-align: -0.15em; }
+
 /* Native controls and uncommon/error paths share the application theme too. */
 a { color: var(--blue); }
 input, select, textarea { color: var(--ink); background-color: var(--surface); accent-color: var(--primary-bg); }

@@ -1,5 +1,6 @@
 "use client";
 
+import { Pencil } from "lucide-react";
 import {
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -86,7 +87,7 @@ export function InlineSpeakerName({
         aria-label={`${speakerName}の名前を変更`}
         title="クリックして話者名を変更"
       >
-        {speakerName}<span aria-hidden="true">✎</span>
+        {speakerName}<span aria-hidden="true"><Pencil size={12} /></span>
       </button>
     );
   }

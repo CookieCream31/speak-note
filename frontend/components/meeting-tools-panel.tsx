@@ -1,5 +1,6 @@
 "use client";
 
+import { Play } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 
 import {
@@ -240,7 +241,7 @@ export function MeetingToolsPanel({
             {searchResults.length === 0 && <p>検索結果はここに表示されます。</p>}
             {searchResults.map((result) => (
               <button key={result.segment_id} type="button" onClick={() => seek(result.start_ms)}>
-                <strong>▶ {formatTimestamp(result.start_ms)} {result.speaker_name}</strong>
+                <strong><Play size={12} aria-hidden="true" /> {formatTimestamp(result.start_ms)} {result.speaker_name}</strong>
                 <span>{result.text}</span>
               </button>
             ))}
@@ -261,7 +262,7 @@ export function MeetingToolsPanel({
             {bookmarks.map((bookmark) => (
               <article key={bookmark.id}>
                 <button type="button" onClick={() => seek(bookmark.timestamp_ms)}>
-                  ▶ {formatTimestamp(bookmark.timestamp_ms)} {bookmark.title}
+                  <Play size={12} aria-hidden="true" /> {formatTimestamp(bookmark.timestamp_ms)} {bookmark.title}
                 </button>
                 <button type="button" onClick={() => void removeBookmark(bookmark.id)}>削除</button>
                 {bookmark.note && <p>{bookmark.note}</p>}

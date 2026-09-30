@@ -1,5 +1,6 @@
 "use client";
 
+import { Play } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -207,7 +208,7 @@ export function MeetingReviewPanel({
       <article className={styles.analysisItem} key={item.id}>
         <div className={styles.itemMeta}>
           <span data-state={item.state}>{stateLabels[item.state]}</span>
-          {item.start_ms !== null && <button type="button" onClick={() => seek(item.start_ms as number)}>▶ {formatTimestamp(item.start_ms)}</button>}
+          {item.start_ms !== null && <button type="button" onClick={() => seek(item.start_ms as number)}><Play size={12} aria-hidden="true" /> {formatTimestamp(item.start_ms)}</button>}
         </div>
         {!readOnly && editingItemId === item.id ? (
           <form onSubmit={(event) => {
@@ -247,7 +248,7 @@ export function MeetingReviewPanel({
           {item.evidence.map(({ segment_id: segmentId }) => {
             const segment = evidenceById.get(segmentId);
             return segment ? <button key={segmentId} type="button" onClick={() => seek(segment.startMs)}>
-              <strong>▶ {formatTimestamp(segment.startMs)} {segment.speakerName}</strong><span>{segment.text}</span>
+              <strong><Play size={12} aria-hidden="true" /> {formatTimestamp(segment.startMs)} {segment.speakerName}</strong><span>{segment.text}</span>
             </button> : null;
           })}
         </details>}
@@ -368,7 +369,7 @@ export function MeetingReviewPanel({
                   <span data-state={item.state}>{stateLabels[item.state]}</span>
                   {item.start_ms !== null && (
                     <button type="button" onClick={() => seek(item.start_ms as number)}>
-                      ▶ {formatTimestamp(item.start_ms)}
+                      <Play size={12} aria-hidden="true" /> {formatTimestamp(item.start_ms)}
                       {item.end_ms !== null && item.end_ms > item.start_ms
                         ? `〜${formatTimestamp(item.end_ms)}`
                         : ""}
@@ -442,7 +443,7 @@ export function MeetingReviewPanel({
                       const segment = evidenceById.get(segmentId);
                       return segment ? (
                         <button key={segmentId} type="button" onClick={() => seek(segment.startMs)}>
-                          <strong>▶ {formatTimestamp(segment.startMs)} {segment.speakerName}</strong>
+                          <strong><Play size={12} aria-hidden="true" /> {formatTimestamp(segment.startMs)} {segment.speakerName}</strong>
                           <span>{segment.text}</span>
                         </button>
                       ) : null;

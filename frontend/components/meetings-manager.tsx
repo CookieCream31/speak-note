@@ -1,5 +1,8 @@
 "use client";
 
+import {
+  AudioLines, Folder, Hash, House, Inbox, List, Mic, MonitorUp, Search, SearchX, Sparkles, Star, StarOff, Upload, Video,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
@@ -43,7 +46,6 @@ interface SourceOption {
   value: MeetingSourceType;
   label: string;
   description: string;
-  icon: string;
 }
 
 const sourceOptions: SourceOption[] = [
@@ -51,19 +53,16 @@ const sourceOptions: SourceOption[] = [
     value: "media_upload",
     label: "音声・動画をアップロード",
     description: "mp4・mov・webm・m4a・mp3・wav・flac",
-    icon: "↑",
   },
   {
     value: "live",
     label: "画面共有を録画",
     description: "画面とマイクを記録",
-    icon: "▣",
   },
   {
     value: "audio_recording",
     label: "マイク音声を録音",
     description: "画面共有なしで音声を記録",
-    icon: "●",
   },
 ];
 
@@ -105,10 +104,14 @@ function formatDuration(milliseconds: number | null): string {
     : `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
-function sourceIcon(sourceType: MeetingSourceType): string {
-  if (sourceType === "video_upload") return "▶";
-  if (sourceType === "audio_upload") return "♫";
-  return sourceOptions.find((option) => option.value === sourceType)?.icon ?? "●";
+function SourceIcon({ sourceType, size = 18 }: { sourceType: MeetingSourceType; size?: number }) {
+  switch (sourceType) {
+    case "media_upload": return <Upload size={size} />;
+    case "live": return <MonitorUp size={size} />;
+    case "video_upload": return <Video size={size} />;
+    case "audio_upload": return <AudioLines size={size} />;
+    default: return <Mic size={size} />;
+  }
 }
 
 function meetingStatusLabel(meeting: Meeting): string {
@@ -605,10 +608,10 @@ export function MeetingsManager({
         </Link>
         <nav className={styles.navigation} aria-label="メインナビゲーション">
           <Link className={recordView === "all" ? styles.activeNav : undefined} href="/">
-            <span aria-hidden="true">⌂</span> ホーム
+            <span aria-hidden="true"><House size={18} /></span> ホーム
           </Link>
           <button type="button" onClick={() => showRecords("all")}>
-            <span aria-hidden="true">▤</span> すべての会議
+            <span aria-hidden="true"><List size={18} /></span> すべての会議
             <small>{meetings.length}</small>
           </button>
           <button
@@ -616,18 +619,18 @@ export function MeetingsManager({
             className={recordView === "favorites" ? styles.activeNav : undefined}
             onClick={() => showRecords("favorites")}
           >
-            <span aria-hidden="true">★</span> お気に入り
+            <span aria-hidden="true"><Star size={18} /></span> お気に入り
             <small>{favoriteCount}</small>
           </button>
           <button type="button" onClick={() => setTagDialogOpen(true)}>
-            <span aria-hidden="true">#</span> タグ
+            <span aria-hidden="true"><Hash size={18} /></span> タグ
             <small>{tags.length}</small>
           </button>
           <Link href="/projects">
-            <span aria-hidden="true">▦</span> プロジェクト
+            <span aria-hidden="true"><Folder size={18} /></span> プロジェクト
           </Link>
           <Link href="/settings/ai">
-            <span aria-hidden="true">✦</span> AI設定
+            <span aria-hidden="true"><Sparkles size={18} /></span> AI設定
           </Link>
         </nav>
         <div className={styles.sidebarStatus}>
@@ -645,7 +648,7 @@ export function MeetingsManager({
           <div className={styles.topbarActions}>
             <ThemeSelector />
             <label className={styles.globalSearch}>
-              <span aria-hidden="true">⌕</span>
+              <span aria-hidden="true"><Search size={16} /></span>
               <input
                 type="search"
                 value={query}
@@ -666,7 +669,7 @@ export function MeetingsManager({
             <div className={styles.quickActions}>
               {sourceOptions.map((option) => (
                 <button type="button" key={option.value} onClick={() => openCreate(option.value)}>
-                  <span className={styles.sourceIcon} aria-hidden="true">{option.icon}</span>
+                  <span className={styles.sourceIcon} aria-hidden="true"><SourceIcon sourceType={option.value} /></span>
                   <strong>{option.label}</strong>
                   <small>{option.description}</small>
                   <i aria-hidden="true">→</i>
@@ -729,7 +732,7 @@ export function MeetingsManager({
                     aria-pressed={recordView === "favorites"}
                     onClick={() => setRecordView("favorites")}
                   >
-                    ★ お気に入り
+                    <Star size={14} aria-hidden="true" /> お気に入り
                   </button>
                 </div>
                 <select
@@ -781,28 +784,28 @@ export function MeetingsManager({
                   disabled={managing || !bulkTagId}
                   onClick={() => void runBulkAction("tag", bulkTagId)}
                 >
-                  # 追加
+                  <Hash size={14} aria-hidden="true" /> 追加
                 </button>
                 <button
                   type="button"
                   disabled={managing || !bulkTagId}
                   onClick={() => void runBulkAction("untag", bulkTagId)}
                 >
-                  # 解除
+                  <Hash size={14} aria-hidden="true" /> 解除
                 </button>
                 <button
                   type="button"
                   disabled={managing}
                   onClick={() => void runBulkAction("favorite")}
                 >
-                  ★ お気に入り
+                  <Star size={14} aria-hidden="true" /> お気に入り
                 </button>
                 <button
                   type="button"
                   disabled={managing}
                   onClick={() => void runBulkAction("unfavorite")}
                 >
-                  ☆ 解除
+                  <StarOff size={14} aria-hidden="true" /> 解除
                 </button>
                 <button
                   className={styles.bulkDelete}
@@ -824,13 +827,13 @@ export function MeetingsManager({
             )}
             {!loadError && meetings.length === 0 ? (
               <div className={styles.emptyState}>
-                <span aria-hidden="true">◎</span>
+                <span aria-hidden="true"><Inbox size={32} /></span>
                 <h3>最初の会議を作成しましょう</h3>
                 <p>上の取り込み方法から音声・動画・画面共有を選択できます。</p>
               </div>
             ) : !loadError && visibleMeetings.length === 0 ? (
               <div className={styles.emptyState}>
-                <span aria-hidden="true">{recordView === "favorites" ? "☆" : "⌕"}</span>
+                <span aria-hidden="true">{recordView === "favorites" ? <Star size={32} /> : <SearchX size={32} />}</span>
                 <h3>
                   {recordView === "favorites" && !query
                     ? "お気に入りの会議はありません"
@@ -877,7 +880,7 @@ export function MeetingsManager({
                     </label>
                     <Link className={styles.recordMain} href={`/meetings/${meeting.id}`}>
                       <span className={styles.recordIcon} aria-hidden="true">
-                        {sourceIcon(meeting.source_type)}
+                        <SourceIcon sourceType={meeting.source_type} />
                       </span>
                       <span>
                         <strong>{meeting.title}</strong>
@@ -908,7 +911,7 @@ export function MeetingsManager({
                       title={meeting.is_favorite ? "お気に入りを解除" : "お気に入りに追加"}
                       onClick={() => void updateFavorite(meeting)}
                     >
-                      <span aria-hidden="true">{meeting.is_favorite ? "★" : "☆"}</span>
+                      <span aria-hidden="true"><Star size={16} fill={meeting.is_favorite ? "currentColor" : "none"} /></span>
                     </button>
                     <details
                       className={styles.recordMenu}
@@ -1022,7 +1025,7 @@ export function MeetingsManager({
                           setCreateSource(option.value);
                         }}
                       />
-                      <span aria-hidden="true">{option.icon}</span>
+                      <span aria-hidden="true"><SourceIcon sourceType={option.value} /></span>
                       <strong>{option.label}</strong>
                     </label>
                   ))}
@@ -1050,7 +1053,7 @@ export function MeetingsManager({
               ) : createSource === "audio_recording" ? (
                 <div className={styles.captureSetup}>
                   <div className={styles.microphoneCaptureIntro}>
-                    <span aria-hidden="true">●</span>
+                    <span aria-hidden="true"><Mic size={20} /></span>
                     <strong>マイク音声のみを録音します</strong>
                     <small>画面共有や映像の保存は行いません。</small>
                   </div>

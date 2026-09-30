@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowDown } from "lucide-react";
 import {
   memo,
   useCallback,
@@ -423,7 +424,7 @@ function LiveTranscriptViewport({ children }: { children: ReactNode }) {
             if (viewport.current) viewport.current.scrollTop = viewport.current.scrollHeight;
           }}
         >
-          最新の発話へ ↓
+          最新の発話へ <ArrowDown size={14} aria-hidden="true" />
         </button>
       )}
     </div>

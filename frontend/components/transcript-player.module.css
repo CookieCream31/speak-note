@@ -349,6 +349,13 @@
 .videoVolumeIcon [data-volume-slash] { opacity: 0; }
 .videoVolumeButton[data-muted="true"] [data-volume-waves] { opacity: 0; }
 .videoVolumeButton[data-muted="true"] [data-volume-slash] { opacity: 1; }
+/* The runtime flips data-paused / data-muted; both SVGs are rendered and one is hidden. */
+.controlButton[data-paused="false"] [data-play-glyph],
+.controlButton:not([data-paused="false"]) [data-pause-glyph],
+.audioPlayButton[data-paused="false"] [data-play-glyph],
+.audioPlayButton:not([data-paused="false"]) [data-pause-glyph],
+.audioUtilityButton[data-muted="true"] [data-volume-on],
+.audioUtilityButton:not([data-muted="true"]) [data-volume-off] { display: none; }
 .videoVolumeSlider {
   width: 0;
   height: 4px;

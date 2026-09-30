@@ -293,7 +293,10 @@
       const action = media.paused ? "再生" : "一時停止";
       if (playToggle) playToggle.setAttribute("aria-label", action);
       if (playLabel) playLabel.textContent = action;
-      if (playIcon) playIcon.textContent = media.paused ? "▶" : "❚❚";
+      if (playToggle) playToggle.setAttribute("data-paused", String(media.paused));
+      if (playIcon && !playIcon.hasAttribute("data-vector-play-icon")) {
+        playIcon.textContent = media.paused ? "▶" : "❚❚";
+      }
 
       const muted = media.muted || media.volume === 0;
       if (volumeToggle) {
