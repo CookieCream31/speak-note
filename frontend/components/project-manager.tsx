@@ -35,9 +35,18 @@ export function ProjectManager() {
     setProjects(nextProjects);
   }, []);
 
-  useEffect(() => { void refresh().catch((caught) => setError(String(caught))); }, [refresh]);
   useEffect(() => {
-    if (!selectedId) { setDocuments([]); setMeetings([]); return; }
+    let cancelled = false;
+    void Promise.all([knowledgeApi.profiles(), knowledgeApi.projects()]).then(([nextProfiles, nextProjects]) => {
+      if (cancelled) return;
+      setProfiles(nextProfiles);
+      setProjects(nextProjects);
+    }).catch((caught) => { if (!cancelled) setError(String(caught)); });
+    return () => { cancelled = true; };
+  }, []);
+  useEffect(() => {
+    // selectProject clears documents and meetings whenever the selection changes.
+    if (!selectedId) return;
     let cancelled = false;
     void knowledgeApi.documents(selectedId).then((items) => { if (!cancelled) setDocuments(items); }).catch((caught) => { if (!cancelled) setError(String(caught)); });
     void (async () => {
