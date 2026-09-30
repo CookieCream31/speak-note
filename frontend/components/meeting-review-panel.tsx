@@ -277,7 +277,6 @@ export function MeetingReviewPanel({
     <aside className={styles.panel} aria-label="AIノート">
       <header className={styles.heading}>
         <div>
-          <p>AI NOTES</p>
           <h2>AI議事録</h2>
         </div>
         {analysis && (

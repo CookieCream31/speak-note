@@ -305,7 +305,6 @@ export default async function MeetingDetailPage({
 
       <section className={`${styles.summary} ${archivedLiveMeeting ? styles.archivedSummary : ""}`}>
         <div>
-          <p className="eyebrow">MEETING DETAIL</p>
           <h1>{meeting.title}</h1>
           <div className={styles.metadata}>
             <span className={`status status-${meeting.status}`}>
@@ -338,7 +337,6 @@ export default async function MeetingDetailPage({
         </div>
         {!archivedLiveMeeting && (
           <section className={styles.uploadPanel}>
-            <span className={styles.step}>02</span>
             <h2>
               {meeting.source_type === "live"
                 ? "画面共有を録画"
@@ -403,7 +401,7 @@ export default async function MeetingDetailPage({
 
       <section className={styles.transcriptSection}>
         <div className={styles.sectionTitle}>
-          <div><p>MEETING NOTES</p><h2>会議ノート</h2></div>
+          <div><h2>会議ノート</h2></div>
           <span>要約・質問・文字起こし・検索を切り替えて確認できます</span>
         </div>
 

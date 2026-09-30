@@ -200,7 +200,6 @@ export function JobStatusPanel({ meetingId, initialJobs }: JobStatusPanelProps) 
       <details open={polling || failedCount > 0}>
         <summary className={styles.jobToggle}>
           <div>
-            <span>PROCESS</span>
             <strong>処理状況</strong>
           </div>
           <em data-status={summaryStatus}>{statusSummary}</em>

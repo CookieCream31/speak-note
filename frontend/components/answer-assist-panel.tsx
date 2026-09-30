@@ -112,7 +112,7 @@ export function AnswerAssistPanel({ meetingId }: { meetingId: string }) {
   }
 
   return <section className={styles.panel}>
-    <header className={styles.header}><div><span className={styles.eyebrow}>LIVE ANSWER ASSIST</span><h2>回答支援</h2></div>
+    <header className={styles.header}><div><h2>回答支援</h2></div>
       <span className={active ? styles.active : styles.inactive}>{active ? "有効" : "停止中"}</span></header>
     <p className={styles.description}>プロフィール・プロジェクト資料と会話をもとに発言案を作ります。議事録の要約・会議後の質問とは別の機能です。</p>
     <div className={styles.controls}>

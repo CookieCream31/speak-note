@@ -631,7 +631,7 @@ export function MeetingsManager({
           </Link>
         </nav>
         <div className={styles.sidebarStatus}>
-          <span>LOCAL WORKSPACE</span>
+          <span>ワークスペース</span>
           <strong>Ubuntu Server</strong>
           <small>Private · speak-note</small>
         </div>
@@ -640,7 +640,6 @@ export function MeetingsManager({
       <div className={styles.main}>
         <header className={styles.topbar}>
           <div>
-            <p>WORKSPACE</p>
             <h1>ホーム</h1>
           </div>
           <div className={styles.topbarActions}>
@@ -661,7 +660,6 @@ export function MeetingsManager({
         <section className={styles.dashboard}>
           <div className={styles.welcome}>
             <div>
-              <p>CAPTURE</p>
               <h2>何を記録しますか？</h2>
               <span>取り込み方法を選ぶと、会議を作成してすぐに開始できます。</span>
             </div>
@@ -996,7 +994,6 @@ export function MeetingsManager({
           >
             <header>
               <div>
-                <p>NEW MEETING</p>
                 <h2 id="create-meeting-title">新しい会議</h2>
               </div>
               <button type="button" disabled={creating || selectingDisplay || projectCreating} onClick={closeCreate}>×</button>
@@ -1276,7 +1273,6 @@ export function MeetingsManager({
           >
             <header>
               <div>
-                <p>ORGANIZE</p>
                 <h2 id="tag-dialog-title">タグを管理</h2>
               </div>
               <button

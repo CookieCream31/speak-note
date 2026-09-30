@@ -283,11 +283,8 @@ export function TranscriptMediaPlayer({
         : "Space K J L ArrowLeft ArrowRight M Shift+Period Shift+Comma"}
       aria-label={isVideo ? "会議動画プレイヤー" : "会議音声プレイヤー"}
     >
-      {isVideo && (
-        <div className={styles.playerHeading} data-player-heading>
-          <span>MEETING VIDEO</span>
-        </div>
-      )}
+      {/* Empty cell keeps the download button in the right-hand column. */}
+      {isVideo && <div className={styles.playerHeading} data-player-heading />}
       {isVideo && downloadUrl && (
         <a
           className={styles.mediaDownloadButton}
@@ -343,7 +340,6 @@ export function TranscriptMediaPlayer({
                 <output className={styles.mediaTime} data-media-time>0:00 / --:--</output>
                 {orderedChapters.length > 0 && (
                   <div className={styles.videoChapterStatus}>
-                    <span>CHAPTER</span>
                     <output data-current-chapter aria-live="polite">
                       {orderedChapters[0].title}
                     </output>
@@ -393,7 +389,6 @@ export function TranscriptMediaPlayer({
               </output>
               {orderedChapters.length > 0 && (
                 <div className={styles.audioChapterStatus}>
-                  <span>CHAPTER</span>
                   <output data-current-chapter aria-live="polite">
                     {orderedChapters[0].title}
                   </output>

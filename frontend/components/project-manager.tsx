@@ -155,7 +155,7 @@ export function ProjectManager() {
 
   return <main className={styles.shell}>
     <header className={styles.header}>
-      <div><Link href="/" className={styles.back}>← ホーム</Link><span className={styles.eyebrow}>KNOWLEDGE WORKSPACE</span><h1>プロジェクト</h1>
+      <div><Link href="/" className={styles.back}>← ホーム</Link><h1>プロジェクト</h1>
         <p>親プロジェクトと子プロジェクトで情報を整理します。子は親の情報を引き継ぎ、他の子の資料は参照しません。</p></div>
       <ThemeSelector />
     </header>
@@ -176,7 +176,6 @@ export function ProjectManager() {
       </aside>
       <div className={styles.stack}>
         <section className={styles.panel}>
-          <span className={styles.eyebrow}>{selected ? "EDIT PROJECT" : "NEW PROJECT"}</span>
           <h2>{selected ? selected.name : "プロジェクトを作成"}</h2>
           <form onSubmit={(event) => void saveProject(event)} className={styles.form}>
             <label>名前<input value={name} onChange={(event) => setName(event.target.value)} maxLength={100} required placeholder="例：就職活動 / A社" /></label>
@@ -193,7 +192,7 @@ export function ProjectManager() {
           </form>
         </section>
         {selected && <section className={styles.panel}>
-          <span className={styles.eyebrow}>PROJECT KNOWLEDGE</span><h2>資料</h2>
+          <h2>資料</h2>
           <p className={styles.muted}>このプロジェクトの資料です。親の資料も子で利用できます。除外した資料は回答支援の参照対象になりません。</p>
           {documents.map((document) => <div key={document.id} className={styles.documentRow}><div><button type="button" disabled={busy} className={styles.documentEdit} onClick={() => { setDocumentId(document.id); setDocumentName(document.name); setDocumentContent(document.content); }}>{document.name}</button><small>v{document.revision} · {document.content.length.toLocaleString()}文字</small></div>
             <label><input type="checkbox" checked={document.included} disabled={busy} onChange={() => void toggleDocument(document)} /> 参照する</label></div>)}
@@ -205,7 +204,7 @@ export function ProjectManager() {
           </form>
         </section>}
         <section className={styles.panel}>
-          <span className={styles.eyebrow}>SHARED PROFILE</span><h2>{profileId ? "プロフィールを編集" : "共通プロフィールを作成"}</h2>
+          <h2>{profileId ? "プロフィールを編集" : "共通プロフィールを作成"}</h2>
           <p className={styles.muted}>AIモデル設定とは別の、経歴・スキル・自己紹介などの事実です。プロジェクトごとに利用するプロフィールを選びます。</p>
           <form onSubmit={(event) => void saveProfile(event)} className={styles.form}>
             <label>名前<input value={profileName} onChange={(event) => setProfileName(event.target.value)} required maxLength={100} placeholder="例：自分の経歴" /></label>
@@ -213,7 +212,7 @@ export function ProjectManager() {
             <button disabled={busy}>保存</button>
           </form>
         </section>
-        {selected && <section className={styles.panel}><span className={styles.eyebrow}>MEETINGS</span><div className={styles.panelTitle}><h2>このプロジェクトの会議</h2><Link href={`/?create=1&project_id=${selected.id}`}>＋ 会議を作成</Link></div>
+        {selected && <section className={styles.panel}><div className={styles.panelTitle}><h2>このプロジェクトの会議</h2><Link href={`/?create=1&project_id=${selected.id}`}>＋ 会議を作成</Link></div>
           {projectMeetings.length === 0 ? <p className={styles.muted}>会議はまだありません。ホームから会議を作成し、プロジェクトを選択してください。</p> :
             projectMeetings.map((meeting) => <Link key={meeting.id} className={styles.meetingLink} href={`/meetings/${meeting.id}`}>{meeting.title} <span>→</span></Link>)}
         </section>}

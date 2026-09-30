@@ -127,7 +127,6 @@ export function MeetingTemplateManager({ initialTemplates }: { initialTemplates:
     <section className={styles.section} aria-label="議事録テンプレート">
       <header className={styles.heading}>
         <div>
-          <p className={styles.eyebrow}>03 / TEMPLATES</p>
           <h2>議事録テンプレート</h2>
         </div>
         <span>リアルタイム・確定版の表示を設定</span>

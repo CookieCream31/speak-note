@@ -200,7 +200,6 @@ export function MeetingToolsPanel({
   return (
     <aside className={styles.panel} aria-label="会議ツール">
       <header className={styles.heading}>
-        <p>TOOLS</p>
         <h2>会議ツール</h2>
       </header>
       <nav className={styles.tabs} aria-label="会議ツールの切り替え">

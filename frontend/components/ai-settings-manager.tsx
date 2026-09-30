@@ -205,7 +205,6 @@ export function AISettingsManager({
       </header>
 
       <section className={styles.hero}>
-        <p>AI SETTINGS</p>
         <h1>AI設定</h1>
         <span>接続先・モデル・用途ごとのAIを、ひとつの画面で管理します。</span>
       </section>
@@ -218,7 +217,7 @@ export function AISettingsManager({
 
       <section className={styles.section}>
         <div className={styles.sectionHeading}>
-          <div><p>01 / PROVIDERS</p><h2>接続先</h2></div>
+          <div><h2>接続先</h2></div>
           <span>URL・API Keyだけを管理</span>
         </div>
         <form
@@ -315,7 +314,7 @@ export function AISettingsManager({
 
       <section className={styles.section}>
         <div className={styles.sectionHeading}>
-          <div><p>02 / PROFILES</p><h2>AIプロファイル</h2></div>
+          <div><h2>AIプロファイル</h2></div>
           <span>モデル・Temperatureを管理</span>
         </div>
         <AIProfileList
@@ -332,7 +331,7 @@ export function AISettingsManager({
 
       <section className={styles.section}>
         <div className={styles.sectionHeading}>
-          <div><p>04 / USAGE</p><h2>用途別Profile</h2></div>
+          <div><h2>用途別Profile</h2></div>
           <span>未指定はDefault Profile</span>
         </div>
         <div className={styles.usageList}>
@@ -358,7 +357,7 @@ export function AISettingsManager({
 
       <section className={styles.section}>
         <div className={styles.sectionHeading}>
-          <div><p>05 / SPEECH TO TEXT</p><h2>リアルタイムSpeech-to-Text</h2></div>
+          <div><h2>リアルタイムSpeech-to-Text</h2></div>
           <span>録音・画面共有中のLive文字起こし</span>
         </div>
         <form

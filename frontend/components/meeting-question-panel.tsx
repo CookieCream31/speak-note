@@ -121,7 +121,6 @@ export function MeetingQuestionPanel({
     <section className={styles.panel} aria-label="会議内容への質問">
       <header className={styles.header}>
         <div>
-          <p>ASK THIS MEETING</p>
           <h3>会議内容について質問</h3>
         </div>
         <span>確定文字起こしを根拠に回答します</span>

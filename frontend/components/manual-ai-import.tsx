@@ -227,7 +227,6 @@ export function ManualAIImport({ meetingId, available }: ManualAIImportProps) {
           >
             <header className={styles.dialogHeader}>
               <div>
-                <p>MANUAL AI IMPORT</p>
                 <h2 id="manual-ai-title">外部AIで議事録を作成</h2>
               </div>
               <button type="button" onClick={() => setOpen(false)} aria-label="閉じる">×</button>

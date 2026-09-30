@@ -535,7 +535,6 @@ export function RealtimeAnalysisPanel({ meetingId, templateSnapshot }: RealtimeA
     <section className={styles.panel}>
       <header className={styles.panelHeader}>
         <div>
-          <span>LIVE INSIGHTS</span>
           <h2>リアルタイム解析</h2>
         </div>
         <div className={styles.status} data-status={viewStatus.key} aria-live="polite">
@@ -711,7 +710,7 @@ export function RealtimeAnalysisPanel({ meetingId, templateSnapshot }: RealtimeA
       >
         <div className={styles.transcriptToolbar}>
           <div>
-            <strong>LIVE TRANSCRIPT</strong>
+            <strong>リアルタイム文字起こし</strong>
             <span>録画中の暫定文字起こしです。確定版は終了後にボタンから作成できます。</span>
           </div>
           <span>{transcriptTurnCount} 発言</span>
