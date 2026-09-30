@@ -263,7 +263,7 @@ sudo docker compose run --rm --no-deps --user root backend sh -c '
 
 文字起こしWorkerはFinalを保存してから、固定設定で解析Jobを予約します。後続Job IDを親の設定JSONへ同じTransactionで保存し、再開時は保存済みFinalと後続IDを使います。AI Jobは履歴のモデル・Temperatureを使い、予約後にProvider接続先が変更された場合は送信せず失敗します。retry APIも会議をロックし、録音・保存中や別の全体処理が実行中なら拒否します。
 
-Frontendの `final-transcript-button.tsx` は名前を残して `SummaryRegenerationButton` を実装し、会議ノートの `MeetingReviewPanel` に一度だけ配置します。ネイティブdialogでフォーカス・Escapeを扱い、幅・高さを画面内に制限します。選択は生成APIにだけ送信し、通信失敗時は選択とrequest_idを維持します。Job状態の変化で再生成UIを更新し、既存の履歴とLive表示を維持します。録音停止直後のRecorderにあった旧再処理ボタンも除き、会議ノートへの案内を表示します。古いPOST transcriptは明示的な文字起こし再処理の詳細APIとして残し、再生成UIからは呼びません。
+Frontendの `final-transcript-button.tsx` は名前を残して `SummaryRegenerationButton` を実装し、会議画面のタイトル横（`page.tsx`）に一度だけ配置します（`MeetingReviewPanel` の `regeneration` は省略可能で、現在は渡していません）。ネイティブdialogでフォーカス・Escapeを扱い、幅・高さを画面内に制限します。選択は生成APIにだけ送信し、通信失敗時は選択とrequest_idを維持します。Job状態の変化で再生成UIを更新し、既存の履歴とLive表示を維持します。録音停止直後のRecorderにあった旧再処理ボタンも除き、会議ノートへの案内を表示します。古いPOST transcriptは明示的な文字起こし再処理の詳細APIとして残し、再生成UIからは呼びません。
 
 Migration: `20260927_0023_summary_regeneration.py`。既存Jobはnullableの追加カラムで互換性を維持します。退避していた/tmpの案は適用していません。
 

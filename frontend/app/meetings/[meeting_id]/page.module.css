@@ -323,3 +323,13 @@
   .settingChip > summary, .settingsRow .jobToggle, .downloadMenu > summary { min-height: 44px; }
   .chipDivider { display: none; }
 }
+
+/* Redesign 3-2: the new header is 56px at every width. */
+.page { --meeting-header-height: 56px; }
+.page > .transcriptSection { max-width: none; margin: 0; padding: 0 40px 32px; }
+@media (max-width: 1000px) {
+  .page > .transcriptSection { padding-right: 24px; padding-left: 24px; }
+}
+@media (max-width: 520px) {
+  .page > .transcriptSection { padding-right: 0; padding-left: 0; }
+}

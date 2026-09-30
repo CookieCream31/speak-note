@@ -479,11 +479,6 @@ export default async function MeetingDetailPage({
       )}
 
       <section className={styles.transcriptSection}>
-        <div className={styles.sectionTitle}>
-          <div><h2>会議ノート</h2></div>
-          <span>要約・質問・文字起こし・検索を切り替えて確認できます</span>
-        </div>
-
         <MeetingWorkspace
           meetingId={meeting.id}
           playback={{

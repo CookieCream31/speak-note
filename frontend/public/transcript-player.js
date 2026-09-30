@@ -47,6 +47,7 @@
     const turnElements = Array.from(root.querySelectorAll("[data-transcript-turn]"));
     const chapterOutput = root.querySelector("[data-current-chapter]");
     const chapterElements = Array.from(root.querySelectorAll("[data-chapter-segment]"));
+    const chapterListItems = Array.from(root.querySelectorAll("[data-chapter-list-item]"));
     const customControls = root.querySelector("[data-custom-media-controls]");
     const mediaStage = root.querySelector("[data-media-stage]");
     const playToggle = root.querySelector("[data-play-toggle]");
@@ -431,6 +432,7 @@
       if (chapters[0].timelineEndMs <= 0) layoutChapters();
 
       let activeChapter = chapters[0];
+      let activeProgress = 0;
       for (const chapter of chapters) {
         const span = Math.max(1, chapter.timelineEndMs - chapter.timelineStartMs);
         const progress = Math.min(1, Math.max(0, (currentMs - chapter.timelineStartMs) / span));
@@ -440,7 +442,18 @@
         const isActive = currentMs >= chapter.timelineStartMs
           && (currentMs < chapter.timelineEndMs || chapter === chapters.at(-1));
         chapter.element.toggleAttribute("aria-current", isActive);
-        if (isActive) activeChapter = chapter;
+        if (isActive) {
+          activeChapter = chapter;
+          activeProgress = progress;
+        }
+      }
+
+      // The chapter list beside the player mirrors the active chapter and its progress.
+      for (const item of chapterListItems) {
+        const isActive = Number(item.getAttribute("data-chapter-list-start-ms")) === activeChapter.startMs;
+        item.toggleAttribute("aria-current", isActive);
+        const bar = item.querySelector("[data-chapter-list-progress]");
+        if (bar instanceof HTMLElement) bar.style.width = isActive ? `${activeProgress * 100}%` : "0%";
       }
 
       const label = `${activeChapter.title} · ${formatTimestamp(activeChapter.startMs / 1000)}`;

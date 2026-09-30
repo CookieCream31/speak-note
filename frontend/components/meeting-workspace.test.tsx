@@ -6,7 +6,7 @@ import { TranscriptRuntime } from "./transcript-player";
 import { MeetingWorkspace } from "./meeting-workspace";
 
 describe("MeetingWorkspace", () => {
-  it("renders the player before the tabs and selects the summary by default", () => {
+  it("renders the player before the tabs, shows the transcript beside it and selects the summary by default", () => {
     const html = renderToStaticMarkup(
       <MeetingWorkspace
         meetingId="meeting-1"
@@ -48,8 +48,13 @@ describe("MeetingWorkspace", () => {
     expect(html).toContain(
       'id="meeting-view-panel-questions" role="tabpanel" aria-labelledby="meeting-view-tab-questions" hidden=""',
     );
+    // Without chapters the left column opens on the transcript, alongside the summary on the right.
     expect(html).toContain(
-      'id="meeting-view-panel-transcript" role="tabpanel" aria-labelledby="meeting-view-tab-transcript" hidden=""',
+      'id="meeting-view-panel-transcript" role="tabpanel" aria-labelledby="meeting-view-tab-transcript">',
+    );
+    expect(html).not.toContain("meeting-media-tab-chapters");
+    expect(html.indexOf('id="meeting-view-panel-transcript"')).toBeLessThan(
+      html.indexOf('id="meeting-view-panel-notes"'),
     );
     expect(html.indexOf("TRANSCRIPT_HEADER")).toBeLessThan(
       html.indexOf("data-transcript-document"),
@@ -112,7 +117,7 @@ describe("MeetingWorkspace", () => {
     const runtime = TranscriptRuntime({ turns: [] });
     const children = Children.toArray(runtime.props.children) as ReactElement<{ src?: string }>[];
 
-    expect(children[1]?.props.src).toBe("/transcript-player.js?v=20260924-2");
+    expect(children[1]?.props.src).toBe("/transcript-player.js?v=20260930-1");
   });
 
   it("renders audio playback as a persistent custom control bar", () => {
@@ -170,5 +175,12 @@ describe("MeetingWorkspace", () => {
     );
     expect(html).not.toContain("data-subtitle-toggle");
     expect(html).not.toContain("<audio controls=");
+    expect(html).toContain('id="meeting-media-tab-chapters" role="tab" aria-selected="true"');
+    expect(html).toContain(
+      'id="meeting-view-panel-transcript" role="tabpanel" aria-labelledby="meeting-view-tab-transcript" hidden=""',
+    );
+    expect(html.match(/data-chapter-list-item/g)).toHaveLength(3);
+    expect(html).toContain('data-seek-ms="20000" data-chapter-list-item="true" data-chapter-list-start-ms="20000"');
+    expect(html).toContain('aria-label="本題 00:20から再生"');
   });
 });
