@@ -117,7 +117,7 @@ describe("MeetingWorkspace", () => {
     const runtime = TranscriptRuntime({ turns: [] });
     const children = Children.toArray(runtime.props.children) as ReactElement<{ src?: string }>[];
 
-    expect(children[1]?.props.src).toBe("/transcript-player.js?v=20260930-1");
+    expect(children[1]?.props.src).toBe("/transcript-player.js?v=20260930-3");
   });
 
   it("renders audio playback as a persistent custom control bar", () => {
@@ -182,5 +182,7 @@ describe("MeetingWorkspace", () => {
     expect(html.match(/data-chapter-list-item/g)).toHaveLength(3);
     expect(html).toContain('data-seek-ms="20000" data-chapter-list-item="true" data-chapter-list-start-ms="20000"');
     expect(html).toContain('aria-label="本題 00:20から再生"');
+    // The current-chapter label under the seek bar opens the chapter list.
+    expect(html).toMatch(/<button type="button" class="[^"]*" data-open-chapters="true" title="チャプター一覧を表示"><output data-current-chapter/);
   });
 });

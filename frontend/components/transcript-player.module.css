@@ -924,3 +924,12 @@
   .subtitleToggle { font-size: 12px; }
   .audioDownloadButton { display: none; }
 }
+
+/* The current-chapter label opens the chapter list beside the player. */
+.videoChapterStatus, .audioChapterStatus { font: inherit; text-align: left; cursor: pointer; }
+.videoChapterStatus:hover { background: var(--media-raised); }
+.audioChapterStatus:hover { color: var(--ink); }
+/* Let clicks anywhere on the pill reach the button, including over the chapter text. */
+.videoChapterStatus output, .audioChapterStatus output { pointer-events: none; }
+.videoChapterStatus:focus-visible, .audioChapterStatus:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.audioChapterStatus { padding: 0; color: inherit; background: transparent; border: 0; }

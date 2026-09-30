@@ -41,6 +41,7 @@
     const media = root.querySelector("[data-meeting-media]");
     const status = root.querySelector("[data-player-status]");
     const transcriptDocument = root.querySelector("[data-transcript-document]");
+    const followScrollContainer = findScrollableAncestor(transcriptDocument);
     const followStatus = root.querySelector("[data-follow-status]");
     const followResume = root.querySelector("[data-follow-resume]");
     const timelineElement = root.querySelector("[data-transcript-timeline]");
@@ -541,6 +542,14 @@
       if (turn.after) turn.after.textContent = turn.characters.join("");
     }
 
+    function findScrollableAncestor(element) {
+      for (let node = element?.parentElement; node && node !== document.body; node = node.parentElement) {
+        const overflowY = getComputedStyle(node).overflowY;
+        if (overflowY === "auto" || overflowY === "scroll") return node;
+      }
+      return null;
+    }
+
     function scrollToReadingPosition(turn, characterIndex, force) {
       let bounds = turn.textElement?.getBoundingClientRect();
       let remaining = characterIndex;
@@ -562,6 +571,23 @@
         break;
       }
       if (!bounds || bounds.height <= 0) return;
+      // The two-column layout scrolls the transcript inside its own panel; follow there when it can scroll.
+      if (followScrollContainer && followScrollContainer.scrollHeight > followScrollContainer.clientHeight) {
+        const panel = followScrollContainer.getBoundingClientRect();
+        const controls = transcriptDocument.previousElementSibling?.getBoundingClientRect();
+        const panelTop = Math.max(panel.top, controls && controls.bottom <= panel.bottom ? controls.bottom : panel.top) + 12;
+        const audioBar = media instanceof HTMLAudioElement
+          ? root.querySelector("[data-meeting-player]")?.getBoundingClientRect()
+          : null;
+        const panelBottom = Math.min(panel.bottom, audioBar ? audioBar.top : panel.bottom) - 12;
+        if (panelBottom <= panelTop) return;
+        // Keep the reading line pinned near the upper third so the panel follows continuously.
+        const offset = bounds.top - (panelTop + (panelBottom - panelTop) * 0.35);
+        if (!force && Math.abs(offset) < 6) return;
+        programmaticScrollUntil = performance.now() + 450;
+        followScrollContainer.scrollBy({ top: offset, behavior: "smooth" });
+        return;
+      }
       let top = Math.max(16, document.querySelector("main > header")?.getBoundingClientRect().bottom || 0) + 16;
       const playerBounds = root.querySelector("[data-meeting-player]")?.getBoundingClientRect();
       const transcriptBounds = transcriptDocument.getBoundingClientRect();
@@ -800,6 +826,7 @@
       document.removeEventListener("touchmove", handleManualScrollIntent, true);
       document.removeEventListener("keydown", handleManualScrollKey);
       window.removeEventListener("scroll", handleViewportScroll);
+      followScrollContainer?.removeEventListener("scroll", handleViewportScroll);
     }
 
     function ensureFollowRootConnected() {
@@ -932,6 +959,7 @@
     });
     document.addEventListener("keydown", handleManualScrollKey);
     window.addEventListener("scroll", handleViewportScroll, { passive: true });
+    followScrollContainer?.addEventListener("scroll", handleViewportScroll, { passive: true });
     window.addEventListener("speak-note:speaker-renamed", handleSpeakerRenamed);
     if (playToggle instanceof HTMLButtonElement) {
       playToggle.addEventListener("click", togglePlayback);

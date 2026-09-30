@@ -145,6 +145,12 @@ function VideoVolumeControl() {
   );
 }
 
+export const OPEN_CHAPTERS_EVENT = "speak-note:open-chapters";
+
+function openChapterList() {
+  window.dispatchEvent(new Event(OPEN_CHAPTERS_EVENT));
+}
+
 function splitSubtitleWord(word: PlaybackWord): SubtitlePart[] {
   const characters = Array.from(word.text);
   if (characters.length <= SUBTITLE_MAX_CHARACTERS) {
@@ -343,11 +349,17 @@ export function TranscriptMediaPlayer({
                 <VideoVolumeControl />
                 <output className={styles.mediaTime} data-media-time>0:00 / --:--</output>
                 {orderedChapters.length > 0 && (
-                  <div className={styles.videoChapterStatus}>
+                  <button
+                    type="button"
+                    className={styles.videoChapterStatus}
+                    data-open-chapters
+                    title="チャプター一覧を表示"
+                    onClick={openChapterList}
+                  >
                     <output data-current-chapter aria-live="polite">
                       {orderedChapters[0].title}
                     </output>
-                  </div>
+                  </button>
                 )}
               </div>
               <div className={styles.secondaryControls}>
@@ -392,11 +404,17 @@ export function TranscriptMediaPlayer({
                 音声を準備中
               </output>
               {orderedChapters.length > 0 && (
-                <div className={styles.audioChapterStatus}>
+                <button
+                  type="button"
+                  className={styles.audioChapterStatus}
+                  data-open-chapters
+                  title="チャプター一覧を表示"
+                  onClick={openChapterList}
+                >
                   <output data-current-chapter aria-live="polite">
                     {orderedChapters[0].title}
                   </output>
-                </div>
+                </button>
               )}
             </div>
             <div className={styles.audioControlRow}>
@@ -538,7 +556,7 @@ export function TranscriptRuntime({ turns }: Pick<TranscriptPlayerProps, "turns"
         data-transcript-timeline
         dangerouslySetInnerHTML={{ __html: compactTimeline }}
       />
-      <Script src="/transcript-player.js?v=20260930-1" strategy="afterInteractive" />
+      <Script src="/transcript-player.js?v=20260930-3" strategy="afterInteractive" />
     </>
   );
 }

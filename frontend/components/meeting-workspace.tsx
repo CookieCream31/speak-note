@@ -8,6 +8,7 @@ import {
 } from "@/lib/speaker-events";
 
 import {
+  OPEN_CHAPTERS_EVENT,
   TranscriptDocument,
   TranscriptMediaPlayer,
   TranscriptRuntime,
@@ -109,6 +110,15 @@ export function MeetingWorkspace({
 
   useEffect(() => {
     const openTranscript = () => setMediaView("transcript");
+    const openChapters = () => {
+      setMediaView("chapters");
+      // After the tab is shown, bring the playing chapter into view.
+      window.requestAnimationFrame(() => {
+        document
+          .querySelector("#meeting-media-panel-chapters [aria-current]")
+          ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      });
+    };
     const renameSpeaker = (event: Event) => {
       const detail = speakerRenamedDetail(event);
       if (!detail) return;
@@ -118,9 +128,11 @@ export function MeetingWorkspace({
       }));
     };
     window.addEventListener("speak-note:open-transcript", openTranscript);
+    window.addEventListener(OPEN_CHAPTERS_EVENT, openChapters);
     window.addEventListener(SPEAKER_RENAMED_EVENT, renameSpeaker);
     return () => {
       window.removeEventListener("speak-note:open-transcript", openTranscript);
+      window.removeEventListener(OPEN_CHAPTERS_EVENT, openChapters);
       window.removeEventListener(SPEAKER_RENAMED_EVENT, renameSpeaker);
     };
   }, []);
