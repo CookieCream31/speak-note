@@ -30,25 +30,32 @@ afterEach(() => {
 });
 async function choose(value: string) {
   await act(async () => {
-    const select = container.querySelector("select")!;
-    select.value = value;
-    select.dispatchEvent(new Event("change", { bubbles: true }));
+    container
+      .querySelector<HTMLButtonElement>(`button[data-theme-option="${value}"]`)!
+      .click();
   });
+}
+function pressed(scope: ParentNode = container) {
+  return [...scope.querySelectorAll('button[aria-pressed="true"]')].map(
+    (button) => button.getAttribute("data-theme-option"),
+  );
 }
 
 describe("ThemeSelector", () => {
-  it("exposes all three choices with an associated label", async () => {
+  it("exposes all three choices as labelled icon buttons in a named group", async () => {
     root = createRoot(container);
     await act(async () => root!.render(<ThemeSelector />));
-    const select = container.querySelector("select")!;
-    expect(container.querySelector("label")?.htmlFor).toBe(select.id);
-    expect(select.getAttribute("aria-label")).toBe("表示テーマ");
-    expect([...select.options].map((option) => option.text)).toEqual([
+    const group = container.querySelector('[role="group"]')!;
+    expect(group.getAttribute("aria-label")).toBe("表示テーマ");
+    const buttons = [...group.querySelectorAll("button")];
+    expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
       "システムに合わせる",
       "ライト",
       "ダーク",
     ]);
-    expect(select.value).toBe("system");
+    expect(buttons.every((button) => button.type === "button")).toBe(true);
+    expect(buttons.every((button) => button.querySelector("svg"))).toBe(true);
+    expect(pressed()).toEqual(["system"]);
   });
   it("changes all selectors together without remounting inputs or media or requesting the backend", async () => {
     const fetch = vi.fn();
@@ -70,9 +77,7 @@ describe("ThemeSelector", () => {
     audio.currentTime = 12;
     await choose("dark");
     expect(document.documentElement.dataset.theme).toBe("dark");
-    expect(
-      [...container.querySelectorAll("select")].map((select) => select.value),
-    ).toEqual(["dark", "dark"]);
+    expect(pressed()).toEqual(["dark", "dark"]);
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
     expect(container.querySelector("input")).toBe(input);
     expect(input.value).toBe("編集を続ける");
@@ -98,7 +103,7 @@ describe("ThemeSelector", () => {
       });
     });
     expect(recoverable).not.toHaveBeenCalled();
-    expect(container.querySelector("select")?.value).toBe("dark");
+    expect(pressed()).toEqual(["dark"]);
     expect(document.documentElement.dataset.theme).toBe("dark");
   });
 });

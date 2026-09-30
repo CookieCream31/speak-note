@@ -20,7 +20,7 @@ describe("themed error pages", () => {
         ),
       );
       expect(container.textContent).not.toContain("private detail");
-      expect(container.querySelector("select")).not.toBeNull();
+      expect(container.querySelector('[role="group"][aria-label="表示テーマ"]')).not.toBeNull();
       await act(async () => container.querySelector("button")!.click());
       expect(reset).toHaveBeenCalledOnce();
       expect(container.querySelector("a")?.getAttribute("href")).toBe("/");
@@ -37,7 +37,7 @@ describe("themed error pages", () => {
     try {
       await act(async () => root.render(<NotFound />));
       expect(container.textContent).toContain("ページが見つかりません");
-      expect(container.querySelector("select")).not.toBeNull();
+      expect(container.querySelector('[role="group"][aria-label="表示テーマ"]')).not.toBeNull();
     } finally {
       act(() => root.unmount());
       container.remove();
