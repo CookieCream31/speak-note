@@ -1,11 +1,12 @@
 "use client";
 
 import {
-  AudioLines, Folder, Hash, House, Inbox, List, Mic, MonitorUp, Search, SearchX, Sparkles, Star, StarOff, Upload, Video,
+  AudioLines, CircleAlert, Ellipsis, Folder, Hash, House, Inbox, Mic, MonitorUp, Plus, Search, SearchX, Sparkles, Star, Upload,
+  Video, X,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 
 import {
   bulkManageMeetingsAction,
@@ -114,6 +115,43 @@ function SourceIcon({ sourceType, size = 18 }: { sourceType: MeetingSourceType; 
   }
 }
 
+const processingStages = ["変換", "文字起こし", "AI解析"] as const;
+
+function processingStage(status: Meeting["status"]): number | null {
+  if (status === "uploading" || status === "preprocessing") return 0;
+  if (status === "queued" || status === "transcribing") return 1;
+  if (status === "analyzing") return 2;
+  return null;
+}
+
+const tokyoDateParts = new Intl.DateTimeFormat("en-CA", {
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+  timeZone: "Asia/Tokyo",
+});
+
+/** Days since 1970-01-01 on the Tokyo calendar, so server and browser group meetings alike. */
+function tokyoDayNumber(date: Date): number {
+  const parts = Object.fromEntries(
+    tokyoDateParts.formatToParts(date).map((part) => [part.type, part.value]),
+  );
+  return Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day)) / 86_400_000;
+}
+
+function meetingGroupLabel(isoDate: string, today: number): string {
+  const day = tokyoDayNumber(new Date(isoDate));
+  // 1970-01-01 was a Thursday; shift so Monday starts the week.
+  const weekStart = today - ((today + 3) % 7);
+  if (day >= weekStart) return "今週";
+  if (day >= weekStart - 7) return "先週";
+  const date = new Date(day * 86_400_000);
+  return `${date.getUTCFullYear()}年${date.getUTCMonth() + 1}月`;
+}
+
+const subscribeToNothing = () => () => {};
+const currentTokyoDay = () => tokyoDayNumber(new Date());
+
 function meetingStatusLabel(meeting: Meeting): string {
   return meeting.source_type === "audio_recording" && meeting.status === "recording"
     ? "録音中"
@@ -216,9 +254,14 @@ export function MeetingsManager({
     return () => window.removeEventListener("beforeunload", preventUnload);
   }, [createSource, creating]);
 
-  const completedCount = meetings.filter((meeting) => meeting.status === "completed").length;
-  const activeCount = meetings.filter((meeting) => activeStatuses.has(meeting.status)).length;
-  const failedCount = meetings.filter((meeting) => meeting.status === "failed").length;
+  const today = useSyncExternalStore(subscribeToNothing, currentTokyoDay, currentTokyoDay);
+  const attentionMeetings = meetings.filter((meeting) => (
+    activeStatuses.has(meeting.status) || meeting.status === "failed"
+  ));
+  const tagCounts = new Map<string, number>();
+  for (const meeting of meetings) {
+    for (const tag of meeting.tags) tagCounts.set(tag.id, (tagCounts.get(tag.id) ?? 0) + 1);
+  }
   const favoriteCount = meetings.filter((meeting) => meeting.is_favorite).length;
   const availableIds = new Set(meetings.map((meeting) => meeting.id));
   const selectedMeetingIds = [...selectedIds].filter((meetingId) => availableIds.has(meetingId));
@@ -607,11 +650,14 @@ export function MeetingsManager({
           <span>speak-note</span>
         </Link>
         <nav className={styles.navigation} aria-label="メインナビゲーション">
-          <Link className={recordView === "all" ? styles.activeNav : undefined} href="/">
-            <span aria-hidden="true"><House size={18} /></span> ホーム
-          </Link>
-          <button type="button" onClick={() => showRecords("all")}>
-            <span aria-hidden="true"><List size={18} /></span> すべての会議
+          <button
+            type="button"
+            className={recordView === "all" && !tagFilter ? styles.activeNav : undefined}
+            aria-current={recordView === "all" && !tagFilter ? "page" : undefined}
+            onClick={() => { setTagFilter(""); showRecords("all"); }}
+          >
+            <House size={18} aria-hidden="true" />
+            <span>すべての会議</span>
             <small>{meetings.length}</small>
           </button>
           <button
@@ -619,104 +665,137 @@ export function MeetingsManager({
             className={recordView === "favorites" ? styles.activeNav : undefined}
             onClick={() => showRecords("favorites")}
           >
-            <span aria-hidden="true"><Star size={18} /></span> お気に入り
+            <Star size={18} aria-hidden="true" />
+            <span>お気に入り</span>
             <small>{favoriteCount}</small>
           </button>
-          <button type="button" onClick={() => setTagDialogOpen(true)}>
-            <span aria-hidden="true"><Hash size={18} /></span> タグ
-            <small>{tags.length}</small>
-          </button>
           <Link href="/projects">
-            <span aria-hidden="true"><Folder size={18} /></span> プロジェクト
+            <Folder size={18} aria-hidden="true" />
+            <span>プロジェクト</span>
           </Link>
           <Link href="/settings/ai">
-            <span aria-hidden="true"><Sparkles size={18} /></span> AI設定
+            <Sparkles size={18} aria-hidden="true" />
+            <span>AI設定</span>
           </Link>
         </nav>
+        <section className={styles.sidebarTags} aria-label="タグ">
+          <div className={styles.sidebarTagsHeader}>
+            <span>タグ</span>
+            <button type="button" aria-label="タグ管理" onClick={() => setTagDialogOpen(true)}>管理</button>
+          </div>
+          {tags.length === 0 ? (
+            <small className={styles.sidebarTagsEmpty}>タグはまだありません</small>
+          ) : tags.map((tag) => (
+            <button
+              type="button"
+              key={tag.id}
+              className={tagFilter === tag.id ? styles.activeNav : undefined}
+              aria-pressed={tagFilter === tag.id}
+              onClick={() => {
+                setTagFilter(tagFilter === tag.id ? "" : tag.id);
+                showRecords(recordView);
+              }}
+            >
+              <Hash size={16} aria-hidden="true" />
+              <span>{tag.name}</span>
+              <small>{tagCounts.get(tag.id) ?? 0}</small>
+            </button>
+          ))}
+        </section>
         <div className={styles.sidebarStatus}>
-          <span>ワークスペース</span>
           <strong>Ubuntu Server</strong>
-          <small>Private · speak-note</small>
+          <small>ローカル ワークスペース · Private</small>
         </div>
       </aside>
 
       <div className={styles.main}>
         <header className={styles.topbar}>
-          <div>
-            <h1>ホーム</h1>
-          </div>
+          <h1>ホーム</h1>
           <div className={styles.topbarActions}>
-            <ThemeSelector />
             <label className={styles.globalSearch}>
-              <span aria-hidden="true"><Search size={16} /></span>
+              <Search size={16} aria-hidden="true" />
               <input
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="会議を検索"
+                placeholder="会議を検索（タイトル・タグ・状態）"
                 aria-label="会議を検索"
               />
             </label>
+            <ThemeSelector />
+            <button className={styles.primaryButton} type="button" onClick={() => openCreate("media_upload")}>
+              <Plus size={16} aria-hidden="true" />
+              新しい会議
+            </button>
           </div>
         </header>
 
-        <section className={styles.dashboard}>
-          <div className={styles.welcome}>
-            <div>
-              <h2>何を記録しますか？</h2>
-              <span>取り込み方法を選ぶと、会議を作成してすぐに開始できます。</span>
-            </div>
-            <div className={styles.quickActions}>
-              {sourceOptions.map((option) => (
-                <button type="button" key={option.value} onClick={() => openCreate(option.value)}>
-                  <span className={styles.sourceIcon} aria-hidden="true"><SourceIcon sourceType={option.value} /></span>
+        <section className={styles.dashboard} data-bulk-open={selectedMeetingIds.length > 0}>
+          <div className={styles.quickActions} role="group" aria-label="取り込み方法">
+            {sourceOptions.map((option) => (
+              <button type="button" key={option.value} onClick={() => openCreate(option.value)}>
+                <span className={styles.sourceIcon} aria-hidden="true"><SourceIcon sourceType={option.value} /></span>
+                <span>
                   <strong>{option.label}</strong>
                   <small>{option.description}</small>
-                  <i aria-hidden="true">→</i>
-                </button>
-              ))}
-            </div>
+                </span>
+              </button>
+            ))}
           </div>
 
-          <section className={styles.overview} aria-label="会議の概要">
-            <article>
-              <span>すべて</span>
-              <strong>{meetings.length}</strong>
-              <small>会議</small>
-            </article>
-            <article>
-              <span>お気に入り</span>
-              <strong>{favoriteCount}</strong>
-              <small>登録済み</small>
-            </article>
-            <article>
-              <span>処理中</span>
-              <strong>{activeCount}</strong>
-              <small>進行中</small>
-            </article>
-            <article>
-              <span>完了</span>
-              <strong>{completedCount}</strong>
-              <small>確認可能</small>
-            </article>
-            <article data-alert={failedCount > 0}>
-              <span>エラー</span>
-              <strong>{failedCount}</strong>
-              <small>要確認</small>
-            </article>
-          </section>
+          {attentionMeetings.length > 0 && (
+            <section className={styles.attention} aria-labelledby="attention-title">
+              <header>
+                <h2 id="attention-title">処理中・要確認</h2>
+                <span>{attentionMeetings.length}件</span>
+              </header>
+              {attentionMeetings.map((meeting) => {
+                const stage = processingStage(meeting.status);
+                return (
+                  <div className={styles.attentionRow} key={meeting.id} data-status={meeting.status}>
+                    <Link className={styles.attentionTitle} href={`/meetings/${meeting.id}`}>{meeting.title}</Link>
+                    {meeting.status === "failed" ? (
+                      <span className={styles.attentionNote}>処理状況とエラー詳細は会議画面で確認・再試行</span>
+                    ) : stage === null ? (
+                      <span />
+                    ) : (
+                      <div
+                        className={styles.stageBar}
+                        role="img"
+                        aria-label={`変換・文字起こし・AI解析のうち${processingStages[stage]}`}
+                      >
+                        {processingStages.map((label, index) => (
+                          <span key={label} data-state={index < stage ? "done" : index === stage ? "current" : "pending"} />
+                        ))}
+                      </div>
+                    )}
+                    <span className={styles.attentionStatus} data-status={meeting.status}>
+                      {meeting.status === "failed" && <CircleAlert size={14} aria-hidden="true" />}
+                      {meetingStatusLabel(meeting)}
+                    </span>
+                    <Link
+                      className={meeting.status === "failed" ? styles.attentionOpenButton : styles.attentionOpen}
+                      href={`/meetings/${meeting.id}`}
+                    >
+                      開く
+                    </Link>
+                  </div>
+                );
+              })}
+            </section>
+          )}
 
           <section className={styles.records} id="records" aria-labelledby="records-title">
             <header className={styles.recordsHeader}>
               <div>
-                <h2 id="records-title">最近の会議</h2>
-                <p>
-                  {recordView === "favorites"
-                    ? `${visibleMeetings.length}件のお気に入り`
-                    : query
-                      ? `${visibleMeetings.length}件の検索結果`
-                      : "作成した会議を開いて確認できます"}
-                </p>
+                <h2 id="records-title">会議</h2>
+                {(recordView === "favorites" || query || tagFilter) && (
+                  <p>
+                    {recordView === "favorites"
+                      ? `${visibleMeetings.length}件のお気に入り`
+                      : `${visibleMeetings.length}件`}
+                  </p>
+                )}
               </div>
               <div className={styles.recordsControls}>
                 <div className={styles.viewSwitch} role="group" aria-label="会議の表示範囲">
@@ -732,7 +811,7 @@ export function MeetingsManager({
                     aria-pressed={recordView === "favorites"}
                     onClick={() => setRecordView("favorites")}
                   >
-                    <Star size={14} aria-hidden="true" /> お気に入り
+                    お気に入り
                   </button>
                 </div>
                 <select
@@ -743,13 +822,6 @@ export function MeetingsManager({
                   <option value="">すべてのタグ</option>
                   {tags.map((tag) => <option key={tag.id} value={tag.id}># {tag.name}</option>)}
                 </select>
-                <button
-                  className={styles.manageTagsButton}
-                  type="button"
-                  onClick={() => setTagDialogOpen(true)}
-                >
-                  タグ管理
-                </button>
                 <select
                   value={sortMode}
                   onChange={(event) => setSortMode(event.target.value as SortMode)}
@@ -759,7 +831,9 @@ export function MeetingsManager({
                   <option value="oldest">古い順</option>
                   <option value="title">タイトル順</option>
                 </select>
-                <button type="button" onClick={() => openCreate("media_upload")}>＋ 新しい会議</button>
+                <button className={styles.manageTagsButton} type="button" onClick={() => setTagDialogOpen(true)}>
+                  タグ管理
+                </button>
               </div>
             </header>
 
@@ -768,72 +842,15 @@ export function MeetingsManager({
             {managementError && (
               <div className={styles.errorBanner} role="alert">{managementError}</div>
             )}
-            {selectedMeetingIds.length > 0 && (
-              <div className={styles.bulkToolbar} aria-label="選択した会議の一括操作">
-                <strong>{selectedMeetingIds.length}件を選択中</strong>
-                <select
-                  value={bulkTagId}
-                  onChange={(event) => setBulkTagId(event.target.value)}
-                  aria-label="一括操作するタグ"
-                >
-                  <option value="">タグを選択</option>
-                  {tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
-                </select>
-                <button
-                  type="button"
-                  disabled={managing || !bulkTagId}
-                  onClick={() => void runBulkAction("tag", bulkTagId)}
-                >
-                  <Hash size={14} aria-hidden="true" /> 追加
-                </button>
-                <button
-                  type="button"
-                  disabled={managing || !bulkTagId}
-                  onClick={() => void runBulkAction("untag", bulkTagId)}
-                >
-                  <Hash size={14} aria-hidden="true" /> 解除
-                </button>
-                <button
-                  type="button"
-                  disabled={managing}
-                  onClick={() => void runBulkAction("favorite")}
-                >
-                  <Star size={14} aria-hidden="true" /> お気に入り
-                </button>
-                <button
-                  type="button"
-                  disabled={managing}
-                  onClick={() => void runBulkAction("unfavorite")}
-                >
-                  <StarOff size={14} aria-hidden="true" /> 解除
-                </button>
-                <button
-                  className={styles.bulkDelete}
-                  type="button"
-                  disabled={managing}
-                  onClick={() => void runBulkAction("delete")}
-                >
-                  削除
-                </button>
-                <button
-                  className={styles.clearSelection}
-                  type="button"
-                  disabled={managing}
-                  onClick={() => setSelectedIds(new Set())}
-                >
-                  選択解除
-                </button>
-              </div>
-            )}
             {!loadError && meetings.length === 0 ? (
               <div className={styles.emptyState}>
-                <span aria-hidden="true"><Inbox size={32} /></span>
+                <Inbox size={32} aria-hidden="true" />
                 <h3>最初の会議を作成しましょう</h3>
                 <p>上の取り込み方法から音声・動画・画面共有を選択できます。</p>
               </div>
             ) : !loadError && visibleMeetings.length === 0 ? (
               <div className={styles.emptyState}>
-                <span aria-hidden="true">{recordView === "favorites" ? <Star size={32} /> : <SearchX size={32} />}</span>
+                {recordView === "favorites" ? <Star size={32} aria-hidden="true" /> : <SearchX size={32} aria-hidden="true" />}
                 <h3>
                   {recordView === "favorites" && !query
                     ? "お気に入りの会議はありません"
@@ -862,119 +879,189 @@ export function MeetingsManager({
                     />
                   </label>
                   <span>会議</span><span>作成日時</span><span>長さ</span><span>状態</span>
-                  <span>お気に入り</span><span />
+                  <span className={styles.visuallyHidden}>お気に入り</span><span />
                 </div>
-                {visibleMeetings.map((meeting) => (
-                  <article
-                    className={styles.record}
-                    key={meeting.id}
-                    data-selected={selectedIds.has(meeting.id)}
-                  >
-                    <label className={styles.selectionControl}>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(meeting.id)}
-                        onChange={() => toggleSelection(meeting.id)}
-                        aria-label={`${meeting.title}を選択`}
-                      />
-                    </label>
-                    <Link className={styles.recordMain} href={`/meetings/${meeting.id}`}>
-                      <span className={styles.recordIcon} aria-hidden="true">
-                        <SourceIcon sourceType={meeting.source_type} />
-                      </span>
-                      <span>
-                        <strong>{meeting.title}</strong>
-                        <span className={styles.recordMeta}>
-                          <small>{sourceLabels[meeting.source_type]}</small>
-                          {meeting.tags.map((tag) => (
-                            <span className={styles.tagChip} key={tag.id}># {tag.name}</span>
-                          ))}
+                {visibleMeetings.map((meeting, index) => {
+                  const group = sortMode === "title" ? null : meetingGroupLabel(meeting.created_at, today);
+                  const previous = visibleMeetings[index - 1];
+                  const showGroup = group !== null
+                    && (!previous || meetingGroupLabel(previous.created_at, today) !== group);
+                  return (
+                    <Fragment key={meeting.id}>
+                      {showGroup && <div className={styles.groupLabel}>{group}</div>}
+                      <article
+                        className={styles.record}
+                        data-selected={selectedIds.has(meeting.id)}
+                      >
+                        <label className={styles.selectionControl}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(meeting.id)}
+                            onChange={() => toggleSelection(meeting.id)}
+                            aria-label={`${meeting.title}を選択`}
+                          />
+                        </label>
+                        <Link className={styles.recordMain} href={`/meetings/${meeting.id}`}>
+                          <span className={styles.recordIcon} aria-hidden="true">
+                            <SourceIcon sourceType={meeting.source_type} size={16} />
+                          </span>
+                          <span>
+                            <strong>{meeting.title}</strong>
+                            <span className={styles.recordMeta}>
+                              <small>{sourceLabels[meeting.source_type]}</small>
+                              {meeting.tags.map((tag) => (
+                                <span className={styles.tagChip} key={tag.id}># {tag.name}</span>
+                              ))}
+                            </span>
+                          </span>
+                        </Link>
+                        <time dateTime={meeting.created_at}>{formatDate(meeting.created_at)}</time>
+                        <span className={styles.duration}>{formatDuration(meeting.duration_ms)}</span>
+                        <span className={styles.status} data-status={meeting.status}>
+                          {meetingStatusLabel(meeting)}
                         </span>
-                      </span>
-                    </Link>
-                    <time dateTime={meeting.created_at}>{formatDate(meeting.created_at)}</time>
-                    <span className={styles.duration}>{formatDuration(meeting.duration_ms)}</span>
-                    <span className={styles.status} data-status={meeting.status}>
-                      {meetingStatusLabel(meeting)}
-                    </span>
-                    <button
-                      className={styles.favoriteButton}
-                      type="button"
-                      data-active={meeting.is_favorite}
-                      disabled={managing}
-                      aria-pressed={meeting.is_favorite}
-                      aria-label={
-                        meeting.is_favorite
-                          ? `${meeting.title}のお気に入りを解除`
-                          : `${meeting.title}をお気に入りに追加`
-                      }
-                      title={meeting.is_favorite ? "お気に入りを解除" : "お気に入りに追加"}
-                      onClick={() => void updateFavorite(meeting)}
-                    >
-                      <span aria-hidden="true"><Star size={16} fill={meeting.is_favorite ? "currentColor" : "none"} /></span>
-                    </button>
-                    <details
-                      className={styles.recordMenu}
-                      data-record-menu="true"
-                      onToggle={(event) => {
-                        if (!event.currentTarget.open) return;
-                        document.querySelectorAll<HTMLDetailsElement>(
-                          "details[data-record-menu][open]",
-                        ).forEach((menu) => {
-                          if (menu !== event.currentTarget) menu.open = false;
-                        });
-                      }}
-                    >
-                      <summary aria-label={`${meeting.title}の操作`}>•••</summary>
-                      <div>
-                        <Link href={`/meetings/${meeting.id}`}>会議を開く</Link>
-                        <form action={updateMeetingTitleAction}>
-                          <input type="hidden" name="meeting_id" value={meeting.id} />
-                          <label>タイトル変更</label>
-                          <input name="title" defaultValue={meeting.title} maxLength={200} required />
-                          <button type="submit">保存</button>
-                        </form>
-                        <section className={styles.tagAssignments} aria-label="会議のタグ">
-                          <strong>タグ</strong>
-                          {tags.length > 0 ? (
-                            <div>
-                              {tags.map((tag) => {
-                                const assigned = meeting.tags.some((existing) => existing.id === tag.id);
-                                return (
-                                  <button
-                                    type="button"
-                                    key={tag.id}
-                                    data-active={assigned}
-                                    aria-pressed={assigned}
-                                    disabled={managing}
-                                    onClick={() => void toggleMeetingTag(meeting, tag)}
-                                  >
-                                    {assigned ? "✓" : "+"} {tag.name}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          ) : <small>タグはまだありません</small>}
-                        </section>
-                        <form
-                          action={deleteMeetingAction}
-                          onSubmit={(event) => {
-                            if (!window.confirm(`「${meeting.title}」を削除しますか？`)) {
-                              event.preventDefault();
-                            }
+                        <button
+                          className={styles.favoriteButton}
+                          type="button"
+                          data-active={meeting.is_favorite}
+                          disabled={managing}
+                          aria-pressed={meeting.is_favorite}
+                          aria-label={
+                            meeting.is_favorite
+                              ? `${meeting.title}のお気に入りを解除`
+                              : `${meeting.title}をお気に入りに追加`
+                          }
+                          title={meeting.is_favorite ? "お気に入りを解除" : "お気に入りに追加"}
+                          onClick={() => void updateFavorite(meeting)}
+                        >
+                          <Star size={16} fill={meeting.is_favorite ? "currentColor" : "none"} aria-hidden="true" />
+                        </button>
+                        <details
+                          className={styles.recordMenu}
+                          data-record-menu="true"
+                          onToggle={(event) => {
+                            if (!event.currentTarget.open) return;
+                            document.querySelectorAll<HTMLDetailsElement>(
+                              "details[data-record-menu][open]",
+                            ).forEach((menu) => {
+                              if (menu !== event.currentTarget) menu.open = false;
+                            });
                           }}
                         >
-                          <input type="hidden" name="meeting_id" value={meeting.id} />
-                          <button className={styles.deleteButton} type="submit">削除</button>
-                        </form>
-                      </div>
-                    </details>
-                  </article>
-                ))}
+                          <summary aria-label={`${meeting.title}の操作`}><Ellipsis size={16} aria-hidden="true" /></summary>
+                          <div>
+                            <Link href={`/meetings/${meeting.id}`}>会議を開く</Link>
+                            <form action={updateMeetingTitleAction}>
+                              <input type="hidden" name="meeting_id" value={meeting.id} />
+                              <label>タイトル変更</label>
+                              <input name="title" defaultValue={meeting.title} maxLength={200} required />
+                              <button type="submit">保存</button>
+                            </form>
+                            <section className={styles.tagAssignments} aria-label="会議のタグ">
+                              <strong>タグ</strong>
+                              {tags.length > 0 ? (
+                                <div>
+                                  {tags.map((tag) => {
+                                    const assigned = meeting.tags.some((existing) => existing.id === tag.id);
+                                    return (
+                                      <button
+                                        type="button"
+                                        key={tag.id}
+                                        data-active={assigned}
+                                        aria-pressed={assigned}
+                                        disabled={managing}
+                                        onClick={() => void toggleMeetingTag(meeting, tag)}
+                                      >
+                                        {assigned ? "✓" : "+"} {tag.name}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              ) : <small>タグはまだありません</small>}
+                            </section>
+                            <form
+                              action={deleteMeetingAction}
+                              onSubmit={(event) => {
+                                if (!window.confirm(`「${meeting.title}」を削除しますか？`)) {
+                                  event.preventDefault();
+                                }
+                              }}
+                            >
+                              <input type="hidden" name="meeting_id" value={meeting.id} />
+                              <button className={styles.deleteButton} type="submit">削除</button>
+                            </form>
+                          </div>
+                        </details>
+                      </article>
+                    </Fragment>
+                  );
+                })}
               </div>
             )}
           </section>
         </section>
+
+        {selectedMeetingIds.length > 0 && (
+          <div className={styles.bulkBar} role="toolbar" aria-label="選択した会議の一括操作">
+            <strong>{selectedMeetingIds.length}件を選択中</strong>
+            <select
+              value={bulkTagId}
+              onChange={(event) => setBulkTagId(event.target.value)}
+              aria-label="一括操作するタグ"
+            >
+              <option value="">タグを選択</option>
+              {tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
+            </select>
+            <button
+              type="button"
+              disabled={managing || !bulkTagId}
+              onClick={() => void runBulkAction("tag", bulkTagId)}
+            >
+              追加
+            </button>
+            <button
+              type="button"
+              disabled={managing || !bulkTagId}
+              onClick={() => void runBulkAction("untag", bulkTagId)}
+            >
+              解除
+            </button>
+            <span className={styles.bulkDivider} aria-hidden="true" />
+            <button
+              type="button"
+              disabled={managing}
+              onClick={() => void runBulkAction("favorite")}
+            >
+              お気に入り
+            </button>
+            <button
+              type="button"
+              disabled={managing}
+              onClick={() => void runBulkAction("unfavorite")}
+            >
+              お気に入り解除
+            </button>
+            <span className={styles.bulkDivider} aria-hidden="true" />
+            <button
+              className={styles.bulkDelete}
+              type="button"
+              disabled={managing}
+              onClick={() => void runBulkAction("delete")}
+            >
+              削除
+            </button>
+            <button
+              className={styles.clearSelection}
+              type="button"
+              disabled={managing}
+              aria-label="選択を解除"
+              title="選択を解除"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              <X size={16} aria-hidden="true" />
+            </button>
+          </div>
+        )}
       </div>
 
       {createOpen && (
