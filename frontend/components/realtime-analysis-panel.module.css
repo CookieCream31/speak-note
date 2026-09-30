@@ -21,13 +21,13 @@
 
 .panelHeader > div:first-child > span {
   color: var(--blue);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: .15em;
 }
 
 .panel h2 { margin: 4px 0 0; font-size: 20px; }
-.status { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 10px; font-weight: 800; }
+.status { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; font-weight: 800; }
 .status i { width: 8px; height: 8px; background: var(--line); border-radius: 50%; }
 .status[data-status="queued"] i, .status[data-status="processing"] i { background: var(--primary-bg); box-shadow: 0 0 0 4px var(--focus-ring); }
 .status[data-status="completed"] i { background: var(--success-solid); box-shadow: 0 0 0 4px var(--warning-ring); }
@@ -89,7 +89,7 @@
   color: var(--muted);
   background: var(--surface-hover);
   border-radius: 999px;
-  font-size: 8px;
+  font-size: 11px;
   line-height: 1;
 }
 
@@ -113,17 +113,17 @@
 .grid li { padding-top: 10px; border-top: 1px solid var(--line); }
 .grid li:first-child { padding-top: 0; border-top: 0; }
 .none { color: var(--text-subtle); }
-.badge, .alertBadge { display: inline-block; margin-top: 7px; padding: 3px 6px; color: var(--ink); background: var(--success-soft); border-radius: 4px; font-size: 8px; font-weight: 800; }
+.badge, .alertBadge { display: inline-block; margin-top: 7px; padding: 3px 6px; color: var(--ink); background: var(--success-soft); border-radius: 4px; font-size: 11px; font-weight: 800; }
 .alertBadge { margin-top: 0; color: var(--warning); background: var(--warning-soft); }
 .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
-.meta span { padding: 3px 6px; color: var(--muted); background: var(--surface-hover); border-radius: 4px; font-size: 9px; }
+.meta span { padding: 3px 6px; color: var(--muted); background: var(--surface-hover); border-radius: 4px; font-size: 12px; }
 .grid dl { display: grid; gap: 7px; margin: 9px 0 0; }
 .grid dl div { display: grid; gap: 2px; }
-.grid dt { color: var(--muted); font-size: 8px; font-weight: 800; }
-.grid dd { margin: 0; font-size: 10px; line-height: 1.55; }
+.grid dt { color: var(--muted); font-size: 11px; font-weight: 800; }
+.grid dd { margin: 0; font-size: 12px; line-height: 1.55; }
 .evidence { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
-.evidence button { padding: 3px 6px; color: var(--blue); background: var(--surface); border: 1px solid var(--blue-border); border-radius: 4px; cursor: pointer; font: 8px monospace; }
-.summaryPane > footer { margin-top: 12px; color: var(--text-subtle); font-size: 9px; }
+.evidence button { padding: 3px 6px; color: var(--blue); background: var(--surface); border: 1px solid var(--blue-border); border-radius: 4px; cursor: pointer; font: 11px var(--font-mono); }
+.summaryPane > footer { margin-top: 12px; color: var(--text-subtle); font-size: 12px; }
 
 .transcriptToolbar {
   min-height: 56px;
@@ -135,11 +135,11 @@
   color: var(--muted);
   background: var(--blue-soft);
   border-bottom: 1px solid var(--line);
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .transcriptToolbar > div { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; }
-.transcriptToolbar strong { color: var(--blue); font-size: 9px; letter-spacing: .12em; }
+.transcriptToolbar strong { color: var(--blue); font-size: 12px; letter-spacing: .12em; }
 .transcriptToolbar > span { white-space: nowrap; font-weight: 800; }
 .transcriptPane > .empty { margin: 22px; }
 .transcriptDocument { max-width: 1100px; margin: 0 auto; padding: 12px 22px 42px; }
@@ -154,9 +154,9 @@
 }
 
 .transcriptMeta { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding-top: 5px; }
-.transcriptMeta time { color: var(--blue); font: 700 12px monospace; }
+.transcriptMeta time { color: var(--blue); font: 700 12px var(--font-mono); }
 .transcriptMeta strong { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
-.transcriptMeta span { padding: 2px 5px; color: var(--muted); background: var(--surface-hover); border-radius: 4px; font-size: 8px; font-weight: 800; }
+.transcriptMeta span { padding: 2px 5px; color: var(--muted); background: var(--surface-hover); border-radius: 4px; font-size: 11px; font-weight: 800; }
 .transcriptText {
   margin: 0;
   color: var(--ink);
@@ -172,7 +172,7 @@
   .panel { width: calc(100% - 32px); margin: 0 16px 16px; }
   .panelHeader { min-height: 80px; padding: 16px; }
   .tabBar { display: grid; grid-template-columns: repeat(2, 1fr); padding: 0 8px; }
-  .tabButton { min-width: 0; padding: 0 5px; font-size: 10px; }
+  .tabButton { min-width: 0; padding: 0 5px; font-size: 12px; }
   .tabButton::after { right: 5px; left: 5px; }
   .summaryPane { padding: 16px; }
   .fetchError { margin: 16px 16px 0; }

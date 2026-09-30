@@ -1,6 +1,6 @@
 .recorder { display: flex; flex-direction: column; gap: 14px; }
 .microphoneOption { display: flex !important; align-items: center; gap: 8px; margin: 0 !important; }
-.microphoneHint { margin: 0; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.microphoneHint { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .previewFrame { position: relative; overflow: hidden; width: 100%; background: var(--media-surface); }
 .preview { display: block; width: 100%; max-height: 220px; background: var(--media-surface); }
 .elapsed { position: absolute; top: 10px; left: 10px; display: flex; align-items: center; gap: 7px; min-height: 30px; padding: 5px 10px; color: var(--media-text); background: var(--media-badge); border: 1px solid var(--media-line); border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; box-shadow: 0 2px 8px var(--shadow); backdrop-filter: blur(6px); }
@@ -12,7 +12,7 @@
 .displayStoppedIcon { width: 42px; height: 42px; display: grid; place-items: center; color: var(--on-primary); background: var(--primary-bg); border-radius: 50%; }
 .displayStoppedIcon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .displayStopped strong { font-size: 15px; }
-.displayStopped > span:last-child { max-width: 390px; color: var(--media-muted); font-size: 10px; line-height: 1.6; }
+.displayStopped > span:last-child { max-width: 390px; color: var(--media-muted); font-size: 12px; line-height: 1.6; }
 .recordingControls { width: 100%; display: flex; align-items: center; justify-content: center; gap: 14px; padding: 5px 0 3px; }
 .recordingControls button { min-height: 48px; margin-top: 0 !important; }
 button.iconButton { width: 48px !important; height: 48px; flex: 0 0 48px; display: grid; place-items: center; padding: 0 !important; color: var(--text-secondary) !important; background: var(--surface-hover) !important; border: 1px solid var(--line); border-radius: 50% !important; transition: color .15s ease, background-color .15s ease, border-color .15s ease, transform .15s ease; }
@@ -58,7 +58,7 @@ button.stopIconButton:hover { color: var(--on-primary) !important; background: v
   background: var(--warning-soft);
   border: 1px solid var(--warning-border);
   border-radius: 7px;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.6;
 }
 .preview { aspect-ratio: 16 / 9; object-fit: contain; }
@@ -66,9 +66,9 @@ button.stopIconButton:hover { color: var(--on-primary) !important; background: v
 @media (max-width: 520px) {
   .recorder { gap: 11px; }
   .preview { max-height: min(42dvh, 260px); }
-  .elapsed { top: 8px; left: 8px; font-size: 10px; }
+  .elapsed { top: 8px; left: 8px; font-size: 12px; }
   .displayStopped { gap: 6px; padding: 46px 15px 16px; }
-  .displayStopped > span:last-child { font-size: 9px; }
+  .displayStopped > span:last-child { font-size: 12px; }
   .finalProcessing button,
   .recorder > button { min-height: 44px; }
   .message, .warning, .error, .compatibility { overflow-wrap: anywhere; }

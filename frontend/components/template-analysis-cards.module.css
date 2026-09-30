@@ -7,10 +7,10 @@
 .row:first-child { padding-top: 0; border-top: 0; }
 .fields { display: grid; gap: 7px; margin: 0; }
 .field { display: grid; grid-template-columns: minmax(90px, .7fr) minmax(0, 1.3fr); gap: 4px 10px; align-items: baseline; }
-.field dt { color: var(--muted); font-size: 10px; font-weight: 800; }
+.field dt { color: var(--muted); font-size: 12px; font-weight: 800; }
 .field dd { margin: 0; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; white-space: pre-wrap; }
 .evidence { grid-column: 2; display: flex; flex-wrap: wrap; gap: 5px; }
-.evidence button { padding: 3px 6px; color: var(--blue); background: var(--surface); border: 1px solid var(--blue-border); border-radius: 4px; cursor: pointer; font-size: 9px; }
+.evidence button { padding: 3px 6px; color: var(--blue); background: var(--surface); border: 1px solid var(--blue-border); border-radius: 4px; cursor: pointer; font-size: 12px; }
 .empty { margin: 0; color: var(--text-subtle); font-size: 11px; }
 @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } .card { padding: 14px; } .summaryCard { grid-column: auto; } }
 

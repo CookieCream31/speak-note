@@ -24,7 +24,7 @@
   padding: 18px;
 }
 .playerHeading { display: flex; align-items: center; white-space: nowrap; }
-.playerHeading > span { color: var(--media-accent); font-size: 9px; font-weight: 800; letter-spacing: .16em; }
+.playerHeading > span { color: var(--media-accent); font-size: 12px; font-weight: 800; letter-spacing: .16em; }
 .mediaDownloadButton {
   align-self: center;
   justify-self: end;
@@ -36,7 +36,7 @@
   color: var(--on-primary);
   background: var(--primary-bg);
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   text-decoration: none;
 }
@@ -391,7 +391,7 @@
   position: relative;
   isolation: isolate;
   border-radius: 8px;
-  font: 900 10px/1 Arial, sans-serif;
+  font: 900 12px/1 Arial, sans-serif;
 }
 .subtitleToggle::before {
   position: absolute;
@@ -413,7 +413,7 @@
 .mediaTime {
   color: var(--media-text);
   white-space: nowrap;
-  font: 700 12px/1 monospace;
+  font: 700 12px/1 var(--font-mono);
   text-shadow: 0 1px 3px var(--media-black);
 }
 .videoControls .mediaTime {
@@ -444,7 +444,7 @@
 .videoChapterStatus > span {
   flex: 0 0 auto;
   color: var(--media-accent);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: .14em;
 }
@@ -483,7 +483,7 @@
 .chapterStatus > span {
   flex: 0 0 auto;
   color: var(--media-accent);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: .16em;
 }
@@ -561,8 +561,8 @@
   transform-origin: bottom center;
   pointer-events: none;
 }
-.chapterTooltip strong { display: block; overflow-wrap: anywhere; font-size: 10px; }
-.chapterTooltip small { display: block; margin-top: 2px; color: var(--media-accent); font: 700 9px monospace; }
+.chapterTooltip strong { display: block; overflow-wrap: anywhere; font-size: 12px; }
+.chapterTooltip small { display: block; margin-top: 2px; color: var(--media-accent); font: 700 12px var(--font-mono); }
 .videoControls .chapterTooltip {
   bottom: calc(100% + 13px);
   background: var(--media-tooltip);
@@ -578,7 +578,7 @@
   transform: scaleY(.645);
 }
 .chapterSegment:hover .chapterTooltip { display: block; }
-.followStatus { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); white-space: nowrap; font-size: 10px; font-weight: 700; }
+.followStatus { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); white-space: nowrap; font-size: 12px; font-weight: 700; }
 .followStatus i { width: 7px; height: 7px; background: var(--success-solid); border-radius: 50%; }
 .document { max-width: 980px; margin: 0 auto; padding: 10px 0 34px; }
 .turn {
@@ -590,7 +590,7 @@
 }
 .meta { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding-top: 5px; }
 .meta > strong { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
-.timestamp { padding: 0; color: var(--blue); background: none; border: 0; cursor: pointer; font: 700 12px monospace; }
+.timestamp { padding: 0; color: var(--blue); background: none; border: 0; cursor: pointer; font: 700 12px var(--font-mono); }
 .timestamp:hover:not(:disabled) { text-decoration: underline; text-underline-offset: 3px; }
 .timestamp:disabled { cursor: default; opacity: .7; }
 .transcriptText {
@@ -602,7 +602,7 @@
   border: 0;
   cursor: pointer;
   text-align: left;
-  font-family: Georgia, "Yu Mincho", serif;
+  font-family: var(--font-sans);
   font-size: clamp(18px, 1.7vw, 23px);
   line-height: 1.95;
   letter-spacing: .015em;
@@ -644,7 +644,7 @@
   .videoVolumeButton { flex-basis: 32px; width: 32px; height: 32px; }
   .videoVolumeIcon,
   .videoVolumeIcon svg { width: 21px; height: 21px; }
-  .videoControls .mediaTime { height: 34px; padding: 0 9px; font-size: 9px; }
+  .videoControls .mediaTime { height: 34px; padding: 0 9px; font-size: 12px; }
   .videoChapterStatus { display: none; }
   .turn { grid-template-columns: 1fr; gap: 8px; margin: 0; padding: 18px 0; }
   .meta { display: grid; grid-template-columns: auto 1fr; align-items: center; }
@@ -729,8 +729,8 @@
   justify-content: space-between;
   gap: 14px;
 }
-.audioTimeRow .mediaTime { color: var(--muted); font-size: 10px; text-shadow: none; }
-.audioStatus { flex: 1; overflow: hidden; color: var(--muted); font-size: 9px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.audioTimeRow .mediaTime { color: var(--muted); font-size: 12px; text-shadow: none; }
+.audioStatus { flex: 1; overflow: hidden; color: var(--muted); font-size: 12px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .audioChapterStatus {
   min-width: 0;
   display: flex;
@@ -738,12 +738,12 @@
   justify-content: flex-end;
   gap: 7px;
 }
-.audioChapterStatus > span { color: var(--blue); font-size: 8px; font-weight: 900; letter-spacing: .13em; }
+.audioChapterStatus > span { color: var(--blue); font-size: 11px; font-weight: 900; letter-spacing: .13em; }
 .audioChapterStatus output {
   max-width: min(480px, 50vw);
   overflow: hidden;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -764,7 +764,7 @@
   border: 1px solid var(--control-border);
   border-radius: 999px;
   cursor: pointer;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
 }
 .playbackRate.videoPlaybackRate {
@@ -788,7 +788,7 @@
   height: 100%;
   display: grid;
   place-items: center;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   line-height: 1;
   white-space: nowrap;
@@ -830,7 +830,7 @@
   background: transparent;
   border-radius: 999px;
 }
-.audioUtilityButton span { font-size: 8px; }
+.audioUtilityButton span { font-size: 11px; }
 .audioUtilityButton:hover { background: var(--blue-soft-hover); }
 .audioDownloadButton {
   display: inline-flex;
@@ -891,7 +891,7 @@
   .controlButton { width: 32px; height: 32px; }
   .videoVolumeControl { width: 32px; height: 32px; }
   .videoVolumeButton { flex-basis: 30px; width: 30px; height: 30px; }
-  .videoControls .mediaTime { height: 32px; padding: 0 7px; font-size: 8px; }
+  .videoControls .mediaTime { height: 32px; padding: 0 7px; font-size: 11px; }
   .playbackRate.videoPlaybackRate { min-width: 32px; height: 32px; padding: 0 6px; }
   .secondaryButtonGroup { padding: 1px 3px; }
   .secondaryButtonGroup .controlButton { width: 28px; height: 28px; }
@@ -912,8 +912,8 @@
 }
 
 @media (max-width: 360px) {
-  .videoControls .mediaTime { padding: 0 5px; font-size: 7px; }
+  .videoControls .mediaTime { padding: 0 5px; font-size: 11px; }
   .secondaryButtonGroup .controlButton { width: 26px; }
-  .subtitleToggle { font-size: 9px; }
+  .subtitleToggle { font-size: 12px; }
   .audioDownloadButton { display: none; }
 }

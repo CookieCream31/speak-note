@@ -32,7 +32,7 @@
 }
 .profileInfo { flex: 1; min-width: 0; }
 .name { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; font-size: 14px; font-weight: 650; overflow-wrap: anywhere; }
-.badge { padding: 3px 8px; color: var(--blue); background: var(--blue-soft); border-radius: 6px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+.badge { padding: 3px 8px; color: var(--blue); background: var(--blue-soft); border-radius: 6px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .meta { display: block; margin-top: 6px; color: var(--muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 .editHint { color: var(--muted); font-size: 11px; flex-shrink: 0; }
 .chevron { flex-shrink: 0; color: var(--text-subtle); transition: transform .15s; }

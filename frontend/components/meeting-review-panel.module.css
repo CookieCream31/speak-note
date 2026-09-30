@@ -1,8 +1,8 @@
 .panel { min-width: 0; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 0 0 11px 11px; }
 .heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 18px; border-bottom: 1px solid var(--line); }
-.heading p { margin: 0 0 5px; color: var(--blue); font-size: 9px; font-weight: 900; letter-spacing: .17em; }
-.heading h2 { margin: 0; font: 600 21px/1.1 Inter, "Yu Gothic", sans-serif; }
-.heading > span { max-width: 130px; overflow: hidden; color: var(--muted); font: 9px/1.4 monospace; text-overflow: ellipsis; white-space: nowrap; }
+.heading p { margin: 0 0 5px; color: var(--blue); font-size: 12px; font-weight: 900; letter-spacing: .17em; }
+.heading h2 { margin: 0; font: 600 18px/1.2 var(--font-sans); }
+.heading > span { max-width: 130px; overflow: hidden; color: var(--muted); font: 12px/1.4 var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
 .notice { margin: 14px 14px 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
 .message, .error { margin: 12px 14px 0; padding: 10px; font-size: 11px; font-weight: 800; line-height: 1.5; }
 .message { color: var(--success); background: var(--success-soft); }
@@ -10,7 +10,7 @@
 .generate { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; padding: 14px; }
 .generate select, .versionPicker select, .analysisItem textarea, .analysisItem input { min-height: 38px; padding: 8px 9px; color: var(--ink); background: var(--blue-soft); border: 1px solid var(--line); border-radius: 6px; }
 .generate button, .reviewControls button, .editActions button { padding: 8px 12px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 800; }
-.versionPicker { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; padding: 0 14px 14px; color: var(--muted); font-size: 10px; font-weight: 800; }
+.versionPicker { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; padding: 0 14px 14px; color: var(--muted); font-size: 12px; font-weight: 800; }
 .reviewControls { display: grid; grid-template-columns: .6fr 1.4fr; gap: 7px; padding: 0 14px 14px; }
 .reviewControls button:first-child { color: var(--ink); background: var(--surface-hover); }
 .empty { display: grid; gap: 5px; margin: 0 14px 14px; padding: 28px 16px; color: var(--muted); text-align: center; background: var(--blue-soft); border: 1px dashed var(--line); border-radius: 7px; }
@@ -57,26 +57,26 @@
 .analysisItem:last-child { padding-bottom: 0; }
 .none { margin: 0; color: var(--text-subtle); font-size: 11px; }
 .itemMeta { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 9px; }
-.itemMeta > span { padding: 3px 6px; color: var(--muted); background: var(--surface-hover); border-radius: 999px; font-size: 8px; font-weight: 800; }
+.itemMeta > span { padding: 3px 6px; color: var(--muted); background: var(--surface-hover); border-radius: 999px; font-size: 11px; font-weight: 800; }
 .itemMeta > span[data-state="confirmed"] { color: var(--success); background: var(--success-soft); }
 .itemMeta button, .itemActions button, .evidence button { color: inherit; background: transparent; border: 0; cursor: pointer; }
-.itemMeta button { color: var(--blue); font: 700 10px monospace; }
-.itemContent { margin: 0; white-space: pre-wrap; font: 14px/1.75 Georgia, "Yu Mincho", serif; overflow-wrap: anywhere; }
+.itemMeta button { color: var(--blue); font: 700 12px var(--font-mono); }
+.itemContent { margin: 0; white-space: pre-wrap; font: 14px/1.75 var(--font-sans); overflow-wrap: anywhere; }
 .analysisItem form { display: grid; gap: 8px; }
-.analysisItem textarea { width: 100%; resize: vertical; font: 13px/1.65 Georgia, "Yu Mincho", serif; }
+.analysisItem textarea { width: 100%; resize: vertical; font: 13px/1.65 var(--font-sans); }
 .actionFields { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
-.actionMeta { display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; margin: 10px 0 0; font-size: 10px; }
+.actionMeta { display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; margin: 10px 0 0; font-size: 12px; }
 .actionMeta dt { color: var(--muted); }
 .actionMeta dd { margin: 0; font-weight: 700; }
 .itemActions, .editActions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
-.itemActions button { padding: 4px 0; color: var(--muted); border-bottom: 1px solid; font-size: 9px; font-weight: 800; }
+.itemActions button { padding: 4px 0; color: var(--muted); border-bottom: 1px solid; font-size: 12px; font-weight: 800; }
 .itemActions button:last-child { color: var(--success); }
 .editActions button:last-child { color: var(--ink); background: var(--surface-hover); }
 .evidence { margin-top: 12px; }
-.evidence summary { color: var(--muted); cursor: pointer; font-size: 9px; font-weight: 700; }
+.evidence summary { color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 700; }
 .evidence button { width: 100%; display: flex; flex-direction: column; gap: 4px; padding: 9px 0; text-align: left; border-bottom: 1px solid var(--control-border); }
-.evidence button strong { color: var(--blue); font-size: 9px; }
-.evidence button span { color: var(--muted); font-size: 10px; line-height: 1.55; }
+.evidence button strong { color: var(--blue); font-size: 12px; }
+.evidence button span { color: var(--muted); font-size: 12px; line-height: 1.55; }
 @media (max-width: 1180px) {
   .heading { padding: 15px; }
   .analysisGrid { padding: 12px; }

@@ -65,7 +65,7 @@ describe("application theme coverage", () => {
       );
       for (const match of css.matchAll(/var\(--([\w-]+)/g)) {
         if (
-          /^(?:player-video-height|video-aspect|settings-width|meeting-header-height)$/.test(
+          /^(?:player-video-height|video-aspect|settings-width|meeting-header-height|font-(?:sans|mono|geist|geist-mono|noto-sans-jp))$/.test(
             match[1],
           )
         )

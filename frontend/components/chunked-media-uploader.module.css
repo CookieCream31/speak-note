@@ -1,9 +1,9 @@
 .uploader { display: grid; gap: 10px; }
 .uploader label { margin: 0; }
 .uploader input { min-width: 0; }
-.hint { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.hint { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .progress { display: grid; gap: 6px; }
-.progress > div { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 10px; }
+.progress > div { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 12px; }
 .progress strong { color: var(--blue); }
 .progress progress { width: 100%; height: 7px; accent-color: var(--primary-bg); }
 .error {
@@ -12,7 +12,7 @@
   color: var(--danger);
   background: var(--danger-soft);
   border-radius: 6px;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.55;
 }
 .uploader button:disabled { cursor: not-allowed; opacity: .5; }
