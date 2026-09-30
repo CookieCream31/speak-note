@@ -83,12 +83,12 @@ describe("application theme coverage", () => {
     for (const path of sources) {
       const allowed =
         path === resolve(root, "lib/theme.ts")
-          ? ["#11151c", "#f6f7f9"]
+          ? ["#09090b", "#fafafa"]
           : [
                 resolve(root, "app/layout.tsx"),
                 resolve(root, "app/global-error.tsx"),
               ].includes(path)
-            ? ["#f6f7f9"]
+            ? ["#fafafa"]
             : [];
       for (const match of readFileSync(path, "utf8").matchAll(
         /#[\da-fA-F]{3,8}\b|rgba?\([^)]*\)/g,

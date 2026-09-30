@@ -11,7 +11,7 @@ beforeEach(async () => {
   vi.resetModules();
   localStorage.clear();
   document.documentElement.removeAttribute("data-theme");
-  document.head.innerHTML = '<meta name="theme-color" content="#f6f7f9">';
+  document.head.innerHTML = '<meta name="theme-color" content="#fafafa">';
   dark = false;
   changes = new Set();
   vi.stubGlobal(
@@ -76,7 +76,7 @@ describe("theme preference", () => {
       document
         .querySelector('meta[name="theme-color"]')
         ?.getAttribute("content"),
-    ).toBe("#11151c");
+    ).toBe("#09090b");
   });
   it.each(["light", "dark"] as const)(
     "uses saved %s before first paint and after subscription",

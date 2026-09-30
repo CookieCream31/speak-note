@@ -9,7 +9,7 @@
 .elapsed[data-display-interrupted="true"] i { background: var(--warning-solid); box-shadow: 0 0 0 4px var(--warning-ring); }
 .elapsed time { min-width: 3.6em; text-align: right; }
 .displayStopped { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 8px; padding: 54px 24px 22px; color: var(--media-text); text-align: center; background: var(--media-blocker); backdrop-filter: blur(5px); }
-.displayStoppedIcon { width: 42px; height: 42px; display: grid; place-items: center; color: var(--media-text); background: var(--primary-bg); border-radius: 50%; }
+.displayStoppedIcon { width: 42px; height: 42px; display: grid; place-items: center; color: var(--on-primary); background: var(--primary-bg); border-radius: 50%; }
 .displayStoppedIcon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .displayStopped strong { font-size: 15px; }
 .displayStopped > span:last-child { max-width: 390px; color: var(--media-muted); font-size: 10px; line-height: 1.6; }
@@ -75,7 +75,7 @@ button.stopIconButton:hover { color: var(--on-primary) !important; background: v
 }
 .previewFrame[data-audio-only="true"] { min-height: 210px; background: linear-gradient(145deg, var(--media-surface), var(--media-raised)); }
 .audioPreview { min-height: 210px; display: grid; place-items: center; align-content: center; gap: 10px; padding: 50px 20px 24px; color: var(--media-text); text-align: center; }
-.audioPreviewIcon { width: 64px; height: 64px; display: grid; place-items: center; color: var(--media-text); background: var(--primary-bg); border-radius: 50%; box-shadow: 0 12px 30px var(--focus-ring); }
+.audioPreviewIcon { width: 64px; height: 64px; display: grid; place-items: center; color: var(--on-primary); background: var(--primary-bg); border-radius: 50%; box-shadow: 0 12px 30px var(--focus-ring); }
 .audioPreviewIcon[data-muted="true"] { background: var(--danger-solid); }
 .audioPreviewIcon svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .audioPreview strong { font-size: 16px; }

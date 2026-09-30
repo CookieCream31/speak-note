@@ -21,7 +21,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
   return (
     <html lang="ja" suppressHydrationWarning>
       <head>
-        <meta name="theme-color" content="#f6f7f9" />
+        <meta name="theme-color" content="#fafafa" />
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
       </head>
       <body>{children}</body>

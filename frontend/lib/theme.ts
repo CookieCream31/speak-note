@@ -21,7 +21,7 @@ function applyTheme(preference: ThemePreference, systemDark: boolean) {
   document.documentElement.style.colorScheme = theme;
   document
     .querySelector('meta[name="theme-color"]')
-    ?.setAttribute("content", theme === "dark" ? "#11151c" : "#f6f7f9");
+    ?.setAttribute("content", theme === "dark" ? "#09090b" : "#fafafa");
 }
 
 function readPreference(): ThemePreference {
@@ -105,5 +105,5 @@ export const THEME_BOOTSTRAP_SCRIPT = `(() => {
   root.dataset.themePreference = preference;
   root.style.colorScheme = theme;
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", theme === "dark" ? "#11151c" : "#f6f7f9");
+  if (meta) meta.setAttribute("content", theme === "dark" ? "#09090b" : "#fafafa");
 })();`;

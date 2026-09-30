@@ -214,7 +214,7 @@
 }
 
 .tab:hover {
-  color: var(--blue);
+  color: var(--ink);
   background: var(--blue-soft-hover);
 }
 
@@ -286,7 +286,7 @@
 }
 
 .orderButton:hover {
-  color: var(--blue);
+  color: var(--ink);
   background: var(--blue-soft-hover);
 }
 
