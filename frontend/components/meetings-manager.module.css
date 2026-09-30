@@ -148,64 +148,100 @@
 .bulkDivider { width: 1px; height: 20px; margin: 0 4px; flex: 0 0 auto; background: var(--primary-hover); }
 
 /* Dialogs (new meeting / tags) */
-.overlay { position: fixed; inset: 0; z-index: 100; display: grid; padding: 24px; place-items: center; background: var(--overlay); backdrop-filter: blur(5px); }
-.createDialog { width: min(680px, 100%); max-height: calc(100vh - 48px); overflow: auto; color: var(--ink); background: var(--surface); border-radius: 12px; box-shadow: 0 25px 80px var(--shadow-strong); }
-.createDialog > header { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 19px 22px; border-bottom: 1px solid var(--line); }
+.overlay { position: fixed; inset: 0; z-index: 100; display: grid; padding: 24px; place-items: center; background: var(--overlay); backdrop-filter: blur(4px); }
+.createDialog { width: min(560px, 100%); max-height: calc(100dvh - 48px); display: flex; flex-direction: column; overflow: hidden; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 24px 64px var(--shadow-strong); }
+.createDialog > header { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 24px 16px; }
 .createDialog h2 { margin: 0; font-size: 18px; font-weight: 600; }
-.createDialog header button { width: 34px; height: 34px; color: var(--text-secondary); background: var(--surface-hover); border: 0; border-radius: 50%; cursor: pointer; font-size: 20px; }
-.createDialog > form { display: grid; gap: 10px; padding: 22px; }
-.createDialog fieldset { margin: 0 0 10px; }
-.createDialog legend, .createDialog form > label { margin-bottom: 8px; font-size: 12px; font-weight: 800; }
-.sourcePicker { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
-.sourcePicker label { position: relative; display: grid; place-items: center; align-content: center; gap: 7px; min-height: 88px; padding: 10px; color: var(--muted); text-align: center; background: var(--blue-soft); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
-.sourcePicker label[data-selected="true"] { color: var(--blue); background: var(--blue-soft); border-color: var(--focus); box-shadow: 0 0 0 2px var(--focus-ring); }
-.sourcePicker input { position: absolute; opacity: 0; pointer-events: none; }
-.sourcePicker span { font-size: 18px; }
-.sourcePicker strong { font-size: 12px; }
-.captureSetup { display: grid; gap: 8px; margin: 0 0 10px; padding: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
-.captureSetup > label { margin: 0; color: var(--ink); font-size: 12px; font-weight: 800; }
-.captureSetup > input[type="file"] { width: 100%; min-width: 0; padding: 9px; color: var(--text-secondary); background: var(--surface); border: 1px solid var(--control-border); border-radius: 8px; font-size: 12px; }
-.captureSetup > p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
-.displaySelectButton { min-height: 42px; padding: 0 14px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 800; }
-.displaySelectButton:disabled { cursor: wait; opacity: .55; }
-.captureSetup > .selectedCapture { padding: 8px 10px; color: var(--success); background: var(--success-soft); border-radius: 8px; font-weight: 800; overflow-wrap: anywhere; }
-.createMicrophoneOption { display: flex !important; align-items: center; gap: 8px; margin: 2px 0 0 !important; color: var(--ink) !important; }
-.createMicrophoneOption input { width: 16px; height: 16px; accent-color: var(--primary-bg); }
-.createProgress { display: grid; gap: 6px; padding: 10px 12px; background: var(--blue-soft); border-radius: 8px; }
-.createProgress > div { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 12px; }
-.createProgress strong { color: var(--blue); }
-.createProgress progress { width: 100%; height: 7px; accent-color: var(--primary-bg); }
+.createDialog header button { width: 32px; height: 32px; display: grid; place-items: center; color: var(--muted); background: transparent; border: 0; border-radius: 8px; cursor: pointer; }
+.createDialog header button:hover { color: var(--ink); background: var(--surface-hover); }
+.createDialog > form:not(.tagCreateForm) { min-height: 0; flex: 1 1 auto; display: flex; flex-direction: column; }
+.dialogBody { min-height: 0; flex: 1 1 auto; display: grid; gap: 18px; padding: 0 24px 20px; overflow-y: auto; }
+.createDialog fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.createDialog legend { padding: 0 0 8px; font-size: 13px; font-weight: 500; }
 
-.createDialog form > input { width: 100%; min-height: 44px; padding: 0 12px; color: var(--ink); border: 1px solid var(--control-border); border-radius: 8px; }
-.createDialog form > input:focus { border-color: var(--focus); outline: 3px solid var(--focus-ring); }
-.createDialog .summaryPreferences { margin: 6px 0 2px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; }
-.summaryPreferences { display: grid; gap: 11px; }
-.autoAnalyzeOption { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px; padding: 11px; background: var(--blue-soft); border: 1px solid var(--blue-border); border-radius: 8px; }
-.autoAnalyzeOption input { width: 17px; height: 17px; margin: 0; accent-color: var(--primary-bg); }
-.autoAnalyzeOption > span { display: grid; gap: 3px; }
-.summaryPreferences .autoAnalyzeOption strong { color: var(--ink); font-size: 12px; }
-.summaryPreferences .autoAnalyzeOption small { color: var(--muted); font-size: 12px; font-weight: 500; }
-.inlineWarning { padding: 9px 10px; color: var(--warning) !important; background: var(--warning-soft); border-radius: 8px; font-weight: 700; }
+/* Capture method: three selectable cards; the chosen one gets a dark border. */
+.sourcePicker { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.sourcePicker label { position: relative; display: grid; justify-items: start; gap: 8px; padding: 12px; color: var(--ink); background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; cursor: pointer; }
+.sourcePicker label:hover { background: var(--surface-hover); }
+.sourcePicker label[data-selected="true"] { background: var(--surface-hover); border-color: var(--ink); }
+.sourcePicker label:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.sourcePicker input { position: absolute; opacity: 0; pointer-events: none; }
+.sourcePicker span { display: inline-flex; color: var(--text-secondary); }
+.sourcePicker strong { font-size: 13px; font-weight: 500; }
+
+.fileDrop { position: relative; display: flex; align-items: center; gap: 14px; padding: 16px; background: var(--paper); border: 1.5px dashed var(--blue-border); border-radius: 12px; cursor: pointer; }
+.fileDrop:hover { border-color: var(--control-border); }
+.fileDrop:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.fileDrop[data-selected="true"] { border-style: solid; }
+.fileDropIcon { width: 40px; height: 40px; display: grid; place-items: center; flex: 0 0 auto; color: var(--text-secondary); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.fileDropText { min-width: 0; display: grid; gap: 3px; }
+.fileDropText strong { overflow: hidden; font-size: 14px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.fileDropText small { color: var(--muted); font-size: 12px; line-height: 1.5; }
+/* Keep the native input focusable and able to show validation, but invisible. */
+.fileDrop input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.captureNote { margin: 0; padding: 14px 16px; color: var(--text-secondary); background: var(--paper); border-radius: 12px; font-size: 13px; line-height: 1.6; }
+.captureSetup { display: grid; gap: 10px; }
+.captureSetup > p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.displaySelectButton { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 14px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; font-size: 14px; font-weight: 500; }
+.displaySelectButton:hover { background: var(--surface-hover); }
+.displaySelectButton:disabled { cursor: wait; opacity: .55; }
+.captureSetup > .selectedCapture { display: flex; align-items: center; gap: 6px; color: var(--blue); font-size: 13px; overflow-wrap: anywhere; }
+
+.field { min-width: 0; display: grid; gap: 6px; }
+.field > label { font-size: 13px; font-weight: 500; }
+.fieldGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+/* While a new project is being created, give the inline form the full width. */
+.fieldGrid > :has(> [id="new-meeting-project-editor"]) { grid-column: 1 / -1; }
+.field > input, .field > select { width: 100%; min-width: 0; min-height: 40px; padding: 0 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 14px; }
+.field > input:focus, .field > select:focus-visible { border-color: var(--focus); outline: 3px solid var(--focus-ring); }
+.field > select:disabled { cursor: not-allowed; opacity: .55; }
+
+.createProgress { display: grid; gap: 6px; padding: 10px 12px; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; }
+.createProgress > div { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 12px; }
+.createProgress strong { color: var(--blue); font-family: var(--font-mono); }
+.createProgress progress { width: 100%; height: 6px; accent-color: var(--primary-bg); }
+
+.createDialog .summaryPreferences { padding: 14px; border: 1px solid var(--line); border-radius: 12px; }
+.summaryPreferences { display: grid; gap: 12px; }
+.autoAnalyzeOption { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.autoAnalyzeOption > span { min-width: 0; flex: 1; display: grid; gap: 2px; }
+.summaryPreferences .autoAnalyzeOption strong { color: var(--ink); font-size: 14px; font-weight: 500; }
+.summaryPreferences .autoAnalyzeOption small { color: var(--muted); font-size: 12px; }
+/* The checkbox is drawn as a switch; it stays a native, form-submitted input. */
+.autoAnalyzeOption input { position: relative; width: 40px; height: 24px; flex: 0 0 auto; margin: 0; background: var(--control-border); border-radius: 999px; cursor: pointer; appearance: none; transition: background-color .15s; }
+.autoAnalyzeOption input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background: var(--surface); border-radius: 50%; transition: transform .15s; }
+.autoAnalyzeOption input:checked { background: var(--blue); }
+.autoAnalyzeOption input:checked::after { transform: translateX(16px); }
+.autoAnalyzeOption input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.autoAnalyzeOption input:disabled { cursor: not-allowed; opacity: .55; }
+.inlineWarning { margin: 0; padding: 9px 10px; color: var(--warning) !important; background: var(--warning-soft); border-radius: 8px; font-size: 13px; }
 .summaryPreferences label { display: grid; gap: 6px; margin: 0; }
-.summaryPreferences label span { color: var(--text-secondary); font-size: 12px; font-weight: 800; }
-.summaryPreferences select, .summaryPreferences textarea { width: 100%; padding: 9px 10px; color: var(--ink); background: var(--blue-soft); border: 1px solid var(--control-border); border-radius: 8px; font: inherit; font-size: 12px; }
-.summaryPreferences select { min-height: 40px; }
-.summaryPreferences textarea { min-height: 82px; resize: vertical; line-height: 1.55; }
+.summaryPreferences label:not(.autoAnalyzeOption) > span { color: var(--muted); font-size: 12px; }
+.summaryPreferences select, .summaryPreferences textarea { width: 100%; padding: 0 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 14px; }
+.summaryPreferences select { min-height: 38px; }
+.summaryPreferences textarea { min-height: 80px; padding: 10px 12px; resize: vertical; line-height: 1.55; }
 .summaryPreferences select:focus, .summaryPreferences textarea:focus { border-color: var(--focus); outline: 3px solid var(--focus-ring); }
 .summaryPreferences select:disabled, .summaryPreferences textarea:disabled { cursor: not-allowed; opacity: .55; }
 .summaryPreferences p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
-.createDialog .speakerBounds { margin: 6px 0 2px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; }
-.speakerBounds > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+
+.advanced > summary { width: fit-content; display: flex; align-items: center; gap: 6px; color: var(--text-secondary); cursor: pointer; list-style: none; font-size: 13px; }
+.advanced > summary::-webkit-details-marker { display: none; }
+.advanced > summary .lucide { transition: transform .15s; }
+.advanced[open] > summary .lucide { transform: rotate(90deg); }
+.advanced > .speakerBounds { margin-top: 12px; }
+.speakerBounds > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .speakerBounds label { display: grid; gap: 6px; margin: 0; }
-.speakerBounds label span { color: var(--text-secondary); font-size: 12px; font-weight: 800; }
-.speakerBounds input { width: 100%; min-height: 40px; padding: 0 10px; color: var(--ink); background: var(--blue-soft); border: 1px solid var(--control-border); border-radius: 8px; }
+.speakerBounds label span { color: var(--muted); font-size: 12px; }
+.speakerBounds input { width: 100%; min-height: 38px; padding: 0 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 14px; }
 .speakerBounds input:focus { border-color: var(--focus); outline: 3px solid var(--focus-ring); }
-.speakerBounds p { margin: 9px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
-.createError { margin: 0; padding: 10px; color: var(--danger); background: var(--danger-soft); font-size: 12px; font-weight: 800; }
-.dialogActions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
-.dialogActions button { min-height: 38px; padding: 0 15px; border: 0; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 800; }
-.dialogActions button:first-child { color: var(--text-secondary); background: var(--surface-hover); }
-.dialogActions button:last-child { color: var(--on-primary); background: var(--primary-bg); }
+.speakerBounds p { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.createError { margin: 0; padding: 10px 12px; color: var(--danger); background: var(--danger-soft); border-radius: 8px; font-size: 13px; }
+
+/* Footer stays visible while the body scrolls. */
+.dialogActions { flex: 0 0 auto; display: flex; justify-content: flex-end; gap: 8px; padding: 14px 24px; background: var(--paper); border-top: 1px solid var(--line); }
+.dialogActions button { min-height: 38px; padding: 0 16px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+.dialogActions button:first-child { color: var(--ink); background: var(--surface); border: 1px solid var(--line); }
+.dialogActions button:last-child { color: var(--on-primary); background: var(--primary-bg); border: 0; font-weight: 500; }
 .dialogActions button:disabled { cursor: wait; opacity: .55; }
 .tagDialog { width: min(540px, 100%); }
 .tagCreateForm { display: grid; gap: 8px; padding: 20px 22px 16px; border-bottom: 1px solid var(--line); }
@@ -322,9 +358,10 @@
 }
 @media (max-width: 560px) {
   .overlay { padding: 0; place-items: end stretch; }
-  .createDialog { width: 100%; max-height: 94vh; overflow: auto; border-radius: 12px 12px 0 0; }
-  .sourcePicker { grid-template-columns: 1fr; }
-  .sourcePicker label { min-height: 58px; grid-template-columns: auto 1fr; place-items: center start; text-align: left; }
+  .createDialog { width: 100%; border-radius: 16px 16px 0 0; }
+  .sourcePicker label { min-height: 44px; padding: 10px; }
+  .fieldGrid { grid-template-columns: 1fr; }
+  .field > input, .field > select, .summaryPreferences select, .summaryPreferences textarea, .speakerBounds input { min-height: 44px; font-size: 16px; }
   .speakerBounds > div { grid-template-columns: 1fr; }
   .overlay { padding-top: env(safe-area-inset-top); }
   .createDialog {
@@ -340,20 +377,9 @@
     background: var(--surface-glass);
     backdrop-filter: blur(10px);
   }
-  .createDialog > form { padding: 16px; }
-  .captureSetup > input[type="file"] { padding: 8px; }
-  .dialogActions {
-    position: sticky;
-    bottom: 0;
-    z-index: 2;
-    display: grid;
-    grid-template-columns: 1fr;
-    padding-top: 10px;
-    padding-bottom: max(2px, env(safe-area-inset-bottom));
-    background: var(--surface);
-  }
-  .dialogActions button { min-height: 44px; }
-  .dialogActions button:last-child { grid-row: 1; }
+  .dialogBody { padding: 0 16px 16px; }
+  .dialogActions { padding: 12px 16px max(12px, env(safe-area-inset-bottom)); }
+  .dialogActions button { flex: 1; min-height: 44px; }
   .tagCreateForm { padding: 16px; }
   .tagList { padding-right: 16px; padding-left: 16px; }
 }
@@ -361,12 +387,3 @@
   .tagCreateForm > div { grid-template-columns: 1fr; }
   .tagCreateForm button { width: 100%; }
 }
-.microphoneCaptureIntro { display: grid; place-items: center; gap: 7px; padding: 18px; color: var(--ink); text-align: center; background: var(--blue-soft); border: 1px solid var(--blue-border); border-radius: 8px; }
-.microphoneCaptureIntro > span { width: 42px; height: 42px; display: grid; place-items: center; color: var(--on-primary); background: var(--primary-bg); border-radius: 50%; font-size: 14px; box-shadow: 0 8px 20px var(--focus-ring); }
-.microphoneCaptureIntro strong { font-size: 12px; }
-.microphoneCaptureIntro small { color: var(--muted); font-size: 12px; }
-
-.createDialog form > select { width: 100%; min-width: 0; min-height: 42px; padding: 9px 12px; color: var(--ink); background: var(--blue-soft); border: 1px solid var(--control-border); border-radius: 8px; font: inherit; font-size: 12px; }
-.createDialog form > select:focus-visible { border-color: var(--focus); outline: 3px solid var(--focus-ring); }
-.createDialog form > select:disabled { cursor: not-allowed; opacity: .55; }
-@media (max-width: 600px) { .createDialog form > select { font-size: 16px; min-height: 44px; } }

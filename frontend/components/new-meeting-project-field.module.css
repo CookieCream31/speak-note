@@ -1,13 +1,15 @@
-.field { display: grid; gap: 8px; min-width: 0; }
+.field { display: grid; gap: 6px; min-width: 0; }
 .heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.heading label, .editor label { color: var(--ink); font-size: 12px; font-weight: 800; }
-.heading button { padding: 5px 8px; border: 0; border-radius: 8px; background: var(--blue-soft); color: var(--blue); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
-.field select, .editor input { width: 100%; min-width: 0; min-height: 42px; padding: 9px 12px; color: var(--ink); background: var(--blue-soft); border: 1px solid var(--control-border); border-radius: 8px; font: inherit; font-size: 12px; }
+.heading label { color: var(--ink); font-size: 13px; font-weight: 500; }
+.editor label { color: var(--muted); font-size: 12px; }
+.heading button { padding: 0; color: var(--muted); background: transparent; border: 0; font: inherit; font-size: 12px; cursor: pointer; }
+.heading button:hover { color: var(--ink); }
+.field select, .editor input { width: 100%; min-width: 0; min-height: 40px; padding: 0 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 14px; }
 .field select:focus-visible, .editor input:focus-visible { border-color: var(--focus); outline: 3px solid var(--focus-ring); }
 .field button:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .field button:disabled, .field select:disabled, .editor input:disabled { opacity: .55; cursor: not-allowed; }
-.editor { display: grid; gap: 8px; padding: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+.editor { display: grid; gap: 8px; padding: 14px; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; }
 .editor p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
 .editor .error { color: var(--danger); }
-.editor .create { justify-self: end; min-height: 38px; padding: 0 14px; border: 0; border-radius: 8px; background: var(--primary-bg); color: var(--on-primary); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
-@media (max-width: 600px) { .field select, .editor input { font-size: 16px; min-height: 44px; } .editor .create { width: 100%; min-height: 44px; } }
+.editor .create { justify-self: end; min-height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: var(--primary-bg); color: var(--on-primary); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+@media (max-width: 600px) { .field select, .editor input { font-size: 16px; min-height: 44px; } .heading button { min-height: 44px; } .editor .create { width: 100%; min-height: 44px; } }

@@ -1,8 +1,8 @@
 "use client";
 
 import {
-  AudioLines, CircleAlert, Ellipsis, Folder, Hash, House, Inbox, Mic, MonitorUp, Plus, Search, SearchX, Sparkles, Star, Upload,
-  Video, X,
+  AudioLines, Check, ChevronRight, CircleAlert, Ellipsis, Folder, Hash, House, Inbox, Mic, MonitorUp, Plus, Search, SearchX,
+  Sparkles, Star, Upload, Video, X,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -1083,238 +1083,259 @@ export function MeetingsManager({
             aria-labelledby="create-meeting-title"
           >
             <header>
-              <div>
-                <h2 id="create-meeting-title">新しい会議</h2>
-              </div>
-              <button type="button" disabled={creating || selectingDisplay || projectCreating} onClick={closeCreate}>×</button>
+              <h2 id="create-meeting-title">新しい会議</h2>
+              <button
+                type="button"
+                aria-label="閉じる"
+                disabled={creating || selectingDisplay || projectCreating}
+                onClick={closeCreate}
+              >
+                <X size={18} aria-hidden="true" />
+              </button>
             </header>
             <form onSubmit={createMeeting}>
+              <div className={styles.dialogBody}>
                 <fieldset>
                   <legend>取り込み方法</legend>
                   <div className={styles.sourcePicker}>
                     {sourceOptions.map((option) => (
-                    <label key={option.value} data-selected={createSource === option.value}>
-                      <input
-                        type="radio"
-                        name="source_type"
-                        value={option.value}
-                        checked={createSource === option.value}
-                        disabled={creating || Boolean(pendingMeetingId)}
-                        onChange={() => {
-                          if (option.value !== "live") releasePreparedDisplay();
-                          if (option.value !== "media_upload") {
-                            setCreateFile(null);
-                            setCreateUploadSession(null);
-                            setCreateProgress(0);
-                          }
-                          setCreateStatus("");
-                          setCreateError("");
-                          setCreateSource(option.value);
-                        }}
-                      />
-                      <span aria-hidden="true"><SourceIcon sourceType={option.value} /></span>
-                      <strong>{option.label}</strong>
-                    </label>
-                  ))}
+                      <label key={option.value} data-selected={createSource === option.value}>
+                        <input
+                          type="radio"
+                          name="source_type"
+                          value={option.value}
+                          checked={createSource === option.value}
+                          disabled={creating || Boolean(pendingMeetingId)}
+                          onChange={() => {
+                            if (option.value !== "live") releasePreparedDisplay();
+                            if (option.value !== "media_upload") {
+                              setCreateFile(null);
+                              setCreateUploadSession(null);
+                              setCreateProgress(0);
+                            }
+                            setCreateStatus("");
+                            setCreateError("");
+                            setCreateSource(option.value);
+                          }}
+                        />
+                        <span aria-hidden="true"><SourceIcon sourceType={option.value} /></span>
+                        <strong>{option.label}</strong>
+                      </label>
+                    ))}
                   </div>
                 </fieldset>
-              {createSource === "media_upload" ? (
-                <div className={styles.captureSetup}>
-                  <label htmlFor="new-meeting-media">音声・動画ファイル</label>
-                  <input
-                    id="new-meeting-media"
-                    type="file"
-                    accept=".mp4,.mov,.webm,.m4a,.mp3,.wav,.flac,video/mp4,video/quicktime,video/webm,audio/mp4,audio/mpeg,audio/wav,audio/flac"
-                    disabled={creating}
-                    required
-                    onChange={(event) => {
-                      setCreateFile(event.currentTarget.files?.[0] ?? null);
-                      setCreateUploadSession(null);
-                      setCreateProgress(0);
-                      setCreateStatus("");
-                      setCreateError("");
-                    }}
-                  />
-                  <p>ファイル形式を自動判定し、大きなファイルは分割してアップロードします。</p>
-                </div>
-              ) : createSource === "audio_recording" ? (
-                <div className={styles.captureSetup}>
-                  <div className={styles.microphoneCaptureIntro}>
-                    <span aria-hidden="true"><Mic size={20} /></span>
-                    <strong>マイク音声のみを録音します</strong>
-                    <small>画面共有や映像の保存は行いません。</small>
-                  </div>
-                  <p>
-                    録音開始を押すと会議ページへ移動し、マイクの許可後に録音とリアルタイム文字起こしを開始します。
-                  </p>
-                </div>
-              ) : (
-                <div className={styles.captureSetup}>
-                  {displayCaptureSupport && displayCaptureSupport !== "supported" ? (
-                    <div className={styles.captureCompatibility} role="status">
-                      <strong>このブラウザでは画面共有録画を開始できません</strong>
-                      <span>{displayCaptureSupportMessage(displayCaptureSupport)}</span>
-                      <button type="button" onClick={() => setCreateSource("media_upload")}>
-                        ファイル取り込みへ切り替える
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        className={styles.displaySelectButton}
-                        disabled={selectingDisplay || creating || displayCaptureSupport === null}
-                        onClick={() => void chooseDisplay()}
-                      >
-                        {displayCaptureSupport === null
-                          ? "対応状況を確認中…"
-                          : selectingDisplay
-                            ? "共有画面を選択中…"
-                            : displayLabel
-                              ? "共有する画面を変更"
-                              : "共有する画面・ウィンドウを選択"}
-                      </button>
-                      {displayLabel && <p className={styles.selectedCapture}>✓ {displayLabel}</p>}
-                      <p>
-                        録画開始を押すと会議ページへ移動し、端末の共有選択画面で選んだ内容を録画します。マイクも含める場合は、話者分離のためヘッドホンの使用を推奨します。
-                      </p>
-                    </>
-                  )}
-                </div>
-              )}
-              {createSource !== "media_upload" && (
-                <MicrophoneStartToggle muted={!includeMicrophone} disabled={creating || Boolean(pendingMeetingId)}
-                  onChange={(muted) => setIncludeMicrophone(!muted)} />
-              )}
-              <NewMeetingProjectField
-                projects={projectOptions}
-                initialProjectId={initialProjectId}
-                disabled={creating || Boolean(pendingMeetingId)}
-                onCreated={(project) => setCreatedProjects((previous) => [...previous, project])}
-                onBusyChange={setProjectCreating}
-              />
-              <label htmlFor="meeting-template-select">議事録テンプレート</label>
-              <select
-                id="meeting-template-select"
-                name="template_id"
-                defaultValue={templates.find((template) => template.is_default)?.id ?? templates[0]?.id ?? ""}
-                disabled={creating || Boolean(pendingMeetingId) || templates.length === 0}
-                required={templates.length > 0}
-              >
-                {templates.length === 0 && <option value="">テンプレートなし</option>}
-                {templates.map((template) => (
-                  <option key={template.id} value={template.id}>
-                    {template.name}{template.is_default ? "（既定）" : ""}
-                  </option>
-                ))}
-              </select>
-              {templateLoadError && <p className={styles.inlineWarning}>{templateLoadError}</p>}
-              <label htmlFor="dashboard-meeting-title">会議タイトル</label>
-              <input
-                id="dashboard-meeting-title"
-                name="title"
-                placeholder="例：プロダクト定例"
-                maxLength={200}
-                required
-              />
-              {(createSource === "media_upload" || createSource === "audio_recording") && (
-                <fieldset className={styles.summaryPreferences}>
-                  <legend>AI要約</legend>
-                  <label className={styles.autoAnalyzeOption}>
-                    <input
-                      type="checkbox"
-                      name="auto_analyze"
-                      checked={autoAnalyze}
-                      disabled={creating}
-                      onChange={(event) => setAutoAnalyze(event.currentTarget.checked)}
-                    />
-                    <span>
-                      <strong>文字起こし後にAI要約を自動作成する</strong>
-                      <small>オフにすると文字起こしのみ行います。</small>
+                {createSource === "media_upload" ? (
+                  <label className={styles.fileDrop} htmlFor="new-meeting-media" data-selected={Boolean(createFile)}>
+                    <span className={styles.fileDropIcon} aria-hidden="true"><Upload size={18} /></span>
+                    <span className={styles.fileDropText}>
+                      <strong>{createFile ? createFile.name : "ファイルを選択"}</strong>
+                      <small>mp4・mov・webm・m4a・mp3・wav・flac · 大きなファイルは分割してアップロード</small>
                     </span>
+                    <input
+                      id="new-meeting-media"
+                      type="file"
+                      aria-label="音声・動画ファイル"
+                      accept=".mp4,.mov,.webm,.m4a,.mp3,.wav,.flac,video/mp4,video/quicktime,video/webm,audio/mp4,audio/mpeg,audio/wav,audio/flac"
+                      disabled={creating}
+                      required
+                      onChange={(event) => {
+                        setCreateFile(event.currentTarget.files?.[0] ?? null);
+                        setCreateUploadSession(null);
+                        setCreateProgress(0);
+                        setCreateStatus("");
+                        setCreateError("");
+                      }}
+                    />
                   </label>
-                  <label>
-                    <span>要約に使うAI</span>
+                ) : createSource === "audio_recording" ? (
+                  <p className={styles.captureNote}>
+                    マイク音声だけを録音します。画面共有や映像の保存は行いません。録音開始を押すと会議ページへ移動し、マイクの許可後に録音とリアルタイム文字起こしを開始します。
+                  </p>
+                ) : (
+                  <div className={styles.captureSetup}>
+                    {displayCaptureSupport && displayCaptureSupport !== "supported" ? (
+                      <div className={styles.captureCompatibility} role="status">
+                        <strong>このブラウザでは画面共有録画を開始できません</strong>
+                        <span>{displayCaptureSupportMessage(displayCaptureSupport)}</span>
+                        <button type="button" onClick={() => setCreateSource("media_upload")}>
+                          ファイル取り込みへ切り替える
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className={styles.displaySelectButton}
+                          disabled={selectingDisplay || creating || displayCaptureSupport === null}
+                          onClick={() => void chooseDisplay()}
+                        >
+                          <MonitorUp size={16} aria-hidden="true" />
+                          {displayCaptureSupport === null
+                            ? "対応状況を確認中…"
+                            : selectingDisplay
+                              ? "共有画面を選択中…"
+                              : displayLabel
+                                ? "共有する画面を変更"
+                                : "共有する画面・ウィンドウを選択"}
+                        </button>
+                        {displayLabel && (
+                          <p className={styles.selectedCapture}>
+                            <Check size={14} aria-hidden="true" /> {displayLabel}
+                          </p>
+                        )}
+                        <p>
+                          録画開始を押すと会議ページへ移動し、端末の共有選択画面で選んだ内容を録画します。マイクも含める場合は、話者分離のためヘッドホンの使用を推奨します。
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+                {createSource !== "media_upload" && (
+                  <MicrophoneStartToggle muted={!includeMicrophone} disabled={creating || Boolean(pendingMeetingId)}
+                    onChange={(muted) => setIncludeMicrophone(!muted)} />
+                )}
+                <div className={styles.field}>
+                  <label htmlFor="dashboard-meeting-title">会議タイトル</label>
+                  <input
+                    id="dashboard-meeting-title"
+                    name="title"
+                    placeholder="例：プロダクト定例"
+                    maxLength={200}
+                    required
+                  />
+                </div>
+                <div className={styles.fieldGrid}>
+                  <NewMeetingProjectField
+                    projects={projectOptions}
+                    initialProjectId={initialProjectId}
+                    disabled={creating || Boolean(pendingMeetingId)}
+                    onCreated={(project) => setCreatedProjects((previous) => [...previous, project])}
+                    onBusyChange={setProjectCreating}
+                  />
+                  <div className={styles.field}>
+                    <label htmlFor="meeting-template-select">議事録テンプレート</label>
                     <select
-                      name="ai_profile"
-                      value={selectedAIProfile}
-                      disabled={!autoAnalyze || creating}
-                      onChange={(event) => setSelectedAIProfile(event.currentTarget.value)}
+                      id="meeting-template-select"
+                      name="template_id"
+                      defaultValue={templates.find((template) => template.is_default)?.id ?? templates[0]?.id ?? ""}
+                      disabled={creating || Boolean(pendingMeetingId) || templates.length === 0}
+                      required={templates.length > 0}
                     >
-                      <option value="default">既定のAI設定</option>
-                      {aiProfiles.map((profile) => (
-                        <option key={profile.id} value={profile.id}>
-                          {profile.name} — {profile.model}
+                      {templates.length === 0 && <option value="">テンプレートなし</option>}
+                      {templates.map((template) => (
+                        <option key={template.id} value={template.id}>
+                          {template.name}{template.is_default ? "（既定）" : ""}
                         </option>
                       ))}
                     </select>
-                  </label>
-                  {aiProfileLoadError && (
-                    <p className={styles.inlineWarning}>{aiProfileLoadError}</p>
-                  )}
-                  <label>
-                    <span>要約形式</span>
-                    <select name="summary_format" defaultValue="standard" disabled={!autoAnalyze || creating}>
-                      <option value="standard">標準 — 要点と経緯をバランスよく</option>
-                      <option value="concise">簡潔 — 結論を短く</option>
-                      <option value="detailed">詳細 — 経緯や条件も残す</option>
-                      <option value="bullet">箇条書き — 要点を一覧化</option>
-                    </select>
-                  </label>
-                  <label>
-                    <span>会議の背景・内容</span>
-                    <textarea
-                      name="meeting_context"
-                      disabled={!autoAnalyze || creating}
-                      maxLength={4000}
-                      rows={4}
-                      placeholder="例：採用面接。候補者はバックエンドエンジニア。専門用語や参加者名、会議の目的などを書くと理解の補助になります。"
-                    />
-                  </label>
-                  <p>
-                    ここに書いた内容は用語や目的を理解する補助として使います。
-                    決定事項などの事実は文字起こしを根拠に生成します。
-                  </p>
-                </fieldset>
-              )}
-              <fieldset className={styles.speakerBounds}>
-                <legend>話者数（任意）</legend>
-                <div>
-                  <label>
-                    <span>最小</span>
-                    <input
-                      type="number"
-                      name="min_speakers"
-                      min={1}
-                      step={1}
-                      inputMode="numeric"
-                      placeholder="自動"
-                    />
-                  </label>
-                  <label>
-                    <span>最大</span>
-                    <input
-                      type="number"
-                      name="max_speakers"
-                      min={1}
-                      step={1}
-                      inputMode="numeric"
-                      placeholder="自動"
-                    />
-                  </label>
+                  </div>
                 </div>
-                <p>
-                  最小は推定する話者数の下限、最大は上限です。空欄なら自動判定。
-                  3人に固定する場合は両方に3を入力します。
-                </p>
-              </fieldset>
-              {(creating || createProgress > 0) && createStatus && (
-                <div className={styles.createProgress}>
-                  <div><span>{createStatus}</span><strong>{createProgress}%</strong></div>
-                  <progress max={100} value={createProgress} aria-label="取り込み進捗" />
-                </div>
-              )}
-              {createError && <p className={styles.createError} role="alert">{createError}</p>}
+                {templateLoadError && <p className={styles.inlineWarning}>{templateLoadError}</p>}
+                {(createSource === "media_upload" || createSource === "audio_recording") && (
+                  <fieldset className={styles.summaryPreferences}>
+                    <legend className={styles.visuallyHidden}>AI要約</legend>
+                    <label className={styles.autoAnalyzeOption}>
+                      <span>
+                        <strong>文字起こし後にAI要約を自動作成する</strong>
+                        <small>オフにすると文字起こしのみ行います</small>
+                      </span>
+                      <input
+                        type="checkbox"
+                        role="switch"
+                        name="auto_analyze"
+                        checked={autoAnalyze}
+                        disabled={creating}
+                        onChange={(event) => setAutoAnalyze(event.currentTarget.checked)}
+                      />
+                    </label>
+                    <div className={styles.fieldGrid}>
+                      <label>
+                        <span>要約に使うAI</span>
+                        <select
+                          name="ai_profile"
+                          value={selectedAIProfile}
+                          disabled={!autoAnalyze || creating}
+                          onChange={(event) => setSelectedAIProfile(event.currentTarget.value)}
+                        >
+                          <option value="default">既定のAI設定</option>
+                          {aiProfiles.map((profile) => (
+                            <option key={profile.id} value={profile.id}>
+                              {profile.name} — {profile.model}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        <span>要約形式</span>
+                        <select name="summary_format" defaultValue="standard" disabled={!autoAnalyze || creating}>
+                          <option value="standard">標準 — 要点と経緯をバランスよく</option>
+                          <option value="concise">簡潔 — 結論を短く</option>
+                          <option value="detailed">詳細 — 経緯や条件も残す</option>
+                          <option value="bullet">箇条書き — 要点を一覧化</option>
+                        </select>
+                      </label>
+                    </div>
+                    {aiProfileLoadError && (
+                      <p className={styles.inlineWarning}>{aiProfileLoadError}</p>
+                    )}
+                    <label>
+                      <span>会議の背景・内容（任意）</span>
+                      <textarea
+                        name="meeting_context"
+                        disabled={!autoAnalyze || creating}
+                        maxLength={4000}
+                        rows={3}
+                        placeholder="例：採用面接。候補者はバックエンドエンジニア。専門用語や参加者名、会議の目的などを書くと理解の補助になります。"
+                      />
+                    </label>
+                    <p>
+                      ここに書いた内容は用語や目的を理解する補助として使います。
+                      決定事項などの事実は文字起こしを根拠に生成します。
+                    </p>
+                  </fieldset>
+                )}
+                <details className={styles.advanced}>
+                  <summary><ChevronRight size={14} aria-hidden="true" />詳細設定（話者数）</summary>
+                  <fieldset className={styles.speakerBounds}>
+                    <legend className={styles.visuallyHidden}>話者数（任意）</legend>
+                    <div>
+                      <label>
+                        <span>最小</span>
+                        <input
+                          type="number"
+                          name="min_speakers"
+                          min={1}
+                          step={1}
+                          inputMode="numeric"
+                          placeholder="自動"
+                        />
+                      </label>
+                      <label>
+                        <span>最大</span>
+                        <input
+                          type="number"
+                          name="max_speakers"
+                          min={1}
+                          step={1}
+                          inputMode="numeric"
+                          placeholder="自動"
+                        />
+                      </label>
+                    </div>
+                    <p>
+                      最小は推定する話者数の下限、最大は上限です。空欄なら自動判定。
+                      3人に固定する場合は両方に3を入力します。
+                    </p>
+                  </fieldset>
+                </details>
+                {(creating || createProgress > 0) && createStatus && (
+                  <div className={styles.createProgress}>
+                    <div><span>{createStatus}</span><strong>{createProgress}%</strong></div>
+                    <progress max={100} value={createProgress} aria-label="取り込み進捗" />
+                  </div>
+                )}
+                {createError && <p className={styles.createError} role="alert">{createError}</p>}
+              </div>
               <div className={styles.dialogActions}>
                 <button type="button" disabled={creating || projectCreating} onClick={closeCreate}>
                   {pendingMeetingId ? "会議ページへ移動" : "キャンセル"}
