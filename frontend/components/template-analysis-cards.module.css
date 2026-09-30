@@ -1,16 +1,15 @@
-.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.card { min-width: 0; padding: 17px; background: var(--blue-soft); border: 1px solid var(--line); border-radius: 8px; }
-.summaryCard { grid-column: 1 / -1; }
-.card > h3 { margin: 0 0 12px; font-size: 13px; }
-.coreRows { display: grid; gap: 11px; }
-.row { min-width: 0; padding-top: 10px; border-top: 1px solid var(--line); }
-.row:first-child { padding-top: 0; border-top: 0; }
-.fields { display: grid; gap: 7px; margin: 0; }
+/* Same flat section style as the standard AI notes (meeting-review-panel). */
+.grid { display: grid; gap: 22px; }
+.card { min-width: 0; display: grid; gap: 4px; }
+.summaryCard { grid-column: auto; }
+.card > h3 { margin: 0 0 4px; color: var(--muted); font-size: 13px; font-weight: 500; }
+.coreRows { display: grid; gap: 2px; }
+.row { min-width: 0; display: grid; gap: 6px; }
+.fields { display: grid; gap: 6px; margin: 0; }
 .field { display: grid; grid-template-columns: minmax(90px, .7fr) minmax(0, 1.3fr); gap: 4px 10px; align-items: baseline; }
-.field dt { color: var(--muted); font-size: 12px; font-weight: 800; }
-.field dd { margin: 0; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; white-space: pre-wrap; }
-.evidence { grid-column: 2; display: flex; flex-wrap: wrap; gap: 5px; }
-.evidence button { padding: 3px 6px; color: var(--blue); background: var(--surface); border: 1px solid var(--blue-border); border-radius: 8px; cursor: pointer; font-size: 12px; }
-.empty { margin: 0; color: var(--text-subtle); font-size: 11px; }
-@media (max-width: 720px) { .grid { grid-template-columns: 1fr; } .card { padding: 14px; } .summaryCard { grid-column: auto; } }
-
+.field dt { color: var(--muted); font-size: 12px; }
+.field dd { margin: 0; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; white-space: pre-wrap; }
+.evidence { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; }
+.evidence button { min-height: 24px; padding: 0 8px; color: var(--blue); background: var(--accent-soft); border: 0; border-radius: 6px; cursor: pointer; font-size: 12px; }
+.empty { margin: 0; color: var(--text-subtle); font-size: 13px; }
+@media (max-width: 620px) { .field { grid-template-columns: 1fr; } .evidence { grid-column: auto; } }

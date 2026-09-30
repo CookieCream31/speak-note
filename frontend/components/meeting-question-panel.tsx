@@ -121,9 +121,7 @@ export function MeetingQuestionPanel({
   return (
     <section className={styles.panel} aria-label="会議内容への質問">
       <header className={styles.header}>
-        <div>
-          <h3>会議内容について質問</h3>
-        </div>
+        <h3 className={styles.visuallyHidden}>会議内容について質問</h3>
         <span>確定文字起こしを根拠に回答します</span>
       </header>
 
@@ -138,14 +136,14 @@ export function MeetingQuestionPanel({
         {questions.map((question) => (
           <article className={styles.exchange} key={question.id}>
             <div className={styles.userMessage}>
-              <span>あなた</span>
+              <span className={styles.visuallyHidden}>あなた</span>
               <p>{question.question}</p>
             </div>
             <div className={styles.answer} data-status={question.status}>
               <div className={styles.answerHeading}>
                 <span className={styles.aiMark} aria-hidden="true"><Sparkles size={16} /></span>
                 <strong>AI回答</strong>
-                <small>{question.model}</small>
+                <small>· {question.model}</small>
               </div>
               {(question.status === "queued" || question.status === "processing") && (
                 <p className={styles.processing}>

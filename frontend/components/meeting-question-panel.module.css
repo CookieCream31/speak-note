@@ -1,188 +1,59 @@
-.panel {
-  min-height: 480px;
-  color: var(--ink);
-  background: var(--surface);
-}
+.panel { display: grid; color: var(--ink); background: var(--surface); }
+.visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.header { padding: 20px 24px 0; }
+.header > span { color: var(--muted); font-size: 13px; }
 
-.header {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 24px 28px 20px;
-  border-bottom: 1px solid var(--line);
-}
+.conversation { display: flex; flex-direction: column; gap: 20px; min-height: 280px; max-height: 680px; padding: 20px 24px; overflow-y: auto; }
+.empty { display: grid; justify-items: center; gap: 8px; margin: auto; padding: 40px 20px; color: var(--muted); text-align: center; }
+.empty > span { width: 40px; height: 40px; display: grid; place-items: center; color: var(--blue); background: var(--accent-soft); border-radius: 50%; }
+.empty strong { color: var(--ink); font-size: 14px; font-weight: 600; }
+.empty p { max-width: 440px; margin: 0; font-size: 13px; line-height: 1.7; }
+.exchange { display: grid; gap: 14px; }
 
-.header p {
-  margin: 0 0 6px;
-  color: var(--blue);
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: .16em;
-}
+/* The user's question: right-aligned gray bubble. */
+.userMessage { justify-self: end; max-width: min(80%, 720px); }
+.userMessage p { margin: 0; padding: 10px 14px; color: var(--ink); background: var(--surface-hover); border-radius: 14px 14px 4px 14px; font-size: 14px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 
-.header h3 { margin: 0; font-size: 20px; }
-.header > span { color: var(--muted); font-size: 12px; }
+/* The AI answer: no frame, just a small label above the text. */
+.answer { display: grid; gap: 8px; }
+.answerHeading { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+.answerHeading strong { font-weight: 400; }
+.answerHeading small { font-size: 12px; }
+.aiMark { display: inline-flex; color: var(--blue); }
+.answerText { margin: 0; color: var(--text-secondary); font-size: 15px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
 
-.conversation {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  min-height: 280px;
-  max-height: 680px;
-  padding: 28px;
-  overflow-y: auto;
-  background: var(--blue-soft);
-}
-
-.empty {
-  display: grid;
-  justify-items: center;
-  gap: 8px;
-  margin: auto;
-  padding: 52px 20px;
-  color: var(--muted);
-  text-align: center;
-}
-
-.empty > span {
-  display: grid;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  color: var(--blue);
-  background: var(--blue-soft);
-  border-radius: 50%;
-  font-size: 18px;
-}
-
-.empty strong { color: var(--ink); font-size: 14px; }
-.empty p { max-width: 440px; margin: 0; font-size: 11px; line-height: 1.7; }
-.exchange { display: grid; gap: 12px; }
-
-.userMessage {
-  justify-self: end;
-  max-width: min(76%, 720px);
-}
-
-.userMessage span {
-  display: block;
-  margin: 0 8px 5px;
-  color: var(--text-subtle);
-  text-align: right;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.userMessage p {
-  margin: 0;
-  padding: 12px 16px;
-  color: var(--on-primary);
-  background: var(--primary-bg);
-  border-radius: 14px 14px 3px 14px;
-  font-size: 12px;
-  line-height: 1.7;
-  white-space: pre-wrap;
-}
-
-.answer {
-  max-width: min(88%, 900px);
-  padding: 18px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 3px 14px 14px;
-  box-shadow: none;
-}
-
-.answer[data-status="failed"] { border-color: var(--danger-border); }
-.answerHeading { display: flex; align-items: center; gap: 7px; }
-.answerHeading strong { font-size: 11px; }
-.answerHeading small { margin-left: auto; color: var(--text-subtle); font-size: 12px; }
-
-.aiMark {
-  display: grid;
-  width: 24px;
-  height: 24px;
-  place-items: center;
-  color: var(--blue);
-  background: var(--blue-soft);
-  border-radius: 50%;
-}
-
-.answerText {
-  margin: 14px 0 0;
-  font: 13px/1.85 var(--font-sans);
-  white-space: pre-wrap;
-}
-
-.processing { display: flex; align-items: center; gap: 8px; margin: 14px 0 0; color: var(--muted); font-size: 11px; }
-.processing i { width: 9px; height: 9px; background: var(--primary-bg); border-radius: 50%; animation: pulse 1s ease-in-out infinite alternate; }
+.processing { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--muted); font-size: 13px; }
+.processing i { width: 6px; height: 6px; background: var(--blue); border-radius: 50%; animation: pulse 1s ease-in-out infinite alternate; }
 @keyframes pulse { to { opacity: .25; transform: scale(.72); } }
 
-.unsupported {
-  display: inline-block;
-  margin-top: 14px;
-  padding: 5px 8px;
-  color: var(--warning);
-  background: var(--warning-soft);
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 800;
-}
+.unsupported { width: fit-content; padding: 4px 8px; color: var(--warning); background: var(--warning-soft); border-radius: 6px; font-size: 12px; }
+.failed { color: var(--danger); font-size: 13px; }
+.failed p { margin: 0 0 8px; }
+.failed button { min-height: 30px; padding: 0 12px; color: var(--danger); background: var(--surface); border: 1px solid var(--danger-border); border-radius: 8px; cursor: pointer; }
+.error { margin: 0 24px 12px; padding: 10px 12px; color: var(--danger); background: var(--danger-soft); border-radius: 8px; font-size: 13px; }
 
-.failed { margin-top: 12px; color: var(--danger); font-size: 12px; }
-.failed p { margin: 0 0 9px; }
-.failed button { padding: 7px 12px; color: var(--danger); background: var(--surface); border: 1px solid var(--danger-border); border-radius: 8px; cursor: pointer; font-weight: 800; }
-.error { margin: 14px 28px 0; padding: 10px 12px; color: var(--danger); background: var(--danger-soft); border-radius: 8px; font-size: 12px; }
-
-.composer {
-  display: grid;
-  gap: 8px;
-  padding: 18px 28px 24px;
-  background: var(--surface);
-  border-top: 1px solid var(--line);
-}
-
-.composer textarea {
-  width: 100%;
-  min-height: 76px;
-  padding: 12px 14px;
-  color: var(--ink);
-  resize: vertical;
-  background: var(--blue-soft);
-  border: 1px solid var(--control-border);
-  border-radius: 8px;
-  font: inherit;
-  font-size: 12px;
-  line-height: 1.6;
-}
-.composer textarea:focus { outline: 2px solid var(--blue-border); border-color: var(--focus); }
+.composer { display: grid; gap: 8px; padding: 12px 16px 16px; border-top: 1px solid var(--line); }
+.composer textarea { width: 100%; min-height: 64px; padding: 10px 14px; color: var(--ink); resize: vertical; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; font: inherit; font-size: 14px; line-height: 1.6; }
+.composer textarea:focus { border-color: var(--focus); outline: 3px solid var(--focus-ring); }
 .composer textarea:disabled { color: var(--text-subtle); background: var(--surface-hover); }
-.composer > div { display: flex; align-items: center; justify-content: space-between; }
-.composer small { color: var(--text-subtle); font-size: 12px; }
-.composer button { min-width: 112px; padding: 10px 18px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 8px; cursor: pointer; font-weight: 800; }
+.composer > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.composer small { color: var(--muted); font-size: 12px; }
+.composer button { min-height: 36px; padding: 0 16px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; }
 .composer button:disabled { cursor: default; opacity: .45; }
 
 @media (max-width: 720px) {
-  .header { align-items: start; flex-direction: column; gap: 6px; padding: 18px; }
-  .conversation { padding: 18px 12px; }
-  .userMessage { max-width: 88%; }
-  .answer { max-width: 96%; padding: 14px; }
-  .composer { padding: 14px; }
+  .header { padding: 16px 16px 0; }
+  .conversation { padding: 16px; }
+  .userMessage { max-width: 90%; }
+  .composer { padding: 12px; }
 }
 
 @media (max-width: 520px) {
-  .panel { min-height: 0; }
-  .header { padding: 14px 12px; }
-  .header h3 { font-size: 18px; }
-  .conversation { gap: 18px; min-height: 220px; max-height: none; padding: 14px 10px; }
-  .userMessage,
-  .answer { max-width: 100%; }
-  .userMessage p { padding: 10px 12px; }
-  .answer { padding: 12px; }
-  .answerText { font-size: 12px; line-height: 1.75; }
-  .error { margin: 10px; }
-  .composer { padding: 12px 10px max(12px, env(safe-area-inset-bottom)); }
+  .conversation { gap: 16px; min-height: 220px; max-height: none; }
+  .userMessage { max-width: 100%; }
+  .error { margin: 0 12px 10px; }
+  .composer { padding: 12px 12px max(12px, env(safe-area-inset-bottom)); }
+  .composer textarea { font-size: 16px; }
   .composer > div { align-items: stretch; flex-direction: column; gap: 8px; }
   .composer button { width: 100%; min-height: 44px; }
 }

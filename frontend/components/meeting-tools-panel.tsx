@@ -31,9 +31,9 @@ interface MeetingToolsPanelProps {
 
 const tabLabels: Record<ToolTab, string> = {
   search: "検索",
-  bookmarks: "Bookmark",
-  speakers: "話者",
-  timeline: "Timeline",
+  bookmarks: "ブックマーク",
+  speakers: "話者名",
+  timeline: "タイムライン",
 };
 
 function formatTimestamp(milliseconds: number): string {
@@ -200,21 +200,21 @@ export function MeetingToolsPanel({
 
   return (
     <aside className={styles.panel} aria-label="会議ツール">
-      <header className={styles.heading}>
-        <h2>会議ツール</h2>
-      </header>
-      <nav className={styles.tabs} aria-label="会議ツールの切り替え">
+      <h2 className={styles.visuallyHidden}>会議ツール</h2>
+      <div className={styles.tabs} role="tablist" aria-label="会議ツールの切り替え">
         {(Object.keys(tabLabels) as ToolTab[]).map((tab) => (
           <button
             type="button"
             key={tab}
+            role="tab"
+            aria-selected={activeTab === tab}
             className={activeTab === tab ? styles.activeTab : ""}
             onClick={() => { setActiveTab(tab); setMessage(""); setError(""); }}
           >
             {tabLabels[tab]}
           </button>
         ))}
-      </nav>
+      </div>
 
       {(message || error) && (
         <p className={error ? styles.error : styles.message} role="status">
@@ -250,15 +250,15 @@ export function MeetingToolsPanel({
       )}
 
       {activeTab === "bookmarks" && (
-        <section className={styles.tool}>
-          <h3>Bookmark</h3>
+        <section className={`${styles.tool} ${styles.bookmarkTool}`}>
+          <h3>ブックマークを現在位置に追加</h3>
           <form onSubmit={addBookmark}>
             <input name="title" placeholder="タイトル" required maxLength={200} />
             <input name="note" placeholder="メモ（任意）" maxLength={5000} />
             <button type="submit" disabled={busy || !playerAvailable}>現在位置に追加</button>
           </form>
           <div className={styles.bookmarks}>
-            {bookmarks.length === 0 && <p>Bookmarkはまだありません。</p>}
+            {bookmarks.length === 0 && <p>ブックマークはまだありません。</p>}
             {bookmarks.map((bookmark) => (
               <article key={bookmark.id}>
                 <button type="button" onClick={() => seek(bookmark.timestamp_ms)}>
@@ -299,7 +299,7 @@ export function MeetingToolsPanel({
 
       {activeTab === "timeline" && (
         <section className={styles.tool}>
-          <h3>Timeline</h3>
+          <h3>タイムライン</h3>
           {timeline.length === 0 ? (
             <p className={styles.muted}>マーカーはまだありません。</p>
           ) : (

@@ -1,46 +1,56 @@
-.panel { min-width: 0; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 0 0 11px 11px; }
-.heading { padding: 18px; border-bottom: 1px solid var(--line); }
-.heading p { margin: 0 0 5px; color: var(--accent); font-size: 12px; font-weight: 900; letter-spacing: .17em; }
-.heading h2 { margin: 0; font-size: 18px; }
-.tabs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 3px; padding: 10px 12px; background: var(--blue-soft); border-bottom: 1px solid var(--line); }
-.tabs button { padding: 9px 5px; color: var(--muted); background: transparent; border: 0; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 800; }
-.tabs button:hover { color: var(--ink); background: var(--surface-hover); }
-.tabs .activeTab { color: var(--blue); background: var(--blue-soft); }
-.message, .error { margin: 12px 12px 0; padding: 9px; font-size: 12px; font-weight: 800; line-height: 1.5; }
-.message { color: var(--success); background: var(--success-soft); }
-.error { color: var(--on-primary); background: var(--danger-solid); }
-.tool { max-width: 1080px; padding: 22px; }
-.tool > h3 { margin: 0 0 14px; font-size: 12px; }
-.tool > form, .speakers form { display: grid; gap: 7px; }
-.tool input, .tool select { width: 100%; min-height: 38px; padding: 8px; color: var(--ink); background: var(--blue-soft); border: 1px solid var(--line); border-radius: 8px; }
-.tool form > button, .speakers button { min-height: 36px; padding: 8px 10px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 800; }
-.results, .bookmarks, .timeline { display: grid; margin-top: 14px; }
-.results > p, .bookmarks > p, .muted { color: var(--muted); font-size: 12px; line-height: 1.6; }
-.results > button { display: flex; flex-direction: column; gap: 4px; padding: 10px 0; color: inherit; text-align: left; background: transparent; border: 0; border-bottom: 1px solid var(--control-border); cursor: pointer; }
-.results strong { color: var(--blue); font-size: 12px; }
-.results span { color: var(--muted); font-size: 12px; line-height: 1.5; }
-.bookmarks article { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; padding: 10px 0; border-bottom: 1px solid var(--line); }
-.bookmarks button { padding: 0; color: var(--blue); text-align: left; background: transparent; border: 0; cursor: pointer; font-size: 12px; }
-.bookmarks button:nth-child(2) { color: var(--danger); }
-.bookmarks article p { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 12px; }
-.speakers { display: grid; gap: 13px; }
-.speakers form { padding-bottom: 13px; border-bottom: 1px solid var(--line); }
-.speakers label { color: var(--muted); font: 12px var(--font-mono); }
-.timelineRail { position: relative; height: 20px; margin: 4px 5px 12px; border-top: 3px solid var(--line); }
-.timelineRail button { position: absolute; top: -7px; width: 11px; height: 11px; padding: 0; transform: translateX(-50%); background: var(--primary-bg); border: 2px solid var(--control-border); border-radius: 50%; cursor: pointer; }
-.timeline button { display: grid; grid-template-columns: 65px 1fr; gap: 7px; padding: 9px 0; color: inherit; text-align: left; background: transparent; border: 0; border-bottom: 1px solid var(--control-border); cursor: pointer; }
-.timeline span { color: var(--muted); font: 11px var(--font-mono); text-transform: uppercase; }
-.timeline strong { font-size: 12px; }
+.panel { min-width: 0; display: grid; gap: 16px; padding: 20px 24px 24px; color: var(--ink); background: var(--surface); }
+.visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-@media (max-width: 520px) {
-  .heading { padding: 14px 12px; }
-  .tool { padding: 16px 12px; }
-  .tabs button { min-height: 44px; }
-  .tool input,
-  .tool select,
-  .tool form > button,
-  .speakers button { min-height: 44px; }
+/* Segmented control for the four tools. */
+.tabs { width: fit-content; max-width: 100%; display: flex; flex-wrap: wrap; padding: 3px; background: var(--surface-hover); border-radius: 8px; }
+.tabs button { min-height: 30px; padding: 0 12px; color: var(--text-secondary); background: transparent; border: 0; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.tabs button:hover { color: var(--ink); }
+.tabs .activeTab { color: var(--ink); background: var(--surface); box-shadow: 0 1px 2px var(--shadow-soft); font-weight: 500; }
+.message, .error { margin: 0; padding: 10px 12px; border-radius: 8px; font-size: 13px; line-height: 1.5; }
+.message { color: var(--success); background: var(--success-soft); }
+.error { color: var(--danger); background: var(--danger-soft); }
+
+.tool { display: grid; gap: 12px; }
+.tool > h3 { margin: 0; color: var(--muted); font-size: 13px; font-weight: 500; }
+.tool > form { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; }
+.tool input, .tool select { width: 100%; min-height: 38px; padding: 0 10px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 14px; }
+.tool select { width: auto; font-size: 13px; }
+.tool input:focus, .tool select:focus { border-color: var(--focus); outline: 3px solid var(--focus-ring); }
+.tool form > button, .speakers button { min-height: 38px; padding: 0 14px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; }
+.tool form > button:disabled, .speakers button:disabled { cursor: not-allowed; opacity: .5; }
+.results, .bookmarks, .timeline { display: grid; }
+.results > p, .bookmarks > p, .muted { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.results > button { display: grid; gap: 4px; padding: 12px 0; color: inherit; text-align: left; background: transparent; border: 0; border-top: 1px solid var(--line-soft); cursor: pointer; }
+.results > button:hover strong { color: var(--blue); }
+.results strong { color: var(--muted); font-family: var(--font-mono); font-size: 12px; font-weight: 400; }
+.results span { color: var(--text-secondary); font-size: 14px; line-height: 1.6; }
+
+/* Bookmarks: the add form sits in a soft box, entries below. */
+.bookmarkTool > form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; padding: 14px 16px; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; }
+.bookmarks article { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; padding: 10px 0; border-top: 1px solid var(--line-soft); }
+.bookmarks button { padding: 0; color: var(--ink); text-align: left; background: transparent; border: 0; cursor: pointer; font-size: 14px; }
+.bookmarks button:hover { color: var(--blue); }
+.bookmarks button:nth-child(2) { color: var(--danger); font-size: 13px; }
+.bookmarks article p { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 13px; }
+
+.speakers { display: grid; gap: 10px; }
+.speakers form { display: grid; grid-template-columns: 140px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--line-soft); }
+.speakers label { color: var(--muted); font-family: var(--font-mono); font-size: 12px; overflow-wrap: anywhere; }
+
+.timelineRail { position: relative; height: 20px; margin: 4px 5px 4px; border-top: 3px solid var(--line); }
+.timelineRail button { position: absolute; top: -7px; width: 11px; height: 11px; padding: 0; transform: translateX(-50%); background: var(--primary-bg); border: 2px solid var(--surface); border-radius: 50%; cursor: pointer; }
+.timeline button { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 8px; padding: 10px 0; color: inherit; text-align: left; background: transparent; border: 0; border-top: 1px solid var(--line-soft); cursor: pointer; }
+.timeline button:hover strong { color: var(--blue); }
+.timeline span { color: var(--muted); font-family: var(--font-mono); font-size: 12px; }
+.timeline strong { font-size: 14px; font-weight: 400; }
+
+@media (max-width: 620px) {
+  .panel { padding: 16px; }
+  .tool > form, .bookmarkTool > form, .speakers form { grid-template-columns: 1fr; }
+  .tool select { width: 100%; }
+  .tabs button { flex: 1; min-height: 40px; }
+  .tool input, .tool select, .tool form > button, .speakers button { min-height: 44px; font-size: 16px; }
   .bookmarks article { grid-template-columns: minmax(0, 1fr); }
   .bookmarks article p { grid-column: auto; }
-  .timeline button { grid-template-columns: 52px minmax(0, 1fr); }
+  .timeline button { grid-template-columns: 70px minmax(0, 1fr); }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Play } from "lucide-react";
+import { Ellipsis, Play } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -204,14 +204,11 @@ export function MeetingReviewPanel({
     }
   }
 
-  function renderTemplateItem(item: AnalysisItem) {
+  function renderItem(item: AnalysisItem) {
+    const editing = !readOnly && editingItemId === item.id;
     return (
       <article className={styles.analysisItem} key={item.id}>
-        <div className={styles.itemMeta}>
-          <span data-state={item.state}>{stateLabels[item.state]}</span>
-          {item.start_ms !== null && <button type="button" onClick={() => seek(item.start_ms as number)}><Play size={12} aria-hidden="true" /> {formatTimestamp(item.start_ms)}</button>}
-        </div>
-        {!readOnly && editingItemId === item.id ? (
+        {editing ? (
           <form onSubmit={(event) => {
             event.preventDefault();
             const data = new FormData(event.currentTarget);
@@ -224,35 +221,64 @@ export function MeetingReviewPanel({
             });
           }}>
             <textarea name="content" defaultValue={item.content} rows={item.kind === "summary" ? 7 : 4} autoFocus />
-            {item.kind === "action_item" && <div className={styles.actionFields}>
-              <input name="assignee" defaultValue={item.assignee ?? ""} placeholder="担当者不明" />
-              <input name="deadline" type="date" defaultValue={item.deadline ?? ""} />
-            </div>}
+            {item.kind === "action_item" && (
+              <div className={styles.actionFields}>
+                <input name="assignee" defaultValue={item.assignee ?? ""} placeholder="担当者不明" aria-label="担当" />
+                <input name="deadline" type="date" defaultValue={item.deadline ?? ""} aria-label="期限" />
+              </div>
+            )}
             <div className={styles.editActions}>
               <button type="submit" disabled={busy}>保存</button>
               <button type="button" onClick={() => setEditingItemId(null)}>取消</button>
             </div>
           </form>
-        ) : <>
+        ) : (
           <p className={styles.itemContent}>{item.content}</p>
-          {item.kind === "action_item" && (item.assignee || item.deadline) && <dl className={styles.actionMeta}>
-            {item.assignee && <><dt>担当</dt><dd>{item.assignee}</dd></>}
-            {item.deadline && <><dt>期限</dt><dd>{item.deadline}</dd></>}
-          </dl>}
-          {!readOnly && <div className={styles.itemActions}>
-            <button type="button" onClick={() => setEditingItemId(item.id)}>編集</button>
-            {item.state !== "confirmed" && <button type="button" disabled={busy} onClick={() => void saveItem(item, { state: "confirmed" })}>確認済みにする</button>}
-          </div>}
-        </>}
-        {item.evidence.length > 0 && <details className={styles.evidence}>
-          <summary>根拠となる発言 {item.evidence.length}件</summary>
-          {item.evidence.map(({ segment_id: segmentId }) => {
-            const segment = evidenceById.get(segmentId);
-            return segment ? <button key={segmentId} type="button" onClick={() => seek(segment.startMs)}>
-              <strong><Play size={12} aria-hidden="true" /> {formatTimestamp(segment.startMs)} {segment.speakerName}</strong><span>{segment.text}</span>
-            </button> : null;
-          })}
-        </details>}
+        )}
+        <div className={styles.itemMeta}>
+          <span className={styles.stateBadge} data-state={item.state}>{stateLabels[item.state]}</span>
+          {item.kind === "action_item" && !editing && (
+            <>
+              <span className={styles.metaField}>担当 <strong>{item.assignee ?? "担当者不明"}</strong></span>
+              {item.deadline && <span className={styles.metaField}>期限 <strong>{item.deadline}</strong></span>}
+            </>
+          )}
+          {item.start_ms !== null && (
+            <button className={styles.timeChip} type="button" onClick={() => seek(item.start_ms as number)}>
+              <Play size={12} aria-hidden="true" /> {formatTimestamp(item.start_ms)}
+              {item.end_ms !== null && item.end_ms > item.start_ms
+                ? `〜${formatTimestamp(item.end_ms)}`
+                : ""}
+            </button>
+          )}
+          {!readOnly && !editing && (
+            <span className={styles.itemActions}>
+              <button type="button" onClick={() => setEditingItemId(item.id)}>編集</button>
+              {item.state !== "confirmed" && (
+                <button type="button" disabled={busy} onClick={() => void saveItem(item, { state: "confirmed" })}>
+                  確認済みにする
+                </button>
+              )}
+            </span>
+          )}
+        </div>
+        {item.evidence.length > 0 && (
+          <details className={styles.evidence}>
+            <summary>根拠となる発言 {item.evidence.length}件</summary>
+            <div>
+              {item.evidence.map(({ segment_id: segmentId }) => {
+                const segment = evidenceById.get(segmentId);
+                return segment ? (
+                  <button key={segmentId} type="button" onClick={() => seek(segment.startMs)}>
+                    <time>{formatTimestamp(segment.startMs)}</time>
+                    <strong>{segment.speakerName}</strong>
+                    <span>{segment.text}</span>
+                  </button>
+                ) : null;
+              })}
+            </div>
+          </details>
+        )}
       </article>
     );
   }
@@ -267,25 +293,62 @@ export function MeetingReviewPanel({
       const latestGenerated = [...items].sort((left, right) => right.created_at.localeCompare(left.created_at)
         || right.sequence - left.sequence)[0];
       const selectedSummary = protectedSummary ?? latestGenerated;
-      return [kind, selectedSummary ? [{ rowId: "summary:0", content: renderTemplateItem(selectedSummary) }] : []];
+      return [kind, selectedSummary ? [{ rowId: "summary:0", content: renderItem(selectedSummary) }] : []];
     }
     return [kind, items.map((item, index) => ({
       rowId: kind === "summary" ? "summary:0" : `${kind}:${index}`,
-      content: renderTemplateItem(item),
+      content: renderItem(item),
     }))];
   }));
 
   return (
     <aside className={styles.panel} aria-label="AIノート">
       <header className={styles.heading}>
-        <div>
-          <h2>AI議事録</h2>
+        <h2>AI議事録</h2>
+        <div className={styles.headingControls}>
+          {playerAvailable && highlights.length > 0 && (
+            <div className={styles.reviewControls} role="group" aria-label="再生範囲">
+              <button type="button" onClick={playFull}>全編</button>
+              <button type="button" onClick={playHighlights}>重要箇所だけ再生</button>
+            </div>
+          )}
+          {versions.length > 0 || realtimeHistory ? (
+            <label className={styles.versionPicker}>
+              <span className={styles.visuallyHidden}>履歴</span>
+              <select
+                aria-label="履歴"
+                value={analysis?.id ?? ""}
+                onChange={(event) => {
+                  router.push(`/meetings/${meetingId}?analysis_id=${event.target.value}&transcript_kind=${event.target.value === REALTIME_ANALYSIS_HISTORY_ID ? "live" : "final"}`);
+                }}
+              >
+                {!analysis && <option value="">Versionを選択</option>}
+                {realtimeHistory && (
+                  <option value={REALTIME_ANALYSIS_HISTORY_ID}>
+                    リアルタイム解析 · {realtimeHistory.model} · {realtimeHistory.status}
+                  </option>
+                )}
+                {versions.map((version) => (
+                  <option key={version.id} value={version.id}>
+                    確定版 v{version.version} · {version.model} · {version.status}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : analysis && (
+            <span className={styles.versionLabel}>
+              {readOnly ? "リアルタイム解析" : `確定版 v${analysis.version}`} · {analysis.model}
+            </span>
+          )}
+          <details className={styles.moreMenu}>
+            <summary aria-label="その他（外部AIで作成など）" title="その他">
+              <Ellipsis size={16} aria-hidden="true" />
+            </summary>
+            <div>
+              <ManualAIImport meetingId={meetingId} available={finalTranscriptAvailable && evidenceSegments.length > 0} />
+            </div>
+          </details>
         </div>
-        {analysis && (
-          <span>
-            {readOnly ? "リアルタイム解析" : `確定版 v${analysis.version}`} · {analysis.model}
-          </span>
-        )}
       </header>
 
       {(message || error) && (
@@ -297,39 +360,6 @@ export function MeetingReviewPanel({
       {!finalTranscriptAvailable && <p className={styles.notice}>リアルタイム版は暫定結果です。要約の再生成で全体文字起こしを作成すると、編集や会議への質問も利用できます。</p>}
 
       {regeneration && <SummaryRegenerationButton key={regenerationKey} {...regeneration} />}
-
-      <ManualAIImport meetingId={meetingId} available={finalTranscriptAvailable && evidenceSegments.length > 0} />
-
-      {(versions.length > 0 || realtimeHistory) && (
-        <label className={styles.versionPicker}>
-          <span>履歴</span>
-          <select
-            value={analysis?.id ?? ""}
-            onChange={(event) => {
-              router.push(`/meetings/${meetingId}?analysis_id=${event.target.value}&transcript_kind=${event.target.value === REALTIME_ANALYSIS_HISTORY_ID ? "live" : "final"}`);
-            }}
-          >
-            {!analysis && <option value="">Versionを選択</option>}
-            {realtimeHistory && (
-              <option value={REALTIME_ANALYSIS_HISTORY_ID}>
-                リアルタイム解析 · {realtimeHistory.model} · {realtimeHistory.status}
-              </option>
-            )}
-            {versions.map((version) => (
-              <option key={version.id} value={version.id}>
-                確定版 v{version.version} · {version.model} · {version.status}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-
-      {playerAvailable && highlights.length > 0 && (
-        <div className={styles.reviewControls}>
-          <button type="button" onClick={playFull}>全編</button>
-          <button type="button" onClick={playHighlights}>重要箇所だけ再生</button>
-        </div>
-      )}
 
       {!analysis ? (
         <div className={styles.empty}>
@@ -364,95 +394,7 @@ export function MeetingReviewPanel({
                   <p className={styles.none}>まだありません</p>
                 ) : (
                   <div className={styles.itemList}>
-                    {items.map((item) => (
-                      <article className={styles.analysisItem} key={item.id}>
-                <div className={styles.itemMeta}>
-                  <span data-state={item.state}>{stateLabels[item.state]}</span>
-                  {item.start_ms !== null && (
-                    <button type="button" onClick={() => seek(item.start_ms as number)}>
-                      <Play size={12} aria-hidden="true" /> {formatTimestamp(item.start_ms)}
-                      {item.end_ms !== null && item.end_ms > item.start_ms
-                        ? `〜${formatTimestamp(item.end_ms)}`
-                        : ""}
-                    </button>
-                  )}
-                </div>
-
-                {!readOnly && editingItemId === item.id ? (
-                  <form onSubmit={(event) => {
-                    event.preventDefault();
-                    const data = new FormData(event.currentTarget);
-                    void saveItem(item, {
-                      content: String(data.get("content") ?? "").trim(),
-                      ...(item.kind === "action_item" ? {
-                        assignee: String(data.get("assignee") ?? "").trim() || null,
-                        deadline: String(data.get("deadline") ?? "") || null,
-                      } : {}),
-                    });
-                  }}>
-                    <textarea
-                      name="content"
-                      defaultValue={item.content}
-                      rows={item.kind === "summary" ? 7 : 4}
-                      autoFocus
-                    />
-                    {item.kind === "action_item" && (
-                      <div className={styles.actionFields}>
-                        <input
-                          name="assignee"
-                          defaultValue={item.assignee ?? ""}
-                          placeholder="担当者不明"
-                        />
-                        <input name="deadline" type="date" defaultValue={item.deadline ?? ""} />
-                      </div>
-                    )}
-                    <div className={styles.editActions}>
-                      <button type="submit" disabled={busy}>保存</button>
-                      <button type="button" onClick={() => setEditingItemId(null)}>取消</button>
-                    </div>
-                  </form>
-                ) : (
-                  <>
-                    <p className={styles.itemContent}>{item.content}</p>
-                    {item.kind === "action_item" && (item.assignee || item.deadline) && (
-                      <dl className={styles.actionMeta}>
-                        {item.assignee && <><dt>担当</dt><dd>{item.assignee}</dd></>}
-                        {item.deadline && <><dt>期限</dt><dd>{item.deadline}</dd></>}
-                      </dl>
-                    )}
-                    {!readOnly && (
-                      <div className={styles.itemActions}>
-                        <button type="button" onClick={() => setEditingItemId(item.id)}>編集</button>
-                        {item.state !== "confirmed" && (
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => void saveItem(item, { state: "confirmed" })}
-                          >
-                            確認済みにする
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {item.evidence.length > 0 && (
-                  <details className={styles.evidence}>
-                    <summary>根拠となる発言 {item.evidence.length}件</summary>
-                    {item.evidence.map(({ segment_id: segmentId }) => {
-                      const segment = evidenceById.get(segmentId);
-                      return segment ? (
-                        <button key={segmentId} type="button" onClick={() => seek(segment.startMs)}>
-                          <strong><Play size={12} aria-hidden="true" /> {formatTimestamp(segment.startMs)} {segment.speakerName}</strong>
-                          <span>{segment.text}</span>
-                        </button>
-                      ) : null;
-                    })}
-                  </details>
-                )}
-                      </article>
-                    ))}
+                    {items.map(renderItem)}
                   </div>
                 )}
               </section>
