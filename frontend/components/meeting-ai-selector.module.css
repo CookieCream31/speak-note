@@ -8,3 +8,15 @@
   .selector select { min-height: 44px; width: 100%; }
   .selector small { min-width: 0; }
 }
+
+/* Redesign 3-2: compact chip in the meeting title row. */
+.selector { min-height: 32px; display: inline-flex; grid-template-columns: none; align-items: center; gap: 4px; margin: 0; padding: 0 4px 0 10px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; font-weight: 400; }
+.selector:hover { background: var(--surface-hover); }
+.selector > span { color: var(--muted); }
+.selector select { min-height: 30px; max-width: 220px; padding: 0 4px; color: var(--ink); background: transparent; border: 0; font: inherit; font-weight: 500; cursor: pointer; }
+.selector small { min-width: 0; color: var(--muted); font-size: 12px; }
+.selector small:empty { display: none; }
+@media (max-width: 560px) {
+  .selector { min-height: 44px; }
+  .selector select { min-height: 42px; font-size: 16px; }
+}

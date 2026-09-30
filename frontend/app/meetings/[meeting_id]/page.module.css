@@ -241,3 +241,85 @@
   .headerLinks > label > span { display: none; }
   .headerLinks > label select { width: 150px; }
 }
+
+/* Redesign 3-2: header and title block */
+.topHeader { position: sticky; top: 0; z-index: 40; height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 40px; background: var(--surface-glass); border-bottom: 1px solid var(--line); backdrop-filter: blur(10px); }
+.logo { display: inline-flex; text-decoration: none; }
+.topHeader .brandMark { width: 26px; height: 26px; gap: 2px; border-radius: 8px; }
+.topHeader .brandMark i { width: 2.5px; border-radius: 2px; }
+.topHeader .brandMark i:nth-child(1) { height: 6px; }
+.topHeader .brandMark i:nth-child(2) { height: 13px; }
+.topHeader .brandMark i:nth-child(3) { height: 9px; }
+.breadcrumb { min-width: 0; flex: 1; display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.breadcrumb a { flex: 0 0 auto; color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--ink); }
+.breadcrumb > span { color: var(--muted); }
+.breadcrumb > span[aria-current] { min-width: 0; overflow: hidden; color: var(--ink); font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.headerButton { min-height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; color: var(--text-secondary); text-decoration: none; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; white-space: nowrap; }
+.headerButton:hover { color: var(--ink); background: var(--surface-hover); }
+
+.titleBlock { display: flex; align-items: flex-end; gap: 24px; padding: 24px 40px 20px; }
+.titleMain { min-width: 0; flex: 1; display: grid; gap: 12px; }
+.titleMain h1 { margin: 0; font-size: clamp(22px, 2.4vw, 28px); font-weight: 600; letter-spacing: -.02em; line-height: 1.25; overflow-wrap: anywhere; }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; color: var(--muted); font-size: 13px; }
+.mono { font-family: var(--font-mono); }
+.statusPill { min-height: 24px; display: inline-flex; align-items: center; gap: 6px; padding: 0 9px; color: var(--muted); background: var(--surface-hover); border-radius: 999px; font-size: 12px; font-weight: 500; }
+.statusPill::before { content: ""; width: 6px; height: 6px; background: currentColor; border-radius: 50%; }
+.statusPill[data-status="failed"] { color: var(--danger); background: var(--danger-soft); }
+.statusPill[data-status="uploading"], .statusPill[data-status="preprocessing"], .statusPill[data-status="queued"], .statusPill[data-status="transcribing"], .statusPill[data-status="analyzing"], .statusPill[data-status="recording"] { color: var(--ink); background: var(--surface-hover); }
+.statusPill[data-status="uploading"]::before, .statusPill[data-status="preprocessing"]::before, .statusPill[data-status="queued"]::before, .statusPill[data-status="transcribing"]::before, .statusPill[data-status="analyzing"]::before { background: var(--blue); }
+.statusPill[data-status="recording"]::before { background: var(--danger-solid); }
+
+.settingsRow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.chipDivider { width: 1px; height: 20px; margin: 0 4px; background: var(--line); }
+.settingChip { position: relative; }
+.settingChip > summary { min-height: 32px; display: inline-flex; align-items: center; gap: 8px; padding: 0 10px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; list-style: none; font-size: 13px; }
+.settingChip > summary::-webkit-details-marker { display: none; }
+.settingChip > summary:hover { background: var(--surface-hover); }
+.settingChip > summary > span { color: var(--muted); }
+.settingChip > summary > strong { font-weight: 500; }
+.chipPopover { position: absolute; top: 38px; left: 0; z-index: 20; width: min(360px, calc(100vw - 32px)); padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 34px var(--shadow); }
+.chipPopover form { margin-top: 0; padding-top: 0; border-top: 0; }
+
+/* The job status panel renders as an inline toggle; its details expand onto their own row. */
+.settingsRow .jobsSection { max-width: none; margin: 0; padding: 0; }
+.settingsRow .jobsSection:has(details[open]) { flex-basis: 100%; }
+.settingsRow .jobToggle { min-height: 32px; display: inline-flex; justify-content: flex-start; gap: 6px; padding: 0 10px; color: var(--text-secondary); background: transparent; border: 0; font-size: 13px; }
+.settingsRow .jobToggle:hover { background: var(--surface-hover); }
+.settingsRow .jobToggle strong { font-size: 13px; font-weight: 400; }
+.settingsRow .jobToggle strong::after { content: "："; }
+.settingsRow .jobToggle em { font-size: 13px; font-weight: 400; }
+.settingsRow .jobToggle::after { content: ""; width: 7px; height: 7px; margin: -3px 2px 0 4px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); }
+.settingsRow details[open] > .jobToggle::after { margin-top: 3px; transform: rotate(225deg); }
+.settingsRow .jobContent { margin-top: 8px; border-top: 1px solid var(--line); border-radius: 12px; }
+
+.titleActions { display: flex; flex: 0 0 auto; align-items: flex-start; gap: 8px; }
+.downloadMenu { position: relative; }
+.downloadMenu > summary { min-height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; list-style: none; font-size: 14px; }
+.downloadMenu > summary::-webkit-details-marker { display: none; }
+.downloadMenu > summary:hover { background: var(--surface-hover); }
+.downloadMenu > div { position: absolute; top: 42px; right: 0; z-index: 20; min-width: 200px; display: grid; padding: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 34px var(--shadow); }
+.downloadMenu a { padding: 8px 10px; color: var(--ink); text-decoration: none; border-radius: 8px; font-size: 13px; }
+.downloadMenu a:hover { background: var(--surface-hover); }
+.regenerate > div { justify-items: end; padding: 0; }
+.regenerate > div > button { min-height: 36px; padding: 0 14px; font-size: 14px; font-weight: 500; }
+.regenerate > div > span, .regenerate > div > p { max-width: 260px; text-align: right; }
+
+.page > .uploadPanel { margin: 0 40px 20px; }
+
+@media (max-width: 1000px) {
+  .topHeader, .titleBlock { padding-right: 24px; padding-left: 24px; }
+  .page > .uploadPanel { margin-right: 24px; margin-left: 24px; }
+  .titleBlock { flex-direction: column; align-items: stretch; }
+  .titleActions { justify-content: flex-start; }
+  .regenerate > div { justify-items: start; }
+  .regenerate > div > span, .regenerate > div > p { text-align: left; }
+}
+@media (max-width: 560px) {
+  .topHeader { gap: 8px; padding-right: max(12px, env(safe-area-inset-right)); padding-left: max(12px, env(safe-area-inset-left)); }
+  .headerButton { width: 44px; min-height: 44px; justify-content: center; padding: 0; font-size: 0; }
+  .titleBlock { padding: 18px max(16px, env(safe-area-inset-right)) 16px max(16px, env(safe-area-inset-left)); }
+  .page > .uploadPanel { margin-right: 16px; margin-left: 16px; }
+  .settingChip > summary, .settingsRow .jobToggle, .downloadMenu > summary { min-height: 44px; }
+  .chipDivider { display: none; }
+}

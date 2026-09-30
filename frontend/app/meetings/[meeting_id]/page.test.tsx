@@ -3,11 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MeetingReviewPanel } from "@/components/meeting-review-panel";
 import MeetingDetailPage from "./page";
 import { AppStatusPage } from "@/components/app-status-page";
+import { SummaryRegenerationButton } from "@/components/final-transcript-button";
 
 vi.mock("@/app/actions", () => ({ updateSegmentAction: vi.fn() }));
 vi.mock("@/components/meeting-review-panel", () => ({ MeetingReviewPanel: () => null }));
 vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("Not found"); } }));
 type ReviewProps = ComponentProps<typeof MeetingReviewPanel>;
+type RegenerationProps = ComponentProps<typeof SummaryRegenerationButton>;
 const finalTranscript = { id: "final", kind: "final", model: "whisperx", segments: [{
   id: "final-segment", text: "確定発言", start_ms: 0, end_ms: 1000, speaker: null, words: [],
 }] };
@@ -26,6 +28,16 @@ function review(node: ReactNode): ReactElement<ReviewProps> | undefined {
     return node;
   } else if (isValidElement<{ children?: ReactNode; notes?: ReactNode }>(node)) {
     return review(node.props.children) ?? review(node.props.notes);
+  }
+  return undefined;
+}
+function regenerationButton(node: ReactNode): ReactElement<RegenerationProps> | undefined {
+  if (Array.isArray(node)) {
+    for (const child of node) { const found = regenerationButton(child); if (found) return found; }
+  } else if (isValidElement<RegenerationProps>(node) && node.type === SummaryRegenerationButton) {
+    return node;
+  } else if (isValidElement<{ children?: ReactNode }>(node)) {
+    return regenerationButton(node.props.children);
   }
   return undefined;
 }
@@ -67,11 +79,14 @@ describe("meeting summary regeneration presentation", () => {
   });
   it("keeps saved realtime notes as the default while Final is saved and summary is pending", async () => {
     const panel = await page();
+    const element = await MeetingDetailPage({ params: Promise.resolve({ meeting_id: "m" }),
+      searchParams: Promise.resolve({}) });
+    const regeneration = regenerationButton(element);
     expect(panel.props.analysis?.id).toBe("realtime");
     expect(panel.props.analysis?.items[0].content).toBe("保存済みRealtime要約");
     expect(panel.props.evidenceSegments[0].id).toBe("live-segment");
-    expect(panel.props.regeneration.processing).toBe(true);
-    expect(panel.props.regeneration.hasFinal).toBe(true);
+    expect(regeneration?.props.processing).toBe(true);
+    expect(regeneration?.props.hasFinal).toBe(true);
   });
   it("honors an explicit Final transcript selection during summary processing", async () => {
     const panel = await page({ transcript_kind: "final" });

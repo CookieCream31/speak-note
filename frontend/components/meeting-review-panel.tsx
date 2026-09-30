@@ -29,7 +29,8 @@ interface MeetingReviewPanelProps {
   analysis: AnalysisVersion | null;
   versions: AnalysisVersionSummary[];
   realtimeHistory: AnalysisVersion | null;
-  regeneration: SummaryRegenerationProps;
+  /** Omit when the page shows the regeneration button elsewhere (the meeting header). */
+  regeneration?: SummaryRegenerationProps;
   regenerationKey?: string;
   evidenceSegments: EvidenceSegment[];
   playerAvailable: boolean;
@@ -295,7 +296,7 @@ export function MeetingReviewPanel({
 
       {!finalTranscriptAvailable && <p className={styles.notice}>リアルタイム版は暫定結果です。要約の再生成で全体文字起こしを作成すると、編集や会議への質問も利用できます。</p>}
 
-      <SummaryRegenerationButton key={regenerationKey} {...regeneration} />
+      {regeneration && <SummaryRegenerationButton key={regenerationKey} {...regeneration} />}
 
       <ManualAIImport meetingId={meetingId} available={finalTranscriptAvailable && evidenceSegments.length > 0} />
 

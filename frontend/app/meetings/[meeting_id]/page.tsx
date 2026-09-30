@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { updateSegmentAction } from "@/app/actions";
+import { ChevronDown, Download, Sparkles } from "lucide-react";
+
 import { ChunkedMediaUploader } from "@/components/chunked-media-uploader";
 import { LiveMeetingRecorder } from "@/components/live-meeting-recorder";
 import { AnswerAssistPanel } from "@/components/answer-assist-panel";
@@ -15,6 +17,7 @@ import { MeetingToolsPanel } from "@/components/meeting-tools-panel";
 import { MeetingWorkspace } from "@/components/meeting-workspace";
 import { ThemeSelector } from "@/components/theme-selector";
 import { AppStatusPage } from "@/components/app-status-page";
+import { SummaryRegenerationButton, type SummaryRegenerationProps } from "@/components/final-transcript-button";
 import type {
   PlaybackChapter,
   PlaybackTurn,
@@ -93,6 +96,14 @@ function formatTimestamp(milliseconds: number): string {
 function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function speakerCountLabel(minimum: number | null, maximum: number | null): string {
+  if (minimum === null && maximum === null) return "自動";
+  if (minimum !== null && minimum === maximum) return `${minimum}人`;
+  if (minimum === null) return `${maximum}人以下`;
+  if (maximum === null) return `${minimum}人以上`;
+  return `${minimum}〜${maximum}人`;
 }
 
 function speakerName(segment: TranscriptSegment): string {
@@ -289,102 +300,176 @@ export default async function MeetingDetailPage({
     speakerName: speakerName(segment),
   }));
 
+  const regeneration: SummaryRegenerationProps = {
+    meetingId: meeting.id,
+    ready: Boolean(finalTranscript) || (archivedLiveMeeting && Boolean(meeting.source_type === "audio_recording" ? originalAudio : transcriptionAudio)),
+    processing: jobs.some((job) => ["preprocess_media", "transcribe", "analyze"].includes(job.type) && ["queued", "running"].includes(job.status))
+      || liveSession?.status === "recording" || liveSession?.status === "finalizing",
+    profiles: aiProfiles,
+    templates,
+    currentProfileId: meeting.ai_profile_id,
+    currentTemplate: meeting.template_snapshot,
+    aiDisabled: meeting.ai_disabled,
+    hasFinal: Boolean(finalTranscript),
+  };
+  const regenerationKey = jobs.filter((job) => ["preprocess_media", "transcribe", "analyze"].includes(job.type)).map((job) => `${job.id}:${job.status}:${job.attempts}`).join("|");
+  const showCapturePanel = !archivedLiveMeeting && (isRealtimeCapture || !uploadedOriginal);
+
   return (
     <main className={styles.page}>
-      <header className={styles.header}>
-        <Link className={styles.brand} href="/">
+      <header className={styles.topHeader}>
+        <Link className={styles.logo} href="/" aria-label="speak-note ホーム">
           <span className={styles.brandMark} aria-hidden="true"><i /><i /><i /></span>
-          <span>speak-note</span>
         </Link>
-        <div className={styles.headerLinks}>
-          <ThemeSelector />
-          <Link className={styles.backLink} href="/settings/ai">AI設定</Link>
-          <Link className={styles.backLink} href="/">← 会議一覧</Link>
-        </div>
+        <nav className={styles.breadcrumb} aria-label="パンくずリスト">
+          <Link href="/">会議一覧</Link>
+          <span aria-hidden="true">/</span>
+          <span aria-current="page">{meeting.title}</span>
+        </nav>
+        <ThemeSelector />
+        <Link className={styles.headerButton} href="/settings/ai">
+          <Sparkles size={16} aria-hidden="true" />
+          AI設定
+        </Link>
       </header>
 
-      <section className={`${styles.summary} ${archivedLiveMeeting ? styles.archivedSummary : ""}`}>
-        <div>
+      <section className={styles.titleBlock}>
+        <div className={styles.titleMain}>
           <h1>{meeting.title}</h1>
-          <div className={styles.metadata}>
-            <span className={`status status-${meeting.status}`}>
+          <div className={styles.meta}>
+            <span className={styles.statusPill} data-status={meeting.status}>
               {meeting.source_type === "audio_recording" && meeting.status === "recording"
                 ? "録音中"
                 : statusLabels[meeting.status]}
             </span>
             <span>{sourceLabels[meeting.source_type]}</span>
+            <span aria-hidden="true">·</span>
             <time dateTime={meeting.created_at}>{formatDate(meeting.created_at)}</time>
-          </div>
-          <MeetingProjectSelector meetingId={meeting.id} currentProjectId={meeting.project_id} />
-          <MeetingAISelector
-            meetingId={meeting.id}
-            currentProfileId={meeting.ai_profile_id}
-            disabled={meeting.ai_disabled}
-            profiles={aiProfiles}
-          />
-          <MeetingTranscriptionSettings
-            meetingId={meeting.id}
-            minSpeakers={meeting.min_speakers}
-            maxSpeakers={meeting.max_speakers}
-            disabled={[
-              "recording",
-              "preprocessing",
-              "queued",
-              "transcribing",
-              "analyzing",
-            ].includes(meeting.status)}
-          />
-        </div>
-        {!archivedLiveMeeting && (
-          <section className={styles.uploadPanel}>
-            <h2>
-              {meeting.source_type === "live"
-                ? "画面共有を録画"
-                : meeting.source_type === "audio_recording"
-                  ? "マイク音声を録音"
-                  : "音声・動画ファイルを取り込む"}
-            </h2>
-            {isRealtimeCapture ? (
-              <LiveMeetingRecorder
-                meetingId={meeting.id}
-                captureMode={meeting.source_type === "audio_recording" ? "microphone" : "display"}
-                existingRecording={
-                  meeting.source_type === "audio_recording"
-                    ? Boolean(originalAudio)
-                    : Boolean(originalVideo)
-                }
-                transcriptionReady={
-                  meeting.source_type === "audio_recording"
-                    ? Boolean(originalAudio)
-                    : Boolean(transcriptionAudio)
-                }
-                hasFinalTranscript={transcript?.kind === "final"}
-                finalProcessing={jobs.some(
-                  (job) =>
-                    (job.type === "transcribe" || job.type === "analyze")
-                    && (job.status === "queued" || job.status === "running"),
-                )}
-                aiDisabled={meeting.ai_disabled}
-                initialIncludeMicrophone={startMicrophoneMuted === "0"}
-                autoStart={startRecording === "1" && !uploadedOriginal}
-                resumePendingCapture={
-                  meeting.source_type === "live"
-                  && startRecording === "1"
-                  && !originalVideo
-                }
-              />
-            ) : uploadedOriginal ? (
-              <div className={styles.uploaded}>
-                <strong>アップロード済み</strong>
+            {meeting.duration_ms ? (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className={styles.mono}>{formatTimestamp(meeting.duration_ms)}</span>
+              </>
+            ) : null}
+            {uploadedOriginal && (
+              <>
+                <span aria-hidden="true">·</span>
                 <span>{uploadedOriginal.mime_type} · {formatBytes(uploadedOriginal.size_bytes)}</span>
-                {isVideo && !playbackVideo && <span>再生用動画を変換しています</span>}
-              </div>
-            ) : (
-              <ChunkedMediaUploader meetingId={meeting.id} />
+              </>
             )}
-          </section>
-        )}
+            {!isRealtimeCapture && isVideo && uploadedOriginal && !playbackVideo && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span>再生用動画を変換しています</span>
+              </>
+            )}
+          </div>
+          <div className={styles.settingsRow}>
+            <MeetingProjectSelector meetingId={meeting.id} currentProjectId={meeting.project_id} />
+            <MeetingAISelector
+              meetingId={meeting.id}
+              currentProfileId={meeting.ai_profile_id}
+              disabled={meeting.ai_disabled}
+              profiles={aiProfiles}
+            />
+            <details className={styles.settingChip}>
+              <summary>
+                <span>話者数</span>
+                <strong>{speakerCountLabel(meeting.min_speakers, meeting.max_speakers)}</strong>
+                <ChevronDown size={14} aria-hidden="true" />
+              </summary>
+              <div className={styles.chipPopover}>
+                <MeetingTranscriptionSettings
+                  meetingId={meeting.id}
+                  minSpeakers={meeting.min_speakers}
+                  maxSpeakers={meeting.max_speakers}
+                  disabled={[
+                    "recording",
+                    "preprocessing",
+                    "queued",
+                    "transcribing",
+                    "analyzing",
+                  ].includes(meeting.status)}
+                />
+              </div>
+            </details>
+            <span className={styles.chipDivider} aria-hidden="true" />
+            <JobStatusPanel
+              key={jobs.map((job) => `${job.id}:${job.status}:${job.attempts}`).join("|") || meeting.id}
+              meetingId={meeting.id}
+              initialJobs={jobs}
+            />
+          </div>
+        </div>
+        <div className={styles.titleActions}>
+          {(transcript || mediaDownloadUrl) && (
+            <details className={styles.downloadMenu}>
+              <summary>
+                <Download size={16} aria-hidden="true" />
+                ダウンロード
+                <ChevronDown size={14} aria-hidden="true" />
+              </summary>
+              <div>
+                {transcript && (
+                  <a href={`/api/v1/meetings/${meeting.id}/transcript/download?kind=${transcript.kind}`} download>
+                    文字起こしテキスト
+                  </a>
+                )}
+                {mediaDownloadUrl && (
+                  <a href={mediaDownloadUrl} download>{isVideo ? "動画" : "音声"}</a>
+                )}
+              </div>
+            </details>
+          )}
+          <div className={styles.regenerate}>
+            <SummaryRegenerationButton key={regenerationKey} {...regeneration} />
+          </div>
+        </div>
       </section>
+
+      {showCapturePanel && (
+        <section className={styles.uploadPanel}>
+          <h2>
+            {meeting.source_type === "live"
+              ? "画面共有を録画"
+              : meeting.source_type === "audio_recording"
+                ? "マイク音声を録音"
+                : "音声・動画ファイルを取り込む"}
+          </h2>
+          {isRealtimeCapture ? (
+            <LiveMeetingRecorder
+              meetingId={meeting.id}
+              captureMode={meeting.source_type === "audio_recording" ? "microphone" : "display"}
+              existingRecording={
+                meeting.source_type === "audio_recording"
+                  ? Boolean(originalAudio)
+                  : Boolean(originalVideo)
+              }
+              transcriptionReady={
+                meeting.source_type === "audio_recording"
+                  ? Boolean(originalAudio)
+                  : Boolean(transcriptionAudio)
+              }
+              hasFinalTranscript={transcript?.kind === "final"}
+              finalProcessing={jobs.some(
+                (job) =>
+                  (job.type === "transcribe" || job.type === "analyze")
+                  && (job.status === "queued" || job.status === "running"),
+              )}
+              aiDisabled={meeting.ai_disabled}
+              initialIncludeMicrophone={startMicrophoneMuted === "0"}
+              autoStart={startRecording === "1" && !uploadedOriginal}
+              resumePendingCapture={
+                meeting.source_type === "live"
+                && startRecording === "1"
+                && !originalVideo
+              }
+            />
+          ) : (
+            <ChunkedMediaUploader meetingId={meeting.id} />
+          )}
+        </section>
+      )}
 
       {isRealtimeCapture && !archivedLiveMeeting && (
         <>
@@ -392,12 +477,6 @@ export default async function MeetingDetailPage({
           <RealtimeAnalysisPanel meetingId={meeting.id} templateSnapshot={meeting.template_snapshot} />
         </>
       )}
-
-      <JobStatusPanel
-        key={jobs.map((job) => `${job.id}:${job.status}:${job.attempts}`).join("|") || meeting.id}
-        meetingId={meeting.id}
-        initialJobs={jobs}
-      />
 
       <section className={styles.transcriptSection}>
         <div className={styles.sectionTitle}>
@@ -425,19 +504,6 @@ export default async function MeetingDetailPage({
               analysis={displayedAnalysis}
               versions={analysisVersions}
               realtimeHistory={realtimeHistory}
-              regeneration={{
-                meetingId: meeting.id,
-                ready: Boolean(finalTranscript) || (archivedLiveMeeting && Boolean(meeting.source_type === "audio_recording" ? originalAudio : transcriptionAudio)),
-                processing: jobs.some((job) => ["preprocess_media", "transcribe", "analyze"].includes(job.type) && ["queued", "running"].includes(job.status))
-                  || liveSession?.status === "recording" || liveSession?.status === "finalizing",
-                profiles: aiProfiles,
-                templates,
-                currentProfileId: meeting.ai_profile_id,
-                currentTemplate: meeting.template_snapshot,
-                aiDisabled: meeting.ai_disabled,
-                hasFinal: Boolean(finalTranscript),
-              }}
-              regenerationKey={jobs.filter((job) => ["preprocess_media", "transcribe", "analyze"].includes(job.type)).map((job) => `${job.id}:${job.status}:${job.attempts}`).join("|")}
               evidenceSegments={evidenceSegments}
               playerAvailable={Boolean(mediaUrl)}
               finalTranscriptAvailable={Boolean(finalTranscript)}
@@ -460,12 +526,6 @@ export default async function MeetingDetailPage({
                   </div>
                   {archivedLiveMeeting && liveTranscript && <Link href={`/meetings/${meeting.id}?analysis_id=realtime&transcript_kind=live`}>リアルタイム版</Link>}
                   {archivedLiveMeeting && finalTranscript && <Link href={`/meetings/${meeting.id}?transcript_kind=final`}>高精度版</Link>}
-                  <a
-                    href={`/api/v1/meetings/${meeting.id}/transcript/download?kind=${transcript.kind}`}
-                    download
-                  >
-                    テキストをダウンロード
-                  </a>
                 </div>
               )}
               {!transcript ? (
