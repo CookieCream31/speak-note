@@ -526,8 +526,7 @@ export function MeetingsManager({
         throw new Error("要約形式を選択してください");
       }
       if (
-        (sourceType === "media_upload" || sourceType === "audio_recording")
-        && autoAnalyze
+        autoAnalyze
         && requestedAIProfile !== "default"
         && !aiProfiles.some((profile) => profile.id === requestedAIProfile)
       ) {
@@ -587,17 +586,17 @@ export function MeetingsManager({
         });
       }
 
-      if (sourceType === "media_upload" || sourceType === "audio_recording") {
-        setCreateStatus("AI設定を保存しています…");
-        await meetingsApi.selectAI(
-          meetingId,
-          !autoAnalyze
-            ? { mode: "none", profile_id: null }
-            : requestedAIProfile === "default"
-              ? { mode: "default", profile_id: null }
-              : { mode: "profile", profile_id: requestedAIProfile },
-        );
-      }
+      // Every capture method stores the meeting's AI choice: uploads use it after transcription,
+      // recordings use it for realtime analysis and as the default when regenerating the summary.
+      setCreateStatus("AI設定を保存しています…");
+      await meetingsApi.selectAI(
+        meetingId,
+        !autoAnalyze
+          ? { mode: "none", profile_id: null }
+          : requestedAIProfile === "default"
+            ? { mode: "default", profile_id: null }
+            : { mode: "profile", profile_id: requestedAIProfile },
+      );
 
       if (sourceType === "media_upload" && createFile) {
         setCreateStatus("アップロードを準備しています…");
@@ -1231,69 +1230,74 @@ export function MeetingsManager({
                   </div>
                 </div>
                 {templateLoadError && <p className={styles.inlineWarning}>{templateLoadError}</p>}
-                {(createSource === "media_upload" || createSource === "audio_recording") && (
-                  <fieldset className={styles.summaryPreferences}>
-                    <legend className={styles.visuallyHidden}>AI要約</legend>
-                    <label className={styles.autoAnalyzeOption}>
+                <fieldset className={styles.summaryPreferences}>
+                  <legend className={styles.visuallyHidden}>AI要約</legend>
+                  <label className={styles.autoAnalyzeOption}>
+                    {createSource === "media_upload" ? (
                       <span>
                         <strong>文字起こし後にAI要約を自動作成する</strong>
                         <small>オフにすると文字起こしのみ行います</small>
                       </span>
-                      <input
-                        type="checkbox"
-                        role="switch"
-                        name="auto_analyze"
-                        checked={autoAnalyze}
-                        disabled={creating}
-                        onChange={(event) => setAutoAnalyze(event.currentTarget.checked)}
-                      />
-                    </label>
-                    <div className={styles.fieldGrid}>
-                      <label>
-                        <span>要約に使うAI</span>
-                        <select
-                          name="ai_profile"
-                          value={selectedAIProfile}
-                          disabled={!autoAnalyze || creating}
-                          onChange={(event) => setSelectedAIProfile(event.currentTarget.value)}
-                        >
-                          <option value="default">既定のAI設定</option>
-                          {aiProfiles.map((profile) => (
-                            <option key={profile.id} value={profile.id}>
-                              {profile.name} — {profile.model}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label>
-                        <span>要約形式</span>
-                        <select name="summary_format" defaultValue="standard" disabled={!autoAnalyze || creating}>
-                          <option value="standard">標準 — 要点と経緯をバランスよく</option>
-                          <option value="concise">簡潔 — 結論を短く</option>
-                          <option value="detailed">詳細 — 経緯や条件も残す</option>
-                          <option value="bullet">箇条書き — 要点を一覧化</option>
-                        </select>
-                      </label>
-                    </div>
-                    {aiProfileLoadError && (
-                      <p className={styles.inlineWarning}>{aiProfileLoadError}</p>
+                    ) : (
+                      <span>
+                        <strong>AIを使う（リアルタイム解析・要約）</strong>
+                        <small>オフにすると{createSource === "live" ? "録画" : "録音"}中のリアルタイム解析を行いません。要約は停止後に「要約を再生成」でAIを選んで作成できます</small>
+                      </span>
                     )}
+                    <input
+                      type="checkbox"
+                      role="switch"
+                      name="auto_analyze"
+                      checked={autoAnalyze}
+                      disabled={creating}
+                      onChange={(event) => setAutoAnalyze(event.currentTarget.checked)}
+                    />
+                  </label>
+                  <div className={styles.fieldGrid}>
                     <label>
-                      <span>会議の背景・内容（任意）</span>
-                      <textarea
-                        name="meeting_context"
+                      <span>{createSource === "media_upload" ? "要約に使うAI" : "使うAI"}</span>
+                      <select
+                        name="ai_profile"
+                        value={selectedAIProfile}
                         disabled={!autoAnalyze || creating}
-                        maxLength={4000}
-                        rows={3}
-                        placeholder="例：採用面接。候補者はバックエンドエンジニア。専門用語や参加者名、会議の目的などを書くと理解の補助になります。"
-                      />
+                        onChange={(event) => setSelectedAIProfile(event.currentTarget.value)}
+                      >
+                        <option value="default">既定のAI設定</option>
+                        {aiProfiles.map((profile) => (
+                          <option key={profile.id} value={profile.id}>
+                            {profile.name} — {profile.model}
+                          </option>
+                        ))}
+                      </select>
                     </label>
-                    <p>
-                      ここに書いた内容は用語や目的を理解する補助として使います。
-                      決定事項などの事実は文字起こしを根拠に生成します。
-                    </p>
-                  </fieldset>
-                )}
+                    <label>
+                      <span>要約形式</span>
+                      <select name="summary_format" defaultValue="standard" disabled={!autoAnalyze || creating}>
+                        <option value="standard">標準 — 要点と経緯をバランスよく</option>
+                        <option value="concise">簡潔 — 結論を短く</option>
+                        <option value="detailed">詳細 — 経緯や条件も残す</option>
+                        <option value="bullet">箇条書き — 要点を一覧化</option>
+                      </select>
+                    </label>
+                  </div>
+                  {aiProfileLoadError && (
+                    <p className={styles.inlineWarning}>{aiProfileLoadError}</p>
+                  )}
+                  <label>
+                    <span>会議の背景・内容（任意）</span>
+                    <textarea
+                      name="meeting_context"
+                      disabled={!autoAnalyze || creating}
+                      maxLength={4000}
+                      rows={3}
+                      placeholder="例：採用面接。候補者はバックエンドエンジニア。専門用語や参加者名、会議の目的などを書くと理解の補助になります。"
+                    />
+                  </label>
+                  <p>
+                    ここに書いた内容は用語や目的を理解する補助として使います。
+                    決定事項などの事実は文字起こしを根拠に生成します。
+                  </p>
+                </fieldset>
                 <details className={styles.advanced}>
                   <summary><ChevronRight size={14} aria-hidden="true" />詳細設定（話者数）</summary>
                   <fieldset className={styles.speakerBounds}>
