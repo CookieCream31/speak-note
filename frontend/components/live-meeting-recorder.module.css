@@ -21,19 +21,19 @@ button.iconButton:focus-visible { outline: 3px solid var(--focus-ring); outline-
 button.iconButton:disabled { cursor: not-allowed; opacity: .6; transform: none; }
 button.iconButton svg { width: 21px; height: 21px; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .recordingControls > button.iconButton[data-control="display"],
-.recordingControls > button.displayButton { color: var(--on-primary) !important; background-color: var(--primary-bg) !important; border-color: var(--focus) !important; }
+.recordingControls > button.displayButton { color: var(--ink) !important; background-color: var(--surface-hover) !important; border-color: var(--line) !important; }
 .recordingControls > button.iconButton[data-control="display"]:hover,
-.recordingControls > button.displayButton:hover { color: var(--on-primary) !important; background-color: var(--primary-hover) !important; border-color: var(--focus) !important; }
+.recordingControls > button.displayButton:hover { color: var(--ink) !important; background-color: var(--blue-soft-hover) !important; border-color: var(--blue-border) !important; }
 .recordingControls > button.iconButton[data-control="display"][data-interrupted="true"] { box-shadow: 0 0 0 5px var(--warning-ring); }
 .recordingControls > button.iconButton[data-control="microphone"],
-.recordingControls > button.microphoneButton { color: var(--on-primary) !important; background-color: var(--primary-bg) !important; border-color: var(--focus) !important; }
+.recordingControls > button.microphoneButton { color: var(--ink) !important; background-color: var(--surface-hover) !important; border-color: var(--line) !important; }
 .recordingControls > button.iconButton[data-control="microphone"]:hover,
-.recordingControls > button.microphoneButton:hover { color: var(--on-primary) !important; background-color: var(--primary-hover) !important; border-color: var(--focus) !important; }
+.recordingControls > button.microphoneButton:hover { color: var(--ink) !important; background-color: var(--blue-soft-hover) !important; border-color: var(--blue-border) !important; }
 .recordingControls > button.iconButton[data-control="microphone"][data-muted="true"],
 .recordingControls > button.mutedButton,
-.recordingControls > button.mutedButton:hover { color: var(--on-primary) !important; background-color: var(--danger-hover) !important; border-color: var(--danger-solid) !important; }
+.recordingControls > button.mutedButton:hover { color: var(--danger) !important; background-color: var(--danger-soft) !important; border: 2px solid var(--danger) !important; }
 .recordingControls > button.iconButton[data-control="microphone"][data-muted="true"]:hover,
-.recordingControls > button.mutedButton:hover { background-color: var(--danger-hover) !important; border-color: var(--danger-solid) !important; }
+.recordingControls > button.mutedButton:hover { background-color: var(--danger-soft) !important; border-color: var(--danger-hover) !important; }
 .muteSlash { stroke-width: 2.6; }
 button.stopIconButton { color: var(--on-primary) !important; background: var(--danger-solid) !important; border-color: var(--danger-solid); }
 button.stopIconButton:hover { color: var(--on-primary) !important; background: var(--danger-hover) !important; border-color: var(--danger-solid); }
