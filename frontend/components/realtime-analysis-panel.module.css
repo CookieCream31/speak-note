@@ -299,3 +299,32 @@
   .streamPhrase { grid-template-columns: 1fr; gap: 8px; padding: 18px 0; }
   .streamPhrase .transcriptText { grid-column: 1; }
 }
+
+/* Redesign 3-4: recording layout (recorder + live transcript | analysis and answer assist tabs). */
+.liveLayout { display: grid; grid-template-columns: minmax(460px, 620px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.liveMain { min-width: 0; display: grid; gap: 12px; }
+.liveTranscript { min-width: 0; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.liveTranscript > header { min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-bottom: 1px solid var(--line); }
+.liveTranscript > header h2 { flex: 1; margin: 0; font-size: 14px; font-weight: 600; }
+.liveTranscript > header span { color: var(--muted); font-size: 12px; }
+.liveTranscript .transcriptViewport { max-height: min(46dvh, 460px); }
+.liveSide { min-width: 0; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.liveTabBar { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.liveTabs { flex: 1; display: flex; gap: 6px; }
+.liveTabs button { min-height: 32px; padding: 0 14px; color: var(--text-secondary); background: transparent; border: 0; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; }
+.liveTabs button:hover { background: var(--surface-hover); }
+.liveTabs button[aria-selected="true"] { color: var(--on-primary); background: var(--primary-bg); }
+.liveTabs button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.liveTabBar .status { font-weight: 400; }
+.liveAnalysisPane { padding: 20px 24px; }
+.liveAnalysisPane[hidden], .liveAssistPane[hidden] { display: none; }
+/* The answer assist panel draws its own card; flatten it inside the tab. */
+.liveAssistPane > section { width: auto; max-width: none; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+@media (max-width: 1279px) {
+  .liveLayout { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+}
+@media (max-width: 620px) {
+  .liveAnalysisPane { padding: 16px; }
+  .liveTabs button { flex: 1; min-height: 44px; }
+}
+.liveAssistPane > section > header h2 { margin: 0; font-size: 16px; font-weight: 600; }

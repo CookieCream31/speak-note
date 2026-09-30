@@ -83,3 +83,19 @@ button.stopIconButton:hover { color: var(--on-primary) !important; background: v
 @media (max-width: 520px) {
   .previewFrame[data-audio-only="true"], .audioPreview { min-height: 180px; }
 }
+
+/* Redesign 3-4: preview with rounded corners and a labelled control bar below it. */
+.previewFrame { border-radius: 12px; }
+.preview { max-height: min(349px, 40dvh); }
+.recordingControls { justify-content: flex-start; gap: 10px; padding: 10px 0 0; }
+.recordingControls button.iconButton { width: auto !important; height: 40px; flex: 0 0 auto; display: inline-flex; gap: 8px; padding: 0 14px !important; border-radius: 10px !important; font-size: 13px; }
+.recordingControls button.iconButton svg { width: 18px; height: 18px; }
+.recordingControls button.stopIconButton { margin-left: auto; font-weight: 500; }
+.controlLabel { white-space: nowrap; }
+@media (max-width: 560px) {
+  /* Narrow screens keep round icon buttons; labels stay as accessible names via aria-label. */
+  .recordingControls { justify-content: center; gap: 14px; }
+  .recordingControls button.iconButton { width: 56px !important; height: 56px; padding: 0 !important; border-radius: 50% !important; }
+  .recordingControls button.stopIconButton { margin-left: 0; }
+  .controlLabel { display: none; }
+}

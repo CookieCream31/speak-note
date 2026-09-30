@@ -866,7 +866,7 @@ export function LiveMeetingRecorder({
             </span>
             <strong>画面共有が停止しました</strong>
             <span>
-              録画は継続中です。下の青い画面共有ボタンから共有する画面を選び直してください。
+              録画は継続中です。下の「共有画面を選んで再開」から共有する画面を選び直してください。
             </span>
           </div>
         )}
@@ -879,14 +879,14 @@ export function LiveMeetingRecorder({
                 ? aiDisabled
                   ? "確定版の文字起こしを処理しています。"
                   : "確定版の文字起こしとAI議事録を処理しています。"
-                : "録音済みです。下の会議ノートで処理結果を確認できます。"}
+                : "録音済みです。処理結果はこの下の会議画面で確認できます。"}
             </p>
           </div>
         ) : (
           <div className={styles.finalProcessing}>
             <p>
               {transcriptionReady
-                ? "会議ノートの「要約を再生成」からAIとテンプレートを選べます。"
+                ? "画面上部の「要約を再生成」からAIとテンプレートを選べます。"
                 : "録画を再生・文字起こしできる形式へ変換しています。"}
             </p>
           </div>
@@ -952,6 +952,9 @@ export function LiveMeetingRecorder({
               onClick={() => void changeDisplay()}
             >
               <ChangeDisplayIcon />
+              <span className={styles.controlLabel}>
+                {switchingDisplay ? "選択中…" : displayInterrupted ? "共有画面を選んで再開" : "共有画面を変更"}
+              </span>
             </button>
           )}
           <button
@@ -974,6 +977,7 @@ export function LiveMeetingRecorder({
             onClick={() => void toggleMicrophone()}
           >
             <MicrophoneIcon muted={microphoneMuted} />
+            <span className={styles.controlLabel}>{microphoneMuted ? "マイク：ミュート中" : "マイク：ON"}</span>
           </button>
           <button
             className={`${styles.iconButton} ${styles.stopIconButton}`}
@@ -983,6 +987,7 @@ export function LiveMeetingRecorder({
             onClick={() => void stopRecording()}
           >
             <StopRecordingIcon />
+            <span className={styles.controlLabel}>{isMicrophoneOnly ? "録音を終了して確定" : "録画を終了して確定"}</span>
           </button>
         </div>
       ) : (

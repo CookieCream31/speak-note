@@ -13,7 +13,7 @@ describe("LiveMeetingRecorder", () => {
       meetingId="meeting" existingRecording transcriptionReady
       hasFinalTranscript={false} finalProcessing={false} aiDisabled={false}
     />);
-    expect(html).toContain("会議ノートの「要約を再生成」");
+    expect(html).toContain("画面上部の「要約を再生成」");
     expect(html).not.toContain("確定版の文字起こし・AI解析を開始");
     expect(html).not.toContain("確定版の文字起こし・AI解析をやり直す");
   });

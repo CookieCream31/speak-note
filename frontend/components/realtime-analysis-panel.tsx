@@ -29,6 +29,10 @@ import styles from "./realtime-analysis-panel.module.css";
 interface RealtimeAnalysisPanelProps {
   meetingId: string;
   templateSnapshot?: MeetingTemplateSnapshot | null;
+  /** When given, render the recording layout with this recorder in the left column. */
+  recorder?: ReactNode;
+  /** Shown as the "回答支援" tab next to the analysis in the recording layout. */
+  answerAssist?: ReactNode;
 }
 
 const EMPTY_PERSISTED_SEGMENTS: TranscriptSegment[] = [];
@@ -431,8 +435,14 @@ function LiveTranscriptViewport({ children }: { children: ReactNode }) {
   );
 }
 
-export function RealtimeAnalysisPanel({ meetingId, templateSnapshot }: RealtimeAnalysisPanelProps) {
+export function RealtimeAnalysisPanel({
+  meetingId,
+  templateSnapshot,
+  recorder,
+  answerAssist,
+}: RealtimeAnalysisPanelProps) {
   const [activeView, setActiveView] = useState<RealtimeView>("summary");
+  const [liveTab, setLiveTab] = useState<"analysis" | "assist">("analysis");
   const [analysis, setAnalysis] = useState<RealtimeAnalysis | null>(null);
   const [liveSession, setLiveSession] = useState<LiveSession | null>(null);
   const transcriptStore = getLiveTranscriptStore(meetingId);
@@ -532,16 +542,221 @@ export function RealtimeAnalysisPanel({ meetingId, templateSnapshot }: RealtimeA
     };
   }
 
+  const summaryContent = (
+    <>
+      {analysis?.status === "failed" && analysis.error_message && snapshot && (
+        <p className={styles.error}>前回の結果を表示しています。{analysis.error_message}</p>
+      )}
+      {!snapshot ? (
+        <div className={styles.empty}>
+          <strong>{analysis?.status === "failed" ? "解析を更新できませんでした" : "発言を待っています"}</strong>
+          <p>
+            {analysis?.error_message
+              ?? "文字起こしが追加されると、約30秒単位で会議の整理結果を更新します。"}
+          </p>
+        </div>
+      ) : templateSnapshot ? (
+        <TemplateAnalysisCards
+          cards={templateSnapshot.definition.realtime}
+          values={((snapshot.template_values ?? []).map((value) => ({
+            ...value,
+            evidence_segment_ids: value.evidence_segment_ids.flatMap((id) => {
+              const matched = evidence.get(id);
+              return matched ? [matched.segment_id] : [];
+            }),
+          }))) as TemplateDisplayValue[]}
+          onSelectEvidence={selectEvidence}
+          coreRows={{
+            summary: [{
+              rowId: "summary:0",
+              content: <><p>{snapshot.summary.content}</p><EvidenceRange evidenceIds={snapshot.summary.evidence_segment_ids} evidence={evidence} onSelect={selectEvidence} /></>,
+            }],
+            decision: snapshot.decisions.map((item, index) => ({
+              rowId: `decision:${index}`,
+              content: <><p>{item.content}</p><span className={styles.badge}>{item.status === "explicit" ? "明示" : "候補"}</span><EvidenceRange evidenceIds={item.evidence_segment_ids} evidence={evidence} onSelect={selectEvidence} /></>,
+            })),
+            action_item: snapshot.action_items.map((item, index) => ({
+              rowId: `action_item:${index}`,
+              content: <><p>{item.content}</p><div className={styles.meta}><span>{item.assignee ?? "担当者未定"}</span><span>{item.deadline ?? "期限未定"}</span></div><EvidenceRange evidenceIds={item.evidence_segment_ids} evidence={evidence} onSelect={selectEvidence} /></>,
+            })),
+            open_question: snapshot.attention_items.map((item, index) => ({
+              rowId: `open_question:${index}`,
+              content: <><span className={styles.alertBadge}>{attentionLabels[item.type]}</span><h4>{item.title}</h4><dl><div><dt>分かっていること</dt><dd>{item.known_information}</dd></div>{item.information_needed && <div><dt>不足している情報</dt><dd>{item.information_needed}</dd></div>}<div><dt>確認理由</dt><dd>{item.reason}</dd></div></dl><EvidenceRange evidenceIds={item.evidence_segment_ids} evidence={evidence} onSelect={selectEvidence} /></>,
+            })),
+            important_point: snapshot.key_facts.map((item, index) => ({
+              rowId: `important_point:${index}`,
+              content: <><strong>{item.label}</strong><p>{item.value}</p><EvidenceRange evidenceIds={item.evidence_segment_ids} evidence={evidence} onSelect={selectEvidence} /></>,
+            })),
+          }}
+        />
+      ) : (
+        <div className={styles.grid}>
+          <article className={styles.summaryCard}>
+            <h3>これまでの要約</h3>
+            <p>{snapshot.summary.content}</p>
+          </article>
+
+          <article>
+            <h3>決定事項 <small>{snapshot.decisions.length}</small></h3>
+            {snapshot.decisions.length === 0 ? <p className={styles.none}>まだありません</p> : (
+              <ul>{snapshot.decisions.map((item, index) => (
+                <li key={`${item.content}-${index}`}>
+                  <p>{item.content}</p>
+                  <span className={styles.badge}>{item.status === "explicit" ? "明示" : "候補"}</span>
+                  <EvidenceRange evidenceIds={item.evidence_segment_ids} evidence={evidence} onSelect={selectEvidence} />
+                </li>
+              ))}</ul>
+            )}
+          </article>
+
+          <article>
+            <h3>Action Item <small>{snapshot.action_items.length}</small></h3>
+            {snapshot.action_items.length === 0 ? <p className={styles.none}>まだありません</p> : (
+              <ul>{snapshot.action_items.map((item, index) => (
+                <li key={`${item.content}-${index}`}>
+                  <p>{item.content}</p>
+                  <div className={styles.meta}>
+                    <span>{item.assignee ?? "担当者未定"}</span>
+                    <span>{item.deadline ?? "期限未定"}</span>
+                  </div>
+                  <EvidenceRange evidenceIds={item.evidence_segment_ids} evidence={evidence} onSelect={selectEvidence} />
+                </li>
+              ))}</ul>
+            )}
+          </article>
+
+          <article>
+            <h3>確認ポイント <small>{snapshot.attention_items.length}</small></h3>
+            {snapshot.attention_items.length === 0 ? <p className={styles.none}>今のところありません</p> : (
+              <ul>{snapshot.attention_items.map((item, index) => (
+                <li key={`${item.title}-${index}`}>
+                  <span className={styles.alertBadge}>{attentionLabels[item.type]}</span>
+                  <h4>{item.title}</h4>
+                  <dl>
+                    <div><dt>分かっていること</dt><dd>{item.known_information}</dd></div>
+                    {item.information_needed && <div><dt>不足している情報</dt><dd>{item.information_needed}</dd></div>}
+                    <div><dt>確認理由</dt><dd>{item.reason}</dd></div>
+                  </dl>
+                  <EvidenceRange evidenceIds={item.evidence_segment_ids} evidence={evidence} onSelect={selectEvidence} />
+                </li>
+              ))}</ul>
+            )}
+          </article>
+
+          <article>
+            <h3>重要情報 <small>{snapshot.key_facts.length}</small></h3>
+            {snapshot.key_facts.length === 0 ? <p className={styles.none}>まだありません</p> : (
+              <ul>{snapshot.key_facts.map((item, index) => (
+                <li key={`${item.label}-${index}`}>
+                  <strong>{item.label}</strong>
+                  <p>{item.value}</p>
+                  <EvidenceRange evidenceIds={item.evidence_segment_ids} evidence={evidence} onSelect={selectEvidence} />
+                </li>
+              ))}</ul>
+            )}
+          </article>
+        </div>
+      )}
+      {analysis && (
+        <footer>
+          発言 {analysis.processed_revision}/{analysis.input_revision} 更新
+          {analysis.model ? ` · ${analysis.model}` : ""} · 確定版は録画終了後にボタンから作成できます
+        </footer>
+      )}
+    </>
+  );
+  const transcriptViewport = (
+    <LiveTranscriptViewport>
+      <LiveTranscriptStream
+        meetingId={meetingId}
+        recording={liveSession?.status === "recording"}
+        persistedSegments={liveSession?.segments ?? EMPTY_PERSISTED_SEGMENTS}
+      />
+    </LiveTranscriptViewport>
+  );
+  const statusIndicator = (
+    <div className={styles.status} data-status={viewStatus.key} aria-live="polite">
+      <i aria-hidden="true" />
+      {viewStatus.label}
+    </div>
+  );
+
+  // While recording, the page passes the recorder and answer assist so this panel can own the
+  // two-column layout: recorder + live transcript on the left, analysis | answer assist on the right.
+  if (recorder !== undefined) {
+    return (
+      <div className={styles.liveLayout}>
+        <div className={styles.liveMain}>
+          {recorder}
+          <section className={styles.liveTranscript} aria-label="リアルタイム文字起こし">
+            <header>
+              <h2>リアルタイム文字起こし</h2>
+              <span>暫定 · 確定版は終了後に作成 · {transcriptTurnCount} 発言</span>
+            </header>
+            {transcriptViewport}
+          </section>
+        </div>
+        <section className={styles.liveSide}>
+          <div className={styles.liveTabBar}>
+            <div className={styles.liveTabs} role="tablist" aria-label="会議中のAI">
+              <button
+                type="button"
+                role="tab"
+                id="live-analysis-tab"
+                aria-controls="live-analysis-panel"
+                aria-selected={liveTab === "analysis"}
+                onClick={() => setLiveTab("analysis")}
+              >
+                リアルタイム解析
+              </button>
+              {answerAssist !== undefined && (
+                <button
+                  type="button"
+                  role="tab"
+                  id="live-assist-tab"
+                  aria-controls="live-assist-panel"
+                  aria-selected={liveTab === "assist"}
+                  onClick={() => setLiveTab("assist")}
+                >
+                  回答支援
+                </button>
+              )}
+            </div>
+            {liveTab === "analysis" && statusIndicator}
+          </div>
+          <div
+            className={styles.liveAnalysisPane}
+            id="live-analysis-panel"
+            role="tabpanel"
+            aria-labelledby="live-analysis-tab"
+            hidden={liveTab !== "analysis"}
+          >
+            {error && <p className={styles.fetchError} role="alert">{error}</p>}
+            {summaryContent}
+          </div>
+          {answerAssist !== undefined && (
+            <div
+              className={styles.liveAssistPane}
+              id="live-assist-panel"
+              role="tabpanel"
+              aria-labelledby="live-assist-tab"
+              hidden={liveTab !== "assist"}
+            >
+              {answerAssist}
+            </div>
+          )}
+        </section>
+      </div>
+    );
+  }
+
   return (
     <section className={styles.panel}>
       <header className={styles.panelHeader}>
         <div>
           <h2>リアルタイム解析</h2>
         </div>
-        <div className={styles.status} data-status={viewStatus.key} aria-live="polite">
-          <i aria-hidden="true" />
-          {viewStatus.label}
-        </div>
+        {statusIndicator}
       </header>
 
       <nav className={styles.tabBar} role="tablist" aria-label="リアルタイム会議ノートの表示">
@@ -581,125 +796,7 @@ export function RealtimeAnalysisPanel({ meetingId, templateSnapshot }: RealtimeA
         aria-labelledby="realtime-summary-tab"
         hidden={activeView !== "summary"}
       >
-        {analysis?.status === "failed" && analysis.error_message && snapshot && (
-          <p className={styles.error}>前回の結果を表示しています。{analysis.error_message}</p>
-        )}
-        {!snapshot ? (
-          <div className={styles.empty}>
-            <strong>{analysis?.status === "failed" ? "解析を更新できませんでした" : "発言を待っています"}</strong>
-            <p>
-              {analysis?.error_message
-                ?? "文字起こしが追加されると、約30秒単位で会議の整理結果を更新します。"}
-            </p>
-          </div>
-        ) : templateSnapshot ? (
-          <TemplateAnalysisCards
-            cards={templateSnapshot.definition.realtime}
-            values={((snapshot.template_values ?? []).map((value) => ({
-              ...value,
-              evidence_segment_ids: value.evidence_segment_ids.flatMap((id) => {
-                const matched = evidence.get(id);
-                return matched ? [matched.segment_id] : [];
-              }),
-            }))) as TemplateDisplayValue[]}
-            onSelectEvidence={selectEvidence}
-            coreRows={{
-              summary: [{
-                rowId: "summary:0",
-                content: <><p>{snapshot.summary.content}</p><EvidenceRange evidenceIds={snapshot.summary.evidence_segment_ids} evidence={evidence} onSelect={selectEvidence} /></>,
-              }],
-              decision: snapshot.decisions.map((item, index) => ({
-                rowId: `decision:${index}`,
-                content: <><p>{item.content}</p><span className={styles.badge}>{item.status === "explicit" ? "明示" : "候補"}</span><EvidenceRange evidenceIds={item.evidence_segment_ids} evidence={evidence} onSelect={selectEvidence} /></>,
-              })),
-              action_item: snapshot.action_items.map((item, index) => ({
-                rowId: `action_item:${index}`,
-                content: <><p>{item.content}</p><div className={styles.meta}><span>{item.assignee ?? "担当者未定"}</span><span>{item.deadline ?? "期限未定"}</span></div><EvidenceRange evidenceIds={item.evidence_segment_ids} evidence={evidence} onSelect={selectEvidence} /></>,
-              })),
-              open_question: snapshot.attention_items.map((item, index) => ({
-                rowId: `open_question:${index}`,
-                content: <><span className={styles.alertBadge}>{attentionLabels[item.type]}</span><h4>{item.title}</h4><dl><div><dt>分かっていること</dt><dd>{item.known_information}</dd></div>{item.information_needed && <div><dt>不足している情報</dt><dd>{item.information_needed}</dd></div>}<div><dt>確認理由</dt><dd>{item.reason}</dd></div></dl><EvidenceRange evidenceIds={item.evidence_segment_ids} evidence={evidence} onSelect={selectEvidence} /></>,
-              })),
-              important_point: snapshot.key_facts.map((item, index) => ({
-                rowId: `important_point:${index}`,
-                content: <><strong>{item.label}</strong><p>{item.value}</p><EvidenceRange evidenceIds={item.evidence_segment_ids} evidence={evidence} onSelect={selectEvidence} /></>,
-              })),
-            }}
-          />
-        ) : (
-          <div className={styles.grid}>
-            <article className={styles.summaryCard}>
-              <h3>これまでの要約</h3>
-              <p>{snapshot.summary.content}</p>
-            </article>
-
-            <article>
-              <h3>決定事項 <small>{snapshot.decisions.length}</small></h3>
-              {snapshot.decisions.length === 0 ? <p className={styles.none}>まだありません</p> : (
-                <ul>{snapshot.decisions.map((item, index) => (
-                  <li key={`${item.content}-${index}`}>
-                    <p>{item.content}</p>
-                    <span className={styles.badge}>{item.status === "explicit" ? "明示" : "候補"}</span>
-                    <EvidenceRange evidenceIds={item.evidence_segment_ids} evidence={evidence} onSelect={selectEvidence} />
-                  </li>
-                ))}</ul>
-              )}
-            </article>
-
-            <article>
-              <h3>Action Item <small>{snapshot.action_items.length}</small></h3>
-              {snapshot.action_items.length === 0 ? <p className={styles.none}>まだありません</p> : (
-                <ul>{snapshot.action_items.map((item, index) => (
-                  <li key={`${item.content}-${index}`}>
-                    <p>{item.content}</p>
-                    <div className={styles.meta}>
-                      <span>{item.assignee ?? "担当者未定"}</span>
-                      <span>{item.deadline ?? "期限未定"}</span>
-                    </div>
-                    <EvidenceRange evidenceIds={item.evidence_segment_ids} evidence={evidence} onSelect={selectEvidence} />
-                  </li>
-                ))}</ul>
-              )}
-            </article>
-
-            <article>
-              <h3>確認ポイント <small>{snapshot.attention_items.length}</small></h3>
-              {snapshot.attention_items.length === 0 ? <p className={styles.none}>今のところありません</p> : (
-                <ul>{snapshot.attention_items.map((item, index) => (
-                  <li key={`${item.title}-${index}`}>
-                    <span className={styles.alertBadge}>{attentionLabels[item.type]}</span>
-                    <h4>{item.title}</h4>
-                    <dl>
-                      <div><dt>分かっていること</dt><dd>{item.known_information}</dd></div>
-                      {item.information_needed && <div><dt>不足している情報</dt><dd>{item.information_needed}</dd></div>}
-                      <div><dt>確認理由</dt><dd>{item.reason}</dd></div>
-                    </dl>
-                    <EvidenceRange evidenceIds={item.evidence_segment_ids} evidence={evidence} onSelect={selectEvidence} />
-                  </li>
-                ))}</ul>
-              )}
-            </article>
-
-            <article>
-              <h3>重要情報 <small>{snapshot.key_facts.length}</small></h3>
-              {snapshot.key_facts.length === 0 ? <p className={styles.none}>まだありません</p> : (
-                <ul>{snapshot.key_facts.map((item, index) => (
-                  <li key={`${item.label}-${index}`}>
-                    <strong>{item.label}</strong>
-                    <p>{item.value}</p>
-                    <EvidenceRange evidenceIds={item.evidence_segment_ids} evidence={evidence} onSelect={selectEvidence} />
-                  </li>
-                ))}</ul>
-              )}
-            </article>
-          </div>
-        )}
-        {analysis && (
-          <footer>
-            発言 {analysis.processed_revision}/{analysis.input_revision} 更新
-            {analysis.model ? ` · ${analysis.model}` : ""} · 確定版は録画終了後にボタンから作成できます
-          </footer>
-        )}
+        {summaryContent}
       </div>
 
       <div
@@ -716,15 +813,8 @@ export function RealtimeAnalysisPanel({ meetingId, templateSnapshot }: RealtimeA
           </div>
           <span>{transcriptTurnCount} 発言</span>
         </div>
-        <LiveTranscriptViewport>
-          <LiveTranscriptStream
-            meetingId={meetingId}
-            recording={liveSession?.status === "recording"}
-            persistedSegments={liveSession?.segments ?? EMPTY_PERSISTED_SEGMENTS}
-          />
-        </LiveTranscriptViewport>
+        {transcriptViewport}
       </div>
     </section>
   );
 }
-

@@ -16,6 +16,23 @@ import {
 } from "./realtime-analysis-panel";
 
 describe("RealtimeAnalysisPanel", () => {
+  it("lays out the recorder with the live transcript beside analysis and answer assist tabs", () => {
+    const html = renderToStaticMarkup(
+      <RealtimeAnalysisPanel
+        meetingId="meeting-1"
+        recorder={<div>RECORDER</div>}
+        answerAssist={<div>ASSIST</div>}
+      />,
+    );
+    // Left column: recorder first, then the always-visible live transcript.
+    expect(html.indexOf("RECORDER")).toBeLessThan(html.indexOf('aria-label="リアルタイム文字起こし"'));
+    expect(html).toContain('aria-label="文字起こし履歴"');
+    // Right column: analysis selected, answer assist kept mounted but hidden.
+    expect(html).toContain('id="live-analysis-tab" aria-controls="live-analysis-panel" aria-selected="true"');
+    expect(html).toContain('id="live-assist-panel" role="tabpanel" aria-labelledby="live-assist-tab" hidden=""');
+    expect(html).toContain("ASSIST");
+    expect(html).not.toContain('id="realtime-transcript-tab"');
+  });
   it("shows the AI summary by default and exposes a transcript tab", () => {
     const html = renderToStaticMarkup(<RealtimeAnalysisPanel meetingId="meeting-1" />);
 

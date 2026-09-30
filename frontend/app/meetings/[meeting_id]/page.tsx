@@ -313,7 +313,7 @@ export default async function MeetingDetailPage({
     hasFinal: Boolean(finalTranscript),
   };
   const regenerationKey = jobs.filter((job) => ["preprocess_media", "transcribe", "analyze"].includes(job.type)).map((job) => `${job.id}:${job.status}:${job.attempts}`).join("|");
-  const showCapturePanel = !archivedLiveMeeting && (isRealtimeCapture || !uploadedOriginal);
+  const showCapturePanel = !isRealtimeCapture && !uploadedOriginal;
 
   return (
     <main className={styles.page}>
@@ -427,55 +427,53 @@ export default async function MeetingDetailPage({
         </div>
       </section>
 
-      {showCapturePanel && (
-        <section className={styles.uploadPanel}>
-          <h2>
-            {meeting.source_type === "live"
-              ? "画面共有を録画"
-              : meeting.source_type === "audio_recording"
-                ? "マイク音声を録音"
-                : "音声・動画ファイルを取り込む"}
-          </h2>
-          {isRealtimeCapture ? (
-            <LiveMeetingRecorder
-              meetingId={meeting.id}
-              captureMode={meeting.source_type === "audio_recording" ? "microphone" : "display"}
-              existingRecording={
-                meeting.source_type === "audio_recording"
-                  ? Boolean(originalAudio)
-                  : Boolean(originalVideo)
-              }
-              transcriptionReady={
-                meeting.source_type === "audio_recording"
-                  ? Boolean(originalAudio)
-                  : Boolean(transcriptionAudio)
-              }
-              hasFinalTranscript={transcript?.kind === "final"}
-              finalProcessing={jobs.some(
-                (job) =>
-                  (job.type === "transcribe" || job.type === "analyze")
-                  && (job.status === "queued" || job.status === "running"),
-              )}
-              aiDisabled={meeting.ai_disabled}
-              initialIncludeMicrophone={startMicrophoneMuted === "0"}
-              autoStart={startRecording === "1" && !uploadedOriginal}
-              resumePendingCapture={
-                meeting.source_type === "live"
-                && startRecording === "1"
-                && !originalVideo
-              }
-            />
-          ) : (
-            <ChunkedMediaUploader meetingId={meeting.id} />
-          )}
+      {isRealtimeCapture && !archivedLiveMeeting && (
+        <section className={styles.liveSection}>
+          <RealtimeAnalysisPanel
+            meetingId={meeting.id}
+            templateSnapshot={meeting.template_snapshot}
+            recorder={(
+              <div className={styles.uploadPanel}>
+                <LiveMeetingRecorder
+                  meetingId={meeting.id}
+                  captureMode={meeting.source_type === "audio_recording" ? "microphone" : "display"}
+                  existingRecording={
+                    meeting.source_type === "audio_recording"
+                      ? Boolean(originalAudio)
+                      : Boolean(originalVideo)
+                  }
+                  transcriptionReady={
+                    meeting.source_type === "audio_recording"
+                      ? Boolean(originalAudio)
+                      : Boolean(transcriptionAudio)
+                  }
+                  hasFinalTranscript={transcript?.kind === "final"}
+                  finalProcessing={jobs.some(
+                    (job) =>
+                      (job.type === "transcribe" || job.type === "analyze")
+                      && (job.status === "queued" || job.status === "running"),
+                  )}
+                  aiDisabled={meeting.ai_disabled}
+                  initialIncludeMicrophone={startMicrophoneMuted === "0"}
+                  autoStart={startRecording === "1" && !uploadedOriginal}
+                  resumePendingCapture={
+                    meeting.source_type === "live"
+                    && startRecording === "1"
+                    && !originalVideo
+                  }
+                />
+              </div>
+            )}
+            answerAssist={<AnswerAssistPanel meetingId={meeting.id} />}
+          />
         </section>
       )}
 
-      {isRealtimeCapture && !archivedLiveMeeting && (
-        <>
-          <AnswerAssistPanel meetingId={meeting.id} />
-          <RealtimeAnalysisPanel meetingId={meeting.id} templateSnapshot={meeting.template_snapshot} />
-        </>
+      {showCapturePanel && (
+        <section className={styles.uploadPanel}>
+          <h2>音声・動画ファイルを取り込む</h2>
+          <ChunkedMediaUploader meetingId={meeting.id} />
+        </section>
       )}
 
       <section className={styles.transcriptSection}>
