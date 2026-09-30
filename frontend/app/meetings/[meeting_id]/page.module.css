@@ -100,28 +100,28 @@
   backdrop-filter: blur(10px);
 }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font: 700 19px var(--font-sans); }
-.brandMark { width: 31px; height: 31px; display: flex; align-items: center; justify-content: center; gap: 3px; background: var(--primary-bg); border-radius: 9px; }
+.brandMark { width: 31px; height: 31px; display: flex; align-items: center; justify-content: center; gap: 3px; background: var(--primary-bg); border-radius: 8px; }
 .brandMark i { width: 3px; display: block; background: var(--on-primary); border-radius: 3px; }
 .brandMark i:nth-child(1) { height: 8px; }
 .brandMark i:nth-child(2) { height: 16px; }
 .brandMark i:nth-child(3) { height: 11px; }
 .headerLinks { gap: 8px; }
-.backLink { min-height: 34px; display: inline-flex; align-items: center; padding: 0 11px; color: var(--text-secondary); background: var(--surface-hover); border: 0; border-radius: 6px; font-size: 12px; }
+.backLink { min-height: 34px; display: inline-flex; align-items: center; padding: 0 11px; color: var(--text-secondary); background: var(--surface-hover); border: 0; border-radius: 8px; font-size: 12px; }
 .backLink:hover { color: var(--ink); background: var(--blue-soft-hover); }
 .summary { max-width: 1420px; padding: 28px; grid-template-columns: minmax(0, 1fr) minmax(310px, 410px); gap: 14px; align-items: stretch; }
 .archivedSummary { grid-template-columns: minmax(0, 1fr); }
-.summary > div:first-child, .uploadPanel { padding: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 2px 10px var(--shadow-soft); }
+.summary > div:first-child, .uploadPanel { padding: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: none; }
 .summary > div:first-child > p { margin-bottom: 9px; color: var(--blue); font-size: 11px; }
 .summary h1 { max-width: none; margin: 0 0 16px; font: 600 clamp(26px, 2.4vw, 28px)/1.25 var(--font-sans); letter-spacing: -.01em; }
 .metadata { gap: 13px; font-size: 12px; }
-.uploadPanel { box-shadow: 0 2px 10px var(--shadow-soft); }
+.uploadPanel { box-shadow: none; }
 .step { color: var(--blue); }
 .uploadPanel h2 { margin: 5px 0 12px; font: 700 15px/1.35 var(--font-sans); }
-.uploadPanel input[type="file"] { padding: 10px; background: var(--blue-soft); border-color: var(--control-border); border-radius: 6px; }
-.uploadPanel button { margin-top: 10px; padding: 11px; border-radius: 6px; }
-.uploaded { padding: 11px; background: var(--success-soft); border-radius: 6px; }
+.uploadPanel input[type="file"] { padding: 10px; background: var(--blue-soft); border-color: var(--control-border); border-radius: 8px; }
+.uploadPanel button { margin-top: 10px; padding: 11px; border-radius: 8px; }
+.uploaded { padding: 11px; background: var(--success-soft); border-radius: 8px; }
 .jobsSection { max-width: 1420px; margin: 0 auto 20px; padding: 0 28px; color: var(--ink); background: transparent; }
-.jobToggle { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 16px; list-style: none; cursor: pointer; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; box-shadow: 0 2px 10px var(--shadow-soft); }
+.jobToggle { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 16px; list-style: none; cursor: pointer; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: none; }
 .jobToggle::-webkit-details-marker { display: none; }
 .jobToggle > div { display: flex; align-items: center; gap: 10px; }
 .jobToggle span { color: var(--blue); font-size: 11px; font-weight: 900; letter-spacing: .15em; }
@@ -133,7 +133,7 @@
 .jobToolbar p { margin: 0; color: var(--muted); font-size: 12px; }
 .jobToolbar button { color: var(--blue); background: transparent; border: 0; cursor: pointer; font-size: 12px; font-weight: 800; }
 .jobs { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; background: transparent; border: 0; }
-.job { padding: 16px; color: var(--ink); background: var(--blue-soft); border: 1px solid var(--line); border-radius: 7px; }
+.job { padding: 16px; color: var(--ink); background: var(--blue-soft); border: 1px solid var(--line); border-radius: 8px; }
 .job > div span, .job small { color: var(--muted); }
 .job progress, .indeterminate { margin: 12px 0 7px; }
 .indeterminate { color: var(--blue); }
@@ -144,9 +144,9 @@
 .job > div { align-items: center; gap: 10px; text-transform: none; }
 .job > div strong { font-size: 13px; }
 .job > div span { padding: 4px 8px; border-radius: 999px; font-size: 12px; font-weight: 800; }
-.job > div span[data-status="queued"] { color: var(--warning); background: var(--warning-soft); }
+.job > div span[data-status="queued"] { color: var(--blue); background: var(--blue-soft); }
 .job > div span[data-status="running"] { color: var(--blue); background: var(--blue-soft); }
-.job > div span[data-status="completed"] { color: var(--success); background: var(--success-soft); }
+.job > div span[data-status="completed"] { color: var(--muted); background: var(--surface-hover); }
 .job > div span[data-status="failed"] { color: var(--danger); background: var(--danger-soft); }
 .jobProgress { display: flex; align-items: center; gap: 8px; }
 .jobProgress progress { flex: 1; margin: 0; accent-color: var(--primary-bg); }
@@ -156,7 +156,7 @@
 .jobErrorDetails { color: var(--muted); font-size: 12px; }
 .jobErrorDetails summary { width: fit-content; cursor: pointer; }
 .jobErrorDetails p { margin: 7px 0 0; overflow-wrap: anywhere; line-height: 1.55; }
-.job > button { width: auto; align-self: flex-start; margin-top: auto; padding: 7px 13px; border-radius: 5px; font-size: 12px; }
+.job > button { width: auto; align-self: flex-start; margin-top: auto; padding: 7px 13px; border-radius: 8px; font-size: 12px; }
 .job > button:hover { background: var(--primary-hover); }
 .jobHistory { margin-top: 10px; border-top: 1px solid var(--line-soft); }
 .jobHistoryToggle { display: flex; align-items: center; justify-content: space-between; padding: 12px 4px 4px; cursor: pointer; color: var(--text-secondary); font-size: 12px; font-weight: 800; list-style: none; }
@@ -166,7 +166,7 @@
 .jobHistoryToggle span { margin-right: auto; }
 .jobHistoryToggle em { color: var(--text-subtle); font-style: normal; }
 .jobHistoryList { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 6px; padding-top: 8px; }
-.jobHistoryItem { padding: 10px 12px; background: var(--panel); border-left: 3px solid var(--line); border-radius: 5px; }
+.jobHistoryItem { padding: 10px 12px; background: var(--panel); border-left: 3px solid var(--line); border-radius: 8px; }
 .jobHistoryItem[data-status="failed"] { border-left-color: var(--danger-border); }
 .jobHistoryItem > div { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
 .jobHistoryItem > div span, .jobHistoryItem small { color: var(--text-subtle); font-size: 12px; }
@@ -209,7 +209,7 @@
   .backLink { min-height: 40px; padding: 0 7px; font-size: 12px; }
   .summary { gap: 10px; padding: 10px; }
   .summary > div:first-child,
-  .uploadPanel { min-width: 0; padding: 14px; border-radius: 9px; }
+  .uploadPanel { min-width: 0; padding: 14px; border-radius: 8px; }
   .summary h1 { font-size: clamp(22px, 7vw, 26px); }
   .metadata { gap: 7px 10px; }
   .uploadPanel input[type="file"] { padding: 8px; }

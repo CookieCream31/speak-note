@@ -3,7 +3,7 @@
 .heading p { margin: 0 0 5px; color: var(--accent); font-size: 12px; font-weight: 900; letter-spacing: .17em; }
 .heading h2 { margin: 0; font-size: 18px; }
 .tabs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 3px; padding: 10px 12px; background: var(--blue-soft); border-bottom: 1px solid var(--line); }
-.tabs button { padding: 9px 5px; color: var(--muted); background: transparent; border: 0; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 800; }
+.tabs button { padding: 9px 5px; color: var(--muted); background: transparent; border: 0; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 800; }
 .tabs button:hover { color: var(--ink); background: var(--surface-hover); }
 .tabs .activeTab { color: var(--blue); background: var(--blue-soft); }
 .message, .error { margin: 12px 12px 0; padding: 9px; font-size: 12px; font-weight: 800; line-height: 1.5; }
@@ -12,8 +12,8 @@
 .tool { max-width: 1080px; padding: 22px; }
 .tool > h3 { margin: 0 0 14px; font-size: 12px; }
 .tool > form, .speakers form { display: grid; gap: 7px; }
-.tool input, .tool select { width: 100%; min-height: 38px; padding: 8px; color: var(--ink); background: var(--blue-soft); border: 1px solid var(--line); border-radius: 6px; }
-.tool form > button, .speakers button { min-height: 36px; padding: 8px 10px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 800; }
+.tool input, .tool select { width: 100%; min-height: 38px; padding: 8px; color: var(--ink); background: var(--blue-soft); border: 1px solid var(--line); border-radius: 8px; }
+.tool form > button, .speakers button { min-height: 36px; padding: 8px 10px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 800; }
 .results, .bookmarks, .timeline { display: grid; margin-top: 14px; }
 .results > p, .bookmarks > p, .muted { color: var(--muted); font-size: 12px; line-height: 1.6; }
 .results > button { display: flex; flex-direction: column; gap: 4px; padding: 10px 0; color: inherit; text-align: left; background: transparent; border: 0; border-bottom: 1px solid var(--control-border); cursor: pointer; }

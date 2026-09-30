@@ -57,7 +57,7 @@ button.stopIconButton:hover { color: var(--on-primary) !important; background: v
   color: var(--warning);
   background: var(--warning-soft);
   border: 1px solid var(--warning-border);
-  border-radius: 7px;
+  border-radius: 8px;
   font-size: 12px;
   line-height: 1.6;
 }

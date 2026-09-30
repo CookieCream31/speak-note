@@ -1,9 +1,9 @@
-.launcher { margin: 0 14px 14px; padding: 11px; background: var(--blue-soft); border: 1px solid var(--line); border-radius: 7px; }
+.launcher { margin: 0 14px 14px; padding: 11px; background: var(--blue-soft); border: 1px solid var(--line); border-radius: 8px; }
 .openButton { width: 100%; display: flex; flex-direction: column; gap: 3px; padding: 0; color: var(--ink); text-align: left; background: transparent; border: 0; cursor: pointer; font-size: 11px; font-weight: 800; }
 .openButton span { color: var(--blue); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
 .launcher > p { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .overlay { position: fixed; inset: 0; z-index: 100; display: grid; padding: 28px; place-items: center; background: var(--overlay); backdrop-filter: blur(5px); }
-.dialog { width: min(960px, 100%); max-height: calc(100vh - 56px); overflow: auto; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 24px 80px var(--shadow-strong); }
+.dialog { width: min(960px, 100%); max-height: calc(100vh - 56px); overflow: auto; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 24px 80px var(--shadow-strong); }
 .dialogHeader { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 20px 24px; background: var(--surface-glass); border-bottom: 1px solid var(--line); backdrop-filter: blur(8px); }
 .dialogHeader p { margin: 0 0 4px; color: var(--blue); font-size: 12px; font-weight: 900; letter-spacing: .16em; }
 .dialogHeader h2 { margin: 0; font-size: 22px; }
@@ -23,14 +23,14 @@
 .message { color: var(--success); background: var(--success-soft); }
 .error { color: var(--on-primary); background: var(--danger-solid); }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.actions button, .fileButton, .preview > button { min-height: 40px; padding: 10px 14px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 900; }
+.actions button, .fileButton, .preview > button { min-height: 40px; padding: 10px 14px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 900; }
 .actions button:disabled, .preview > button:disabled { cursor: not-allowed; opacity: .45; }
 .fileButton { position: relative; overflow: hidden; color: var(--ink); background: var(--surface-hover); }
 .fileButton input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .responseLabel { margin-top: 5px; color: var(--ink); font-size: 13px; font-weight: 900; }
-.content textarea { width: 100%; min-height: 300px; padding: 15px; resize: vertical; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 7px; font: 12px/1.65 var(--font-mono); }
+.content textarea { width: 100%; min-height: 300px; padding: 15px; resize: vertical; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font: 12px/1.65 var(--font-mono); }
 .content textarea:focus { border-color: var(--blue); outline: 3px solid var(--focus-ring); }
-.preview { display: grid; gap: 12px; padding: 18px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 7px; }
+.preview { display: grid; gap: 12px; padding: 18px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
 .preview h4, .preview p { margin: 0; }
 .preview h4 { font-size: 15px; }
 .preview p { font: 16px/1.75 var(--font-sans); }

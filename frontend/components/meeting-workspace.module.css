@@ -5,7 +5,7 @@
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
-  box-shadow: 0 2px 10px var(--shadow-soft);
+  box-shadow: none;
 }
 
 .viewTabs {
@@ -85,7 +85,7 @@
     grid-area: player;
     overflow: hidden;
     border: 1px solid var(--media-border);
-    border-radius: 10px;
+    border-radius: 8px;
     box-shadow: 0 4px 18px var(--shadow);
   }
   .shell[data-active-view="transcript"][data-media-kind="video"][data-media-available="true"] .viewTabs {
@@ -100,7 +100,7 @@
     border: 1px solid var(--line);
     border-top: 0;
     border-radius: 0 0 10px 10px;
-    box-shadow: 0 2px 10px var(--shadow-soft);
+    box-shadow: none;
   }
 }
 

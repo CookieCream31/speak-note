@@ -7,7 +7,7 @@
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
-  box-shadow: 0 2px 10px var(--shadow-soft);
+  box-shadow: none;
 }
 
 .panelHeader {
@@ -97,7 +97,7 @@
 .transcriptPane { min-width: 0; }
 .summaryPane[hidden], .transcriptPane[hidden] { display: none; }
 .fetchError { margin: 18px 22px 0; }
-.error, .fetchError { padding: 10px 12px; color: var(--danger); background: var(--danger-soft); border-radius: 6px; font-size: 11px; }
+.error, .fetchError { padding: 10px 12px; color: var(--danger); background: var(--danger-soft); border-radius: 8px; font-size: 11px; }
 .empty { padding: 24px; color: var(--muted); background: var(--blue-soft); border: 1px dashed var(--line); border-radius: 8px; }
 .empty strong { color: var(--ink); font-size: 13px; }
 .empty p { margin: 7px 0 0; font-size: 11px; line-height: 1.6; }
@@ -113,16 +113,16 @@
 .grid li { padding-top: 10px; border-top: 1px solid var(--line); }
 .grid li:first-child { padding-top: 0; border-top: 0; }
 .none { color: var(--text-subtle); }
-.badge, .alertBadge { display: inline-block; margin-top: 7px; padding: 3px 6px; color: var(--ink); background: var(--success-soft); border-radius: 4px; font-size: 11px; font-weight: 800; }
+.badge, .alertBadge { display: inline-block; margin-top: 7px; padding: 3px 6px; color: var(--ink); background: var(--success-soft); border-radius: 8px; font-size: 11px; font-weight: 800; }
 .alertBadge { margin-top: 0; color: var(--warning); background: var(--warning-soft); }
 .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
-.meta span { padding: 3px 6px; color: var(--muted); background: var(--surface-hover); border-radius: 4px; font-size: 12px; }
+.meta span { padding: 3px 6px; color: var(--muted); background: var(--surface-hover); border-radius: 8px; font-size: 12px; }
 .grid dl { display: grid; gap: 7px; margin: 9px 0 0; }
 .grid dl div { display: grid; gap: 2px; }
 .grid dt { color: var(--muted); font-size: 11px; font-weight: 800; }
 .grid dd { margin: 0; font-size: 12px; line-height: 1.55; }
 .evidence { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
-.evidence button { padding: 3px 6px; color: var(--blue); background: var(--surface); border: 1px solid var(--blue-border); border-radius: 4px; cursor: pointer; font: 11px var(--font-mono); }
+.evidence button { padding: 3px 6px; color: var(--blue); background: var(--surface); border: 1px solid var(--blue-border); border-radius: 8px; cursor: pointer; font: 11px var(--font-mono); }
 .summaryPane > footer { margin-top: 12px; color: var(--text-subtle); font-size: 12px; }
 
 .transcriptToolbar {
@@ -156,7 +156,7 @@
 .transcriptMeta { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding-top: 5px; }
 .transcriptMeta time { color: var(--blue); font: 700 12px var(--font-mono); }
 .transcriptMeta strong { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
-.transcriptMeta span { padding: 2px 5px; color: var(--muted); background: var(--surface-hover); border-radius: 4px; font-size: 11px; font-weight: 800; }
+.transcriptMeta span { padding: 2px 5px; color: var(--muted); background: var(--surface-hover); border-radius: 8px; font-size: 11px; font-weight: 800; }
 .transcriptText {
   margin: 0;
   color: var(--ink);
@@ -195,7 +195,7 @@
   .panel {
     width: calc(100% - 16px);
     margin: 0 8px 12px;
-    border-radius: 9px;
+    border-radius: 8px;
   }
   .panelHeader { min-height: auto; align-items: flex-start; flex-direction: column; gap: 8px; padding: 14px 12px; }
   .panel h2 { font-size: 18px; }

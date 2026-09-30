@@ -18,7 +18,7 @@
 .list { display: block; min-width: 0; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 12px; }
 .item:first-of-type .row { border-radius: 11px 11px 0 0; }
 .item:last-of-type .row:not([data-expanded="true"]) { border-radius: 0 0 11px 11px; }
-.item:only-of-type .row:not([data-expanded="true"]) { border-radius: 11px; }
+.item:only-of-type .row:not([data-expanded="true"]) { border-radius: 8px; }
 .item + .item { border-top: 1px solid var(--line-soft); }
 .row { display: flex; align-items: stretch; gap: 2px; padding: 4px 12px; transition: background .15s; }
 .row:hover { background: var(--blue-soft-hover); }
@@ -32,7 +32,7 @@
 }
 .profileInfo { flex: 1; min-width: 0; }
 .name { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; font-size: 14px; font-weight: 650; overflow-wrap: anywhere; }
-.badge { padding: 3px 8px; color: var(--blue); background: var(--blue-soft); border-radius: 6px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.badge { padding: 3px 8px; color: var(--blue); background: var(--blue-soft); border-radius: 8px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .meta { display: block; margin-top: 6px; color: var(--muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 .editHint { color: var(--muted); font-size: 11px; flex-shrink: 0; }
 .chevron { flex-shrink: 0; color: var(--text-subtle); transition: transform .15s; }

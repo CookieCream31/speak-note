@@ -91,7 +91,7 @@
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 3px 14px 14px;
-  box-shadow: 0 2px 8px var(--shadow-soft);
+  box-shadow: none;
 }
 
 .answer[data-status="failed"] { border-color: var(--danger-border); }
@@ -125,15 +125,15 @@
   padding: 5px 8px;
   color: var(--warning);
   background: var(--warning-soft);
-  border-radius: 5px;
+  border-radius: 8px;
   font-size: 12px;
   font-weight: 800;
 }
 
 .failed { margin-top: 12px; color: var(--danger); font-size: 12px; }
 .failed p { margin: 0 0 9px; }
-.failed button { padding: 7px 12px; color: var(--danger); background: var(--surface); border: 1px solid var(--danger-border); border-radius: 6px; cursor: pointer; font-weight: 800; }
-.error { margin: 14px 28px 0; padding: 10px 12px; color: var(--danger); background: var(--danger-soft); border-radius: 6px; font-size: 12px; }
+.failed button { padding: 7px 12px; color: var(--danger); background: var(--surface); border: 1px solid var(--danger-border); border-radius: 8px; cursor: pointer; font-weight: 800; }
+.error { margin: 14px 28px 0; padding: 10px 12px; color: var(--danger); background: var(--danger-soft); border-radius: 8px; font-size: 12px; }
 
 .composer {
   display: grid;
@@ -151,7 +151,7 @@
   resize: vertical;
   background: var(--blue-soft);
   border: 1px solid var(--control-border);
-  border-radius: 9px;
+  border-radius: 8px;
   font: inherit;
   font-size: 12px;
   line-height: 1.6;
@@ -160,7 +160,7 @@
 .composer textarea:disabled { color: var(--text-subtle); background: var(--surface-hover); }
 .composer > div { display: flex; align-items: center; justify-content: space-between; }
 .composer small { color: var(--text-subtle); font-size: 12px; }
-.composer button { min-width: 112px; padding: 10px 18px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 7px; cursor: pointer; font-weight: 800; }
+.composer button { min-width: 112px; padding: 10px 18px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 8px; cursor: pointer; font-weight: 800; }
 .composer button:disabled { cursor: default; opacity: .45; }
 
 @media (max-width: 720px) {

@@ -6,12 +6,12 @@
 .eyebrow { display: block; color: var(--blue); font-size: 11px; font-weight: 800; letter-spacing: .16em; }
 .grid { max-width: 1440px; margin: auto; display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); gap: 22px; align-items: start; }
 .stack { display: grid; gap: 22px; min-width: 0; }
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: clamp(20px, 3vw, 34px); box-shadow: 0 8px 28px var(--focus-ring); }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: clamp(20px, 3vw, 34px); box-shadow: 0 8px 28px var(--focus-ring); }
 .panel h2 { margin: 8px 0 20px; font-size: 18px; font-weight: 600; }
 .panelTitle { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
 .panelTitle h2 { margin: 0 0 12px; font-size: 16px; }
 .panelTitle button { border: 0; color: var(--blue); background: transparent; cursor: pointer; font-weight: 700; }
-.projectItem { display: block; width: 100%; text-align: left; border: 0; border-radius: 11px; background: transparent; padding: 11px 13px; cursor: pointer; color: inherit; }
+.projectItem { display: block; width: 100%; text-align: left; border: 0; border-radius: 8px; background: transparent; padding: 11px 13px; cursor: pointer; color: inherit; }
 .projectItem:hover, .active { background: var(--blue-soft-hover); color: var(--ink); }
 .child { padding-left: 29px; }
 .divider { border-top: 1px solid var(--line); margin: 20px 0; }

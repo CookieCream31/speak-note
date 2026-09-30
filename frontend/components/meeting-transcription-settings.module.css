@@ -4,9 +4,9 @@
 .fields { display: grid; grid-template-columns: repeat(2, minmax(80px, 120px)) auto; align-items: end; gap: 8px; }
 .fields label { display: grid; gap: 5px; margin: 0; }
 .fields label span { color: var(--muted); font-size: 12px; }
-.fields input { width: 100%; min-height: 38px; padding: 6px 9px; color: var(--ink); background: var(--blue-soft); border: 1px solid var(--line); border-radius: 6px; }
+.fields input { width: 100%; min-height: 38px; padding: 6px 9px; color: var(--ink); background: var(--blue-soft); border: 1px solid var(--line); border-radius: 8px; }
 .fields input:focus { border-color: var(--focus); outline: 3px solid var(--focus-ring); }
-.fields button { min-height: 38px; padding: 0 13px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 800; }
+.fields button { min-height: 38px; padding: 0 13px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 800; }
 .fields button:disabled, .fields input:disabled { cursor: not-allowed; opacity: .55; }
 .settings p, .settings output { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .settings output { color: var(--blue); }

@@ -8,12 +8,12 @@
 .message { color: var(--success); background: var(--success-soft); }
 .error { color: var(--on-primary); background: var(--danger-solid); }
 .generate { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; padding: 14px; }
-.generate select, .versionPicker select, .analysisItem textarea, .analysisItem input { min-height: 38px; padding: 8px 9px; color: var(--ink); background: var(--blue-soft); border: 1px solid var(--line); border-radius: 6px; }
-.generate button, .reviewControls button, .editActions button { padding: 8px 12px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 800; }
+.generate select, .versionPicker select, .analysisItem textarea, .analysisItem input { min-height: 38px; padding: 8px 9px; color: var(--ink); background: var(--blue-soft); border: 1px solid var(--line); border-radius: 8px; }
+.generate button, .reviewControls button, .editActions button { padding: 8px 12px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 800; }
 .versionPicker { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; padding: 0 14px 14px; color: var(--muted); font-size: 12px; font-weight: 800; }
 .reviewControls { display: grid; grid-template-columns: .6fr 1.4fr; gap: 7px; padding: 0 14px 14px; }
 .reviewControls button:first-child { color: var(--ink); background: var(--surface-hover); }
-.empty { display: grid; gap: 5px; margin: 0 14px 14px; padding: 28px 16px; color: var(--muted); text-align: center; background: var(--blue-soft); border: 1px dashed var(--line); border-radius: 7px; }
+.empty { display: grid; gap: 5px; margin: 0 14px 14px; padding: 28px 16px; color: var(--muted); text-align: center; background: var(--blue-soft); border: 1px dashed var(--line); border-radius: 8px; }
 .empty strong { color: var(--ink); font-size: 13px; }
 .empty span { font-size: 11px; }
 .analysisGrid {

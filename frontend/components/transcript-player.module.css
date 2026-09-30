@@ -92,7 +92,7 @@
   overflow: hidden;
   color: var(--media-text);
   background: var(--media-subtitle);
-  border-radius: 4px;
+  border-radius: 8px;
   font-size: clamp(16px, 2vw, 26px);
   font-weight: 700;
   line-height: 1.45;
@@ -125,7 +125,7 @@
   color: var(--media-text);
   background: var(--media-control);
   border: 0;
-  border-radius: 14px;
+  border-radius: 12px;
   box-shadow: 0 8px 24px var(--shadow-strong);
   backdrop-filter: blur(12px);
   font: 13px/1.4 system-ui, sans-serif;
@@ -405,7 +405,7 @@
   inset: 4px;
   z-index: 0;
   background: transparent;
-  border-radius: 6px;
+  border-radius: 8px;
   content: "";
   pointer-events: none;
 }
@@ -717,7 +717,7 @@
   color: var(--ink);
   background: var(--surface-glass);
   border: 1px solid var(--line);
-  border-radius: 13px;
+  border-radius: 12px;
   box-shadow: 0 12px 38px var(--shadow);
   backdrop-filter: blur(14px);
 }
