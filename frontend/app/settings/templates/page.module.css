@@ -1,0 +1,17 @@
+.shell { min-height: 100vh; display: grid; grid-template-columns: 240px minmax(0, 1fr); color: var(--ink); background: var(--paper); }
+.main { min-width: 0; }
+.header { position: sticky; top: 0; z-index: 30; min-height: 64px; display: flex; align-items: center; gap: 12px; padding: 0 40px; background: var(--surface-glass); border-bottom: 1px solid var(--line); backdrop-filter: blur(10px); }
+.breadcrumb { min-width: 0; flex: 1; display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.breadcrumb a { color: var(--muted); text-decoration: none; font-size: 14px; }
+.breadcrumb a:hover { color: var(--ink); }
+.breadcrumb h1 { margin: 0; color: var(--ink); font-size: 18px; font-weight: 600; }
+.content { max-width: 1320px; margin: 0 auto; padding: 28px 40px 96px; }
+@media (max-width: 1000px) {
+  .shell { grid-template-columns: 72px minmax(0, 1fr); }
+  .header, .content { padding-right: 24px; padding-left: 24px; }
+}
+@media (max-width: 760px) {
+  .shell { display: block; }
+  .header { top: 60px; padding: 10px 16px; }
+  .content { padding: 16px 16px 96px; }
+}

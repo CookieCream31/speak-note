@@ -71,7 +71,8 @@ afterEach(() => {
 describe("AI profile list interactions", () => {
   it("shows compact summaries and one default, with editors initially closed", () => {
     render();
-    expect(container.querySelectorAll('input[type="radio"]')).toHaveLength(2);
+    // Only the default-profile radios; the page also has realtime transcription provider radios.
+    expect(container.querySelectorAll('input[type="radio"][name="default-ai-profile"]')).toHaveLength(2);
     expect(radio("first").checked).toBe(true);
     expect(radio("second").checked).toBe(false);
     expect(form()).toBeNull();

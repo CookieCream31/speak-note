@@ -1,11 +1,10 @@
 "use client";
 
+import { ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
 import { type FormEvent, useState } from "react";
 
 import { createAIProviderAction } from "@/app/actions";
-
-import { MeetingTemplateManager } from "./meeting-template-manager";
 
 import type {
   MeetingTemplate,
@@ -19,6 +18,7 @@ import type {
 } from "@/lib/api";
 
 import { AIProfileList } from "./ai-profile-list";
+import { AppSidebar } from "./app-sidebar";
 import styles from "./ai-settings-manager.module.css";
 import { ThemeSelector } from "./theme-selector";
 
@@ -31,6 +31,19 @@ interface AISettingsManagerProps {
   initialMessage?: string;
   initialError?: string;
 }
+
+const sections = [
+  { id: "providers", label: "接続先" },
+  { id: "profiles", label: "AIプロファイル" },
+  { id: "templates", label: "議事録テンプレート" },
+  { id: "usage", label: "用途別の割り当て" },
+  { id: "stt", label: "リアルタイム文字起こし" },
+] as const;
+
+const usageHints: Partial<Record<AIUsage, string>> = {
+  suggested_questions: "現在の一括議事録生成では確定議事録と同じAIを使います",
+  chapters: "現在の一括議事録生成では確定議事録と同じAIを使います",
+};
 
 const usageLabels: Record<AIUsage, string> = {
   realtime_analysis: "リアルタイム解析",
@@ -80,6 +93,8 @@ export function AISettingsManager({
   const [message, setMessage] = useState<string>(initialMessage);
   const [error, setError] = useState<string>(initialError);
   const [busy, setBusy] = useState(false);
+  const [providerFormOpen, setProviderFormOpen] = useState(initialProviders.length === 0);
+  const defaultTemplate = initialTemplates.find((template) => template.is_default);
 
   async function run(action: () => Promise<void>, successMessage: string) {
     setBusy(true);
@@ -186,7 +201,7 @@ export function AISettingsManager({
         }),
       });
       if (apiKey) setHasAzureApiKey(true);
-    }, "リアルタイムSpeech-to-Text設定を保存しました");
+    }, "リアルタイム文字起こしの設定を保存しました");
   }
 
   function testAzureSpeech() {
@@ -195,230 +210,267 @@ export function AISettingsManager({
     }, "Azure AI Speechへの接続に成功しました");
   }
   return (
-    <main className={styles.page}>
-      <header className={styles.header}>
-        <Link className="brand" href="/">
-          <span className="brandMark" aria-hidden="true"><i /><i /><i /></span>
-          speak-note
-        </Link>
-        <div><ThemeSelector /><Link href="/">← 会議一覧</Link></div>
-      </header>
+    <div className={styles.shell}>
+      <AppSidebar current="settings" />
+      <main className={styles.main}>
+        <header className={styles.header}>
+          <h1>AI設定</h1>
+          <ThemeSelector />
+        </header>
 
-      <section className={styles.hero}>
-        <h1>AI設定</h1>
-        <span>接続先・モデル・用途ごとのAIを、ひとつの画面で管理します。</span>
-      </section>
+        <div className={styles.content}>
+          <nav className={styles.toc} aria-label="AI設定の項目">
+            {sections.map((section) => <a key={section.id} href={`#${section.id}`}>{section.label}</a>)}
+          </nav>
 
-      {(message || error) && (
-        <div className={error ? styles.error : styles.message} role="status">
-          {error || message}
-        </div>
-      )}
-
-      <section className={styles.section}>
-        <div className={styles.sectionHeading}>
-          <div><h2>接続先</h2></div>
-          <span>URL・API Keyだけを管理</span>
-        </div>
-        <form
-          action={createAIProviderAction}
-          className={styles.createForm}
-          onSubmit={createProvider}
-        >
-          <select
-            aria-label="Provider種別"
-            name="provider_type"
-            value={providerType}
-            onChange={(event) => setProviderType(event.target.value as AIProviderType)}
-          >
-            <option value="ollama">Ollama</option>
-            <option value="gemini">Gemini</option>
-          </select>
-          <input name="name" placeholder="設定名" maxLength={200} required />
-          <input
-            className={styles.ollamaField}
-            name="base_url"
-            defaultValue="http://host.docker.internal:11434"
-            placeholder="Ollama接続先URL"
-          />
-          <input
-            className={styles.geminiField}
-            name="api_key"
-            type="password"
-            placeholder="Gemini API Key"
-          />
-          <label><input name="enabled" type="checkbox" defaultChecked /> 有効</label>
-          <button disabled={busy} type="submit">
-            {busy ? "追加中..." : "Providerを追加"}
-          </button>
-        </form>
-
-        <div className={styles.cards}>
-          {initialProviders.map((provider) => (
-            <article key={provider.id} className={styles.card}>
-              <div className={styles.cardTitle}>
-                <span>{provider.provider_type}</span><strong>{provider.name}</strong>
+          <div className={styles.sections}>
+            {(message || error) && (
+              <div className={error ? styles.error : styles.message} role="status">
+                {error || message}
               </div>
-              <form onSubmit={(event) => updateProvider(event, provider)}>
-                <input name="name" defaultValue={provider.name} required />
-                {provider.provider_type === "ollama" && (
-                  <input name="base_url" defaultValue={provider.base_url ?? ""} required />
+            )}
+
+            <section className={styles.section} id="providers">
+              <div className={styles.sectionHeading}>
+                <h2>接続先</h2>
+                {!providerFormOpen && (
+                  <button type="button" className={styles.secondaryButton} onClick={() => setProviderFormOpen(true)}>
+                    <Plus size={14} aria-hidden="true" />接続先を追加
+                  </button>
                 )}
-                {provider.provider_type === "gemini" && (
+              </div>
+              <p className={styles.sectionNote}>OllamaのURLやGeminiのAPI Keyを管理します。API Keyは暗号化して保存されます。</p>
+              {providerFormOpen && (
+                <form
+                  action={createAIProviderAction}
+                  className={styles.createForm}
+                  onSubmit={createProvider}
+                >
+                  <select
+                    aria-label="Provider種別"
+                    name="provider_type"
+                    value={providerType}
+                    onChange={(event) => setProviderType(event.target.value as AIProviderType)}
+                  >
+                    <option value="ollama">Ollama</option>
+                    <option value="gemini">Gemini</option>
+                  </select>
+                  <input name="name" placeholder="設定名" maxLength={200} required />
                   <input
+                    className={styles.ollamaField}
+                    name="base_url"
+                    defaultValue="http://host.docker.internal:11434"
+                    placeholder="Ollama接続先URL"
+                  />
+                  <input
+                    className={styles.geminiField}
                     name="api_key"
                     type="password"
-                    placeholder={provider.api_key_masked ?? "API Keyを設定"}
+                    placeholder="Gemini API Key"
                   />
-                )}
-                <label>
-                  <input name="enabled" type="checkbox" defaultChecked={provider.enabled} /> 有効
-                </label>
-                <button disabled={busy} type="submit">保存</button>
-              </form>
-              <div className={styles.cardActions}>
-                <button
-                  disabled={busy}
-                  type="button"
-                  onClick={() => void run(async () => {
-                    await request(`/ai/providers/${provider.id}/test`, { method: "POST" });
-                  }, `${provider.name}: 接続成功`)}
-                >接続テスト</button>
-                <button
-                  disabled={busy}
-                  type="button"
-                  onClick={() => void run(async () => {
-                    const result = await request(
-                      `/ai/providers/${provider.id}/models`,
-                      { method: "GET" },
-                    );
-                    const models = Array.isArray(result?.models)
-                      ? result.models.join(", ")
-                      : "なし";
-                    setMessage(`利用可能モデル: ${models}`);
-                  }, "")}
-                >モデル取得</button>
-                <button
-                  className={styles.danger}
-                  disabled={busy}
-                  type="button"
-                  onClick={() => void reloadAfter(async () => {
-                    await request(`/ai/providers/${provider.id}`, { method: "DELETE" });
-                  })}
-                >削除</button>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <div className={styles.sectionHeading}>
-          <div><h2>AIプロファイル</h2></div>
-          <span>モデル・Temperatureを管理</span>
-        </div>
-        <AIProfileList
-          profiles={profiles}
-          providers={initialProviders}
-          busy={busy}
-          onBusyChange={setBusy}
-          onChange={setProfiles}
-          request={request}
-        />
-      </section>
-
-      <MeetingTemplateManager initialTemplates={initialTemplates} />
-
-      <section className={styles.section}>
-        <div className={styles.sectionHeading}>
-          <div><h2>用途別Profile</h2></div>
-          <span>未指定はDefault Profile</span>
-        </div>
-        <div className={styles.usageList}>
-          {initialUsage.map((setting) => (
-            <label key={setting.usage}>
-              <span>{usageLabels[setting.usage]}</span>
-              <select
-                key={setting.profile_id && !profiles.some((profile) => profile.id === setting.profile_id) ? "removed" : setting.profile_id ?? "default"}
-                defaultValue={setting.disabled ? "none" : profiles.some((profile) => profile.id === setting.profile_id) ? setting.profile_id! : "default"}
-                disabled={busy}
-                onChange={(event) => updateUsage(setting.usage, event.target.value)}
-              >
-                <option value="default">Default Profile</option>
-                <option value="none">AIなし</option>
-                {profiles.map((profile) => (
-                  <option key={profile.id} value={profile.id}>{profile.name}</option>
-                ))}
-              </select>
-            </label>
-          ))}
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <div className={styles.sectionHeading}>
-          <div><h2>リアルタイムSpeech-to-Text</h2></div>
-          <span>録音・画面共有中のLive文字起こし</span>
-        </div>
-        <form
-          className={`${styles.createForm} ${styles.speechForm}`}
-          onSubmit={updateRealtimeTranscription}
-        >
-          <label>
-            <span>プロバイダー</span>
-            <select
-              name="transcription_provider"
-              value={transcriptionProvider}
-              onChange={(event) => setTranscriptionProvider(
-                event.target.value as RealtimeTranscriptionProvider,
+                  <label><input name="enabled" type="checkbox" defaultChecked /> 有効</label>
+                  <div className={styles.formActions}>
+                    {initialProviders.length > 0 && (
+                      <button type="button" className={styles.secondaryButton} onClick={() => setProviderFormOpen(false)}>キャンセル</button>
+                    )}
+                    <button disabled={busy} type="submit">
+                      {busy ? "追加中..." : "Providerを追加"}
+                    </button>
+                  </div>
+                </form>
               )}
-            >
-              <option value="whisperx">WhisperX</option>
-              <option value="azure_speech">Azure AI Speech</option>
-            </select>
-          </label>
-          <label>
-            <span>Azureリージョン</span>
-            <input
-              name="azure_region"
-              defaultValue={initialTranscriptionSettings.azure_region ?? ""}
-              placeholder="例: japaneast"
-              disabled={transcriptionProvider !== "azure_speech"}
-            />
-          </label>
-          <label>
-            <span>認識言語</span>
-            <input
-              name="azure_language"
-              defaultValue={initialTranscriptionSettings.azure_language}
-              placeholder="ja-JP"
-              disabled={transcriptionProvider !== "azure_speech"}
-            />
-          </label>
-          <label>
-            <span>Azure API Key</span>
-            <input
-              name="api_key"
-              type="password"
-              autoComplete="new-password"
-              placeholder={initialTranscriptionSettings.api_key_masked ?? "API Keyを入力"}
-              disabled={transcriptionProvider !== "azure_speech"}
-            />
-          </label>
-          <div className={styles.speechActions}>
-            <button disabled={busy} type="submit">設定を保存</button>
-            <button
-              className={styles.secondaryButton}
-              disabled={busy || !hasAzureApiKey}
-              type="button"
-              onClick={testAzureSpeech}
-            >接続テスト</button>
+
+              <div className={styles.cards}>
+                {initialProviders.map((provider) => (
+                  <article key={provider.id} className={styles.card}>
+                    <div className={styles.cardTitle}>
+                      <span>{provider.provider_type === "ollama" ? "Ollama" : "Gemini"}</span>
+                      <strong>{provider.name}</strong>
+                      <small data-enabled={provider.enabled}>{provider.enabled ? "有効" : "無効"}</small>
+                    </div>
+                    <form onSubmit={(event) => updateProvider(event, provider)}>
+                      <label><span>設定名</span><input name="name" defaultValue={provider.name} required /></label>
+                      {provider.provider_type === "ollama" && (
+                        <label><span>URL</span><input name="base_url" defaultValue={provider.base_url ?? ""} required /></label>
+                      )}
+                      {provider.provider_type === "gemini" && (
+                        <label><span>API Key</span>
+                          <input
+                            name="api_key"
+                            type="password"
+                            placeholder={provider.api_key_masked ?? "API Keyを設定"}
+                          />
+                        </label>
+                      )}
+                      <div className={styles.cardFormRow}>
+                        <label className={styles.inlineCheck}>
+                          <input name="enabled" type="checkbox" defaultChecked={provider.enabled} /> 有効
+                        </label>
+                        <button disabled={busy} type="submit">保存</button>
+                      </div>
+                    </form>
+                    <div className={styles.cardActions}>
+                      <button
+                        disabled={busy}
+                        type="button"
+                        onClick={() => void run(async () => {
+                          await request(`/ai/providers/${provider.id}/test`, { method: "POST" });
+                        }, `${provider.name}: 接続成功`)}
+                      >接続テスト</button>
+                      <button
+                        disabled={busy}
+                        type="button"
+                        onClick={() => void run(async () => {
+                          const result = await request(
+                            `/ai/providers/${provider.id}/models`,
+                            { method: "GET" },
+                          );
+                          const models = Array.isArray(result?.models)
+                            ? result.models.join(", ")
+                            : "なし";
+                          setMessage(`利用可能モデル: ${models}`);
+                        }, "")}
+                      >モデル取得</button>
+                      <button
+                        className={styles.danger}
+                        disabled={busy}
+                        type="button"
+                        onClick={() => void reloadAfter(async () => {
+                          await request(`/ai/providers/${provider.id}`, { method: "DELETE" });
+                        })}
+                      >削除</button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className={styles.section} id="profiles">
+              <div className={styles.sectionHeading}>
+                <h2>AIプロファイル</h2>
+              </div>
+              <p className={styles.sectionNote}>接続先・モデル・Temperatureの組み合わせです。</p>
+              <AIProfileList
+                profiles={profiles}
+                providers={initialProviders}
+                busy={busy}
+                onBusyChange={setBusy}
+                onChange={setProfiles}
+                request={request}
+              />
+            </section>
+
+            <section className={`${styles.section} ${styles.templateSummary}`} id="templates">
+              <div>
+                <h2>議事録テンプレート</h2>
+                <span>
+                  {initialTemplates.length}件
+                  {defaultTemplate ? ` · 既定：${defaultTemplate.name}` : " · 既定なし"}
+                  {" · 会議作成と要約の再生成で選択します"}
+                </span>
+              </div>
+              <Link className={styles.secondaryButton} href="/settings/templates">
+                テンプレートを編集<ChevronRight size={14} aria-hidden="true" />
+              </Link>
+            </section>
+
+            <section className={styles.section} id="usage">
+              <div className={styles.sectionHeading}>
+                <h2>用途別の割り当て</h2>
+              </div>
+              <p className={styles.sectionNote}>未指定の用途はDefault Profileを使います。</p>
+              <div className={styles.usageList}>
+                {initialUsage.map((setting) => (
+                  <label key={setting.usage}>
+                    <span>
+                      {usageLabels[setting.usage]}
+                      {usageHints[setting.usage] && <small>{usageHints[setting.usage]}</small>}
+                    </span>
+                    <select
+                      key={setting.profile_id && !profiles.some((profile) => profile.id === setting.profile_id) ? "removed" : setting.profile_id ?? "default"}
+                      defaultValue={setting.disabled ? "none" : profiles.some((profile) => profile.id === setting.profile_id) ? setting.profile_id! : "default"}
+                      disabled={busy}
+                      onChange={(event) => updateUsage(setting.usage, event.target.value)}
+                    >
+                      <option value="default">Default Profile</option>
+                      <option value="none">AIなし</option>
+                      {profiles.map((profile) => (
+                        <option key={profile.id} value={profile.id}>{profile.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                ))}
+              </div>
+            </section>
+
+            <section className={styles.section} id="stt">
+              <div className={styles.sectionHeading}>
+                <h2>リアルタイム文字起こし</h2>
+              </div>
+              <p className={styles.sectionNote}>録音・画面共有中のLive文字起こしに使います（リアルタイムSpeech-to-Text）。確定版はWhisperXで作成します。</p>
+              <form className={styles.speechForm} onSubmit={updateRealtimeTranscription}>
+                <fieldset className={styles.segmented}>
+                  <legend className={styles.visuallyHidden}>プロバイダー</legend>
+                  {([["whisperx", "WhisperX"], ["azure_speech", "Azure AI Speech"]] as const).map(([value, label]) => (
+                    <label key={value} data-selected={transcriptionProvider === value}>
+                      <input
+                        type="radio"
+                        name="transcription_provider"
+                        value={value}
+                        checked={transcriptionProvider === value}
+                        onChange={() => setTranscriptionProvider(value)}
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </fieldset>
+                <div className={styles.speechFields}>
+                  <label>
+                    <span>Azureリージョン</span>
+                    <input
+                      name="azure_region"
+                      defaultValue={initialTranscriptionSettings.azure_region ?? ""}
+                      placeholder="例: japaneast"
+                      disabled={transcriptionProvider !== "azure_speech"}
+                    />
+                  </label>
+                  <label>
+                    <span>認識言語</span>
+                    <input
+                      name="azure_language"
+                      defaultValue={initialTranscriptionSettings.azure_language}
+                      placeholder="ja-JP"
+                      disabled={transcriptionProvider !== "azure_speech"}
+                    />
+                  </label>
+                  <label>
+                    <span>Azure API Key</span>
+                    <input
+                      name="api_key"
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder={initialTranscriptionSettings.api_key_masked ?? "API Keyを入力"}
+                      disabled={transcriptionProvider !== "azure_speech"}
+                    />
+                  </label>
+                </div>
+                <div className={styles.speechActions}>
+                  <button
+                    className={styles.secondaryButton}
+                    disabled={busy || !hasAzureApiKey}
+                    type="button"
+                    onClick={testAzureSpeech}
+                  >接続テスト</button>
+                  <button disabled={busy} type="submit">設定を保存</button>
+                </div>
+                <p className={styles.settingNote}>
+                  Azure AI SpeechはLive文字起こしに使用します。リアルタイム話者分離はStandard (S0) が必要です。確定版はWhisperXで再処理し、話者分離を行います。
+                </p>
+              </form>
+            </section>
           </div>
-        </form>
-        <p className={styles.settingNote}>
-          Azure AI SpeechはLive文字起こしに使用します。リアルタイム話者分離はStandard (S0) が必要です。確定版はWhisperXで再処理し、話者分離を行います。
-        </p>
-      </section>
-    </main>
+        </div>
+      </main>
+    </div>
   );
 }

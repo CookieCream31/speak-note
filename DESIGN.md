@@ -814,12 +814,16 @@ Settings
    │  ├─ Provider
    │  ├─ model
    │  └─ temperature
-   └─ Usage
-      ├─ realtime_analysis
-      ├─ final_minutes
-      ├─ suggested_questions
-      └─ chapters
+   ├─ Templates（概要と /settings/templates への入口）
+   ├─ Usage
+   │  ├─ realtime_analysis
+   │  ├─ final_minutes
+   │  ├─ suggested_questions
+   │  └─ chapters
+   └─ Realtime Speech-to-Text
 ```
+
+AI設定は `/settings/ai`、議事録テンプレートの編集は `/settings/templates` とする。
 
 ### Ollama
 
@@ -1708,7 +1712,7 @@ Final再処理
 
 AI値は根拠となるTranscript Segment IDを持ち、Segmentの存在をBackendで検証する。不明値はnullとし、発言にない値を推測しない。AI出力は固定形式の汎用envelopeで受け、テンプレート定義に照らしてID、型、選択肢を検証する。コアの要約・決定事項・タスク・章等はテンプレートで非表示でも内部データとして保持する。Realtimeはセッション開始時のsnapshotを使い続け、旧Realtime形式も読み込める。進行中の解析では既存値と安定IDを維持し、音声文字起こしを停止させない。
 
-テンプレート編集はAI設定に配置し、会議作成・要約再生成で選択する。カードには任意のAIへの指示（最大2,000文字）を保存できる。Realtime結果・確定議事録・履歴は保存されたsnapshotのカード順で表示する。既存の4種類のsummary_formatは後方互換のため維持する。
+テンプレート編集はAI設定配下の専用画面（`/settings/templates`）に配置し、AI設定には件数・既定テンプレートの概要と編集画面への入口だけを表示する。テンプレートは会議作成・要約再生成で選択する。カードには任意のAIへの指示（最大2,000文字）を保存できる。Realtime結果・確定議事録・履歴は保存されたsnapshotのカード順で表示する。既存の4種類のsummary_formatは後方互換のため維持する。
 
 
 ## 41. プロジェクト単位の情報と会議中の回答支援

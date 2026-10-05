@@ -67,3 +67,9 @@
 @media (prefers-reduced-motion: reduce) {
   .row, .chevron { transition: none; }
 }
+
+/* Redesign 3-6 - surface-colored list with compact rows, matching the AI settings sections. */
+.list { overflow: hidden; background: var(--surface); }
+.row[data-default="true"] { background: var(--surface-hover); }
+.row:hover { background: var(--surface-hover); }
+.rowButton { min-height: 56px; }

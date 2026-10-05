@@ -26,11 +26,15 @@ describe("AISettingsManager", () => {
       />,
     );
 
+    expect(html).toContain("リアルタイム文字起こし");
     expect(html).toContain("リアルタイムSpeech-to-Text");
-    expect(html).toContain('<option value="whisperx">WhisperX</option>');
+    // The provider is a two-way radio group; the saved Azure choice starts selected.
+    expect(html).toContain('<input type="radio" name="transcription_provider" value="whisperx"/>WhisperX');
     expect(html).toContain(
-      '<option value="azure_speech" selected="">Azure AI Speech</option>',
+      '<input type="radio" name="transcription_provider" checked="" value="azure_speech"/>Azure AI Speech',
     );
+    // Templates are edited on their own page; AI settings only link to it.
+    expect(html).toContain('href="/settings/templates"');
     expect(html).toContain('name="azure_region"');
     expect(html).toContain('value="japaneast"');
     expect(html).toContain('name="azure_language"');
