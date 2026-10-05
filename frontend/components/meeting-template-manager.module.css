@@ -1,605 +1,103 @@
-.section {
-  max-width: 1184px;
-  min-width: 0;
-  margin: 0 auto 18px;
-  padding: 24px;
-  color: var(--ink);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  box-shadow: none;
+/* Template editor: list on the left, editor on the right, save bar fixed to the bottom. */
+.editor { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 32px; align-items: start; }
+.templateList { position: sticky; top: 92px; display: grid; gap: 2px; }
+.listTitle { display: flex; align-items: center; justify-content: space-between; padding: 0 10px 8px; color: var(--muted); font-size: 12px; font-weight: 500; }
+.listTitle button { width: 28px; height: 28px; display: grid; place-items: center; color: var(--muted); background: transparent; border: 0; border-radius: 8px; cursor: pointer; }
+.listTitle button:hover { color: var(--ink); background: var(--surface-hover); }
+.templateItem { width: 100%; min-height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px; color: var(--text-secondary); text-align: left; background: transparent; border: 0; border-radius: 8px; cursor: pointer; font-size: 14px; }
+.templateItem > span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.templateItem small { padding: 1px 6px; color: var(--muted); background: var(--surface-hover); border-radius: 4px; font-size: 11px; }
+.templateItem:hover { color: var(--ink); background: var(--surface-hover); }
+.activeTemplate { color: var(--ink); background: var(--surface-hover); font-weight: 500; }
+.activeTemplate small { background: var(--surface); }
+
+.main { min-width: 0; max-width: 900px; display: grid; gap: 18px; }
+.error, .success { margin: 0; padding: 10px 14px; border-radius: 8px; font-size: 13px; }
+.error { color: var(--danger); background: var(--danger-soft); }
+.success { color: var(--success); background: var(--success-soft); }
+.nameRow { display: flex; align-items: flex-end; gap: 12px; }
+.nameField { min-width: 0; flex: 1; display: grid; gap: 6px; font-size: 13px; font-weight: 500; }
+.nameField input { width: 100%; min-height: 40px; padding: 0 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 14px; font-weight: 400; }
+.secondaryButton { min-height: 40px; padding: 0 14px; color: var(--text-secondary); background: transparent; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-size: 13px; }
+.secondaryButton:hover { color: var(--ink); background: var(--surface-hover); }
+.viewRow { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.viewRow > span { color: var(--muted); font-size: 13px; }
+.tabs { display: flex; padding: 3px; background: var(--surface-hover); border-radius: 8px; }
+.tab { min-height: 30px; padding: 0 14px; color: var(--text-secondary); background: transparent; border: 0; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.tab[aria-selected="true"] { color: var(--ink); background: var(--surface); box-shadow: 0 1px 2px var(--shadow-soft); font-weight: 500; }
+.tab:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+/* Card list */
+.cards { overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.cards > .fieldEmpty { padding: 16px; }
+.card { border-bottom: 1px solid var(--line-soft); }
+.card:last-child { border-bottom: 0; }
+.card[data-open="true"] { background: var(--paper); }
+.cardHeader { min-height: 52px; display: flex; align-items: center; gap: 10px; padding: 6px 14px; }
+.cardOrder, .fieldOrder { display: flex; flex-direction: column; }
+.orderButton { width: 24px; height: 18px; display: grid; place-items: center; padding: 0; color: var(--muted); background: transparent; border: 0; border-radius: 4px; cursor: pointer; }
+.orderButton:hover:not(:disabled) { color: var(--ink); background: var(--surface-hover); }
+.orderButton:disabled { cursor: default; opacity: .3; }
+.cardToggle { min-width: 0; flex: 1; display: flex; align-items: baseline; gap: 10px; padding: 6px 0; color: var(--ink); text-align: left; background: transparent; border: 0; cursor: pointer; }
+.cardToggle strong { min-width: 0; overflow: hidden; font-size: 14px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.cardToggle small { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.card[data-visible="false"] .cardToggle strong { color: var(--muted); }
+.visibility { display: inline-flex; cursor: pointer; }
+/* Native checkbox drawn as a switch. */
+.visibility input { position: relative; width: 36px; height: 22px; margin: 0; background: var(--control-border); border-radius: 999px; cursor: pointer; appearance: none; transition: background-color .15s; }
+.visibility input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: var(--surface); border-radius: 50%; transition: transform .15s; }
+.visibility input:checked { background: var(--blue); }
+.visibility input:checked::after { transform: translateX(14px); }
+.visibility input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.expandButton { width: 32px; height: 32px; display: grid; place-items: center; color: var(--muted); background: transparent; border: 0; border-radius: 8px; cursor: pointer; }
+.expandButton:hover { color: var(--ink); background: var(--surface-hover); }
+.expandButton .lucide { transition: transform .15s; }
+.expandButton[aria-expanded="true"] .lucide { transform: rotate(180deg); }
+
+.cardBody { display: grid; gap: 14px; padding: 4px 14px 16px 48px; }
+.cardBody[hidden] { display: none; }
+.cardMain { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 12px; }
+.cardName, .coreType, .instructions { display: grid; gap: 6px; color: var(--muted); font-size: 12px; }
+.cardName input, .coreType select, .instructions textarea, .fieldName input, .fieldType select, .fieldOptions input {
+  width: 100%; min-height: 34px; padding: 0 10px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 14px;
+}
+.instructions textarea { min-height: 64px; padding: 8px 10px; resize: vertical; line-height: 1.6; }
+.cardName input:focus, .coreType select:focus, .instructions textarea:focus, .fieldName input:focus, .fieldType select:focus, .fieldOptions input:focus { border-color: var(--focus); outline: 3px solid var(--focus-ring); }
+.fieldSection { display: grid; gap: 6px; }
+.fieldHeading { display: flex; align-items: baseline; gap: 8px; color: var(--muted); font-size: 12px; }
+.fieldHeading small { color: var(--text-subtle); }
+.fieldEmpty { margin: 0; color: var(--muted); font-size: 13px; }
+.fieldRow { display: grid; grid-template-columns: 24px minmax(0, 1fr) 150px auto; align-items: center; gap: 8px; }
+.fieldRow:has(.fieldOptions) { grid-template-columns: 24px minmax(0, 1fr) 150px minmax(0, 1fr) auto; }
+.fieldDelete { padding: 0 4px; color: var(--muted); background: transparent; border: 0; cursor: pointer; font-size: 12px; }
+.fieldDelete:hover { color: var(--danger); }
+.addFieldButton, .cardDelete { width: fit-content; padding: 4px 0 0; background: transparent; border: 0; cursor: pointer; font-size: 13px; }
+.addFieldButton { color: var(--text-secondary); }
+.addFieldButton:hover { color: var(--ink); }
+.cardDelete { color: var(--danger); font-size: 12px; }
+.addCardButton { width: fit-content; min-height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; color: var(--text-secondary); background: var(--surface); border: 1px dashed var(--blue-border); border-radius: 8px; cursor: pointer; font-size: 13px; }
+.addCardButton:hover { color: var(--ink); border-color: var(--control-border); }
+
+/* Save bar stays at the bottom of the viewport while editing. */
+.footer { position: sticky; bottom: 0; z-index: 20; grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; margin: 0 -40px; padding: 14px 40px max(14px, env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--line); }
+.footer > span { min-width: 0; flex: 1; color: var(--muted); font-size: 13px; }
+.deleteButton { min-height: 36px; padding: 0 14px; color: var(--danger); background: transparent; border: 0; border-radius: 8px; cursor: pointer; font-size: 13px; }
+.deleteButton:hover { background: var(--danger-soft); }
+.primaryButton { min-height: 36px; padding: 0 16px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; }
+.primaryButton:hover { background: var(--primary-hover); }
+.editor button:disabled { cursor: wait; opacity: .55; }
+
+@media (max-width: 1000px) {
+  .editor { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .templateList { position: static; }
+  .footer { margin: 0 -24px; padding-right: 24px; padding-left: 24px; }
 }
-
-.heading {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 16px;
-  padding-bottom: 17px;
-  border-bottom: 1px solid var(--line);
-}
-
-.eyebrow {
-  margin: 0 0 7px;
-  color: var(--blue);
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: .16em;
-}
-
-.heading h2 {
-  margin: 0;
-  font: 600 18px/1.25 var(--font-sans);
-  letter-spacing: -.02em;
-}
-
-.heading > span {
-  color: var(--text-subtle);
-  font-size: 12px;
-}
-
-.intro {
-  margin: 0 0 18px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.7;
-}
-
-.success,
-.error {
-  margin: 0 0 14px;
-  padding: 11px 13px;
-  border-radius: 8px;
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.success {
-  color: var(--success);
-  background: var(--success-soft);
-}
-
-.error {
-  color: var(--danger);
-  background: var(--danger-soft);
-}
-
-.section button {
-  cursor: pointer;
-  transition: background .15s, border-color .15s, color .15s, box-shadow .15s;
-}
-
-.section button:disabled {
-  opacity: .4;
-  cursor: not-allowed;
-}
-
-.section input:not([type="checkbox"]),
-.section select {
-  min-width: 0;
-  min-height: 40px;
-  padding: 8px 11px;
-  color: var(--ink);
-  background: var(--surface);
-  border: 1px solid var(--control-border);
-  border-radius: 8px;
-  font: inherit;
-  font-size: 12px;
-}
-
-.section input:not([type="checkbox"]):focus,
-.section select:focus {
-  border-color: var(--focus);
-  outline: 0;
-  box-shadow: 0 0 0 3px var(--focus-ring);
-}
-
-.section button:focus-visible,
-.section input:focus-visible,
-.section select:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-}
-
-.toolbar {
-  display: flex;
-  align-items: flex-end;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 18px;
-  padding: 16px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-}
-
-.templatePicker,
-.nameField {
-  display: grid;
-  gap: 7px;
-  min-width: 0;
-  color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.templatePicker {
-  flex: 1 1 280px;
-  max-width: 420px;
-}
-
-.templatePicker select,
-.nameField input {
-  width: 100%;
-}
-
-.toolbarActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.secondaryButton,
-.primaryButton,
-.deleteButton {
-  min-height: 40px;
-  padding: 8px 14px;
-  border: 0;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.secondaryButton {
-  color: var(--blue);
-  background: var(--blue-soft);
-}
-
-.secondaryButton:hover {
-  background: var(--blue-soft-hover);
-}
-
-.primaryButton {
-  min-width: 120px;
-  color: var(--on-primary);
-  background: var(--primary-bg);
-}
-
-.primaryButton:hover {
-  background: var(--primary-hover);
-  box-shadow: 0 5px 14px var(--focus-ring);
-}
-
-.deleteButton {
-  color: var(--danger);
-  background: var(--danger-soft);
-}
-
-.deleteButton:hover {
-  background: var(--danger-soft);
-}
-
-.details {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 18px;
-}
-
-.nameField {
-  flex: 1 1 260px;
-  max-width: 420px;
-}
-
-.tabs {
-  display: flex;
-  gap: 4px;
-  align-self: flex-end;
-  border-bottom: 1px solid var(--line);
-}
-
-.tab {
-  position: relative;
-  min-height: 40px;
-  padding: 8px 16px;
-  color: var(--muted);
-  background: transparent;
-  border: 0;
-  border-radius: 7px 7px 0 0;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.tab:hover {
-  color: var(--ink);
-  background: var(--blue-soft-hover);
-}
-
-.tab[aria-selected="true"] {
-  color: var(--blue);
-}
-
-.tab[aria-selected="true"]::after {
-  position: absolute;
-  right: 10px;
-  bottom: -1px;
-  left: 10px;
-  height: 3px;
-  background: var(--primary-bg);
-  border-radius: 3px 3px 0 0;
-  content: "";
-}
-
-.cards {
-  display: grid;
-  gap: 12px;
-}
-
-.card {
-  min-width: 0;
-  padding: 16px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-}
-
-.card:hover {
-  border-color: var(--blue-border);
-}
-
-.cardHeader {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 14px;
-}
-
-.cardOrder,
-.fieldOrder {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.cardNumber {
-  min-width: 25px;
-  margin-right: 4px;
-  color: var(--blue);
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.orderButton {
-  display: inline-grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  color: var(--text-secondary);
-  background: var(--surface-hover);
-  border: 0;
-  border-radius: 8px;
-  font-size: 17px;
-}
-
-.orderButton:hover {
-  color: var(--ink);
-  background: var(--blue-soft-hover);
-}
-
-.cardMain {
-  display: grid;
-  min-width: 0;
-  gap: 10px;
-}
-
-.section .cardName input {
-  width: min(100%, 360px);
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.cardMeta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px 18px;
-}
-
-.visibility,
-.coreType {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 650;
-  white-space: nowrap;
-}
-
-.visibility input {
-  width: 17px;
-  height: 17px;
-  margin: 0;
-  accent-color: var(--primary-bg);
-}
-
-.coreType select {
-  max-width: 220px;
-}
-
-.cardDelete {
-  min-height: 36px;
-  padding: 6px 10px;
-  color: var(--danger);
-  background: transparent;
-  border: 0;
-  border-radius: 8px;
-  font-size: 11px;
-  font-weight: 650;
-}
-
-.cardDelete:hover {
-  background: var(--danger-soft);
-}
-
-.fieldSection {
-  display: grid;
-  gap: 9px;
-  margin-top: 14px;
-  padding-top: 13px;
-  border-top: 1px solid var(--line-soft);
-}
-
-.fieldHeading {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 750;
-}
-
-.fieldHeading small {
-  color: var(--text-subtle);
-  font-size: 12px;
-  font-weight: 400;
-}
-
-.fieldEmpty {
-  margin: 0;
-  color: var(--text-subtle);
-  font-size: 11px;
-}
-
-.fieldRow {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  min-width: 0;
-  padding: 9px;
-  background: var(--blue-soft);
-  border: 1px solid var(--line-soft);
-  border-radius: 8px;
-}
-
-.fieldName {
-  flex: 1 1 180px;
-}
-
-.fieldName input {
-  width: 100%;
-}
-
-.fieldType {
-  flex: 0 1 180px;
-}
-
-.fieldType select {
-  width: 100%;
-}
-
-.fieldOptions {
-  flex: 1 1 180px;
-}
-
-.fieldOptions input {
-  width: 100%;
-}
-
-.fieldDelete {
-  min-height: 36px;
-  padding: 6px 10px;
-  color: var(--danger);
-  background: transparent;
-  border: 0;
-  border-radius: 8px;
-  font-size: 11px;
-  font-weight: 650;
-}
-
-.fieldDelete:hover {
-  background: var(--danger-soft);
-}
-
-.addFieldButton,
-.addCardButton {
-  min-height: 40px;
-  padding: 8px 13px;
-  color: var(--blue);
-  background: var(--blue-soft);
-  border: 1px dashed var(--blue-border);
-  border-radius: 8px;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.addFieldButton {
-  justify-self: start;
-}
-
-.addFieldButton:hover,
-.addCardButton:hover {
-  background: var(--blue-soft-hover);
-  border-color: var(--focus);
-}
-
-.addCardButton {
-  width: 100%;
-}
-
-.footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1px solid var(--line-soft);
-}
-
-.footer span {
-  color: var(--text-subtle);
-  font-size: 11px;
-  line-height: 1.6;
-}
-
-@media (max-width: 1220px) {
-  .section {
-    margin-right: 24px;
-    margin-left: 24px;
-  }
-}
-
 @media (max-width: 760px) {
-  .section {
-    margin-right: 16px;
-    margin-left: 16px;
-    padding: 18px;
-  }
-
-  .heading {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 7px;
-  }
-
-  .templatePicker {
-    max-width: none;
-  }
-
-  .cardHeader {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
-  }
-
-  .cardDelete {
-    justify-self: start;
-  }
+  .cardBody { padding-left: 14px; }
+  .cardMain, .fieldRow, .fieldRow:has(.fieldOptions) { grid-template-columns: minmax(0, 1fr); }
+  .fieldOrder { flex-direction: row; }
+  .cardToggle { flex-direction: column; gap: 2px; }
+  .footer { margin: 0 -16px; padding-right: 16px; padding-left: 16px; flex-wrap: wrap; }
+  .footer > span { flex-basis: 100%; }
+  .cardName input, .coreType select, .instructions textarea, .fieldName input, .fieldType select, .fieldOptions input, .nameField input { min-height: 44px; font-size: 16px; }
 }
-
-@media (max-width: 520px) {
-  .section {
-    margin-right: 8px;
-    margin-left: 8px;
-    padding: 14px 12px;
-    border-radius: 8px;
-  }
-
-  .heading h2 {
-    font-size: 18px;
-  }
-
-  .toolbar {
-    padding: 12px;
-  }
-
-  .toolbarActions {
-    width: 100%;
-  }
-
-  .toolbarActions button {
-    flex: 1 1 auto;
-  }
-
-  .details {
-    align-items: stretch;
-  }
-
-  .nameField {
-    max-width: none;
-  }
-
-  .tabs {
-    width: 100%;
-  }
-
-  .tab {
-    flex: 1;
-  }
-
-  .card {
-    padding: 12px;
-  }
-
-  .cardMeta {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .coreType {
-    width: 100%;
-  }
-
-  .coreType select {
-    flex: 1;
-    max-width: none;
-  }
-
-  .fieldType {
-    flex: 1 1 180px;
-  }
-
-  .fieldDelete {
-    margin-left: auto;
-  }
-
-  .cardDelete,
-  .fieldDelete {
-    min-height: 44px;
-  }
-
-  .section input:not([type="checkbox"]),
-  .section select {
-    min-height: 44px;
-    font-size: 16px;
-  }
-
-  .orderButton,
-  .secondaryButton,
-  .primaryButton,
-  .deleteButton,
-  .addFieldButton,
-  .addCardButton {
-    min-height: 44px;
-  }
-
-  .orderButton {
-    width: 44px;
-    height: 44px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .section button {
-    transition: none;
-  }
-}
-
-.instructions { display: grid; gap: 8px; padding: 16px; font-size: 12px; }
-.instructions textarea { width: 100%; min-height: 80px; resize: vertical; padding: 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
