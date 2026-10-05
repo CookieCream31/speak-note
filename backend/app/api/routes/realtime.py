@@ -2,6 +2,7 @@ import uuid
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -222,6 +223,49 @@ def _discard_empty_session(
             storage.delete_file(capture_path)
 
 
+def _get_video_part(
+    db: Session, realtime_session: RealtimeSession, part_sequence: int
+) -> RealtimeVideoPart:
+    part = db.scalar(
+        select(RealtimeVideoPart).where(
+            RealtimeVideoPart.session_id == realtime_session.id,
+            RealtimeVideoPart.sequence == part_sequence,
+        )
+    )
+    if part is None:
+        raise RealtimeCaptureError("映像Partが見つかりません")
+    return part
+
+
+def _close_interrupted_session(
+    db: Session,
+    realtime_session: RealtimeSession,
+    storage: MediaStorage,
+) -> None:
+    try:
+        if realtime_session.received_bytes > 0:
+            if realtime_session.split_capture:
+                open_parts = list(
+                    db.scalars(
+                        select(RealtimeVideoPart).where(
+                            RealtimeVideoPart.session_id == realtime_session.id,
+                            RealtimeVideoPart.end_ms.is_(None),
+                        )
+                    )
+                )
+                for part in open_parts:
+                    part.end_ms = max(
+                        realtime_session.duration_ms,
+                        part.start_ms + 1,
+                    )
+                db.commit()
+            finalize_realtime_session(db, realtime_session)
+        else:
+            _discard_empty_session(db, realtime_session, storage)
+    except Exception:
+        db.rollback()
+
+
 @router.websocket("/ws")
 async def realtime_websocket(
     websocket: WebSocket,
@@ -251,34 +295,41 @@ async def realtime_websocket(
             or (split_capture and not isinstance(audio_mime_type, str))
         ):
             raise RealtimeCaptureError("startメッセージの形式が不正です")
-        meeting = db.get(Meeting, meeting_id)
-        if meeting is None:
-            raise RealtimeCaptureError("会議が見つかりません")
-        try:
-            provider, model, language, region = resolve_realtime_transcription(db, settings)
-        except RealtimeTranscriptionConfigurationError as exc:
-            raise RealtimeCaptureError(str(exc)) from exc
 
-        realtime_session = start_realtime_session(
-            db,
-            meeting,
-            storage,
-            mime_type=mime_type,
-            has_system_audio=has_system_audio,
-            model=model,
-            language=language,
-            transcription_provider=provider.value,
-            transcription_region=region,
-            split_capture=split_capture,
-            audio_mime_type=audio_mime_type,
-        )
+        def start() -> tuple[RealtimeSession, str]:
+            meeting = db.get(Meeting, meeting_id)
+            if meeting is None:
+                raise RealtimeCaptureError("会議が見つかりません")
+            try:
+                provider, model, language, region = resolve_realtime_transcription(db, settings)
+            except RealtimeTranscriptionConfigurationError as exc:
+                raise RealtimeCaptureError(str(exc)) from exc
+            started = start_realtime_session(
+                db,
+                meeting,
+                storage,
+                mime_type=mime_type,
+                has_system_audio=has_system_audio,
+                model=model,
+                language=language,
+                transcription_provider=provider.value,
+                transcription_region=region,
+                split_capture=split_capture,
+                audio_mime_type=audio_mime_type,
+            )
+            return started, language
+
+        # The DB session and file writes are synchronous. Run them in the thread
+        # pool so one recording never blocks other requests on the event loop.
+        started_session, language = await run_in_threadpool(start)
+        realtime_session = started_session
         await websocket.send_json(
             {
                 "type": "started",
                 "session_id": str(realtime_session.id),
                 "chunk_ms": settings.realtime_chunk_ms,
-                "transcription_provider": provider.value,
-                "transcription_region": region,
+                "transcription_provider": realtime_session.transcription_provider,
+                "transcription_region": realtime_session.transcription_region,
                 "transcription_language": language,
             }
         )
@@ -299,7 +350,8 @@ async def realtime_websocket(
                     raise RealtimeCaptureError("Azure認識結果の形式が不正です")
                 if speaker_label is not None and not isinstance(speaker_label, str):
                     raise RealtimeCaptureError("Azure認識結果の話者ラベル形式が不正です")
-                segment = append_streaming_transcript_segment(
+                segment = await run_in_threadpool(
+                    append_streaming_transcript_segment,
                     db,
                     realtime_session,
                     result_id=result_id,
@@ -323,7 +375,8 @@ async def realtime_websocket(
                 if message_type == "audio_chunk" and not realtime_session.split_capture:
                     raise RealtimeCaptureError("この録画セッションは分離録画ではありません")
                 content = await websocket.receive_bytes()
-                chunk = append_realtime_chunk(
+                chunk = await run_in_threadpool(
+                    append_realtime_chunk,
                     db,
                     realtime_session,
                     storage,
@@ -346,7 +399,8 @@ async def realtime_websocket(
                 )
                 continue
             if message_type == "video_part_start":
-                started_part = start_realtime_video_part(
+                started_part = await run_in_threadpool(
+                    start_realtime_video_part,
                     db,
                     realtime_session,
                     storage,
@@ -362,17 +416,12 @@ async def realtime_websocket(
                 )
                 continue
             if message_type == "video_chunk":
-                part_sequence = _integer(message, "part_sequence")
-                part = db.scalar(
-                    select(RealtimeVideoPart).where(
-                        RealtimeVideoPart.session_id == realtime_session.id,
-                        RealtimeVideoPart.sequence == part_sequence,
-                    )
+                part = await run_in_threadpool(
+                    _get_video_part, db, realtime_session, _integer(message, "part_sequence")
                 )
-                if part is None:
-                    raise RealtimeCaptureError("映像Partが見つかりません")
                 content = await websocket.receive_bytes()
-                part = append_realtime_video_chunk(
+                part = await run_in_threadpool(
+                    append_realtime_video_chunk,
                     db,
                     realtime_session,
                     part,
@@ -390,16 +439,11 @@ async def realtime_websocket(
                 )
                 continue
             if message_type == "video_part_end":
-                part_sequence = _integer(message, "part_sequence")
-                part = db.scalar(
-                    select(RealtimeVideoPart).where(
-                        RealtimeVideoPart.session_id == realtime_session.id,
-                        RealtimeVideoPart.sequence == part_sequence,
-                    )
+                part = await run_in_threadpool(
+                    _get_video_part, db, realtime_session, _integer(message, "part_sequence")
                 )
-                if part is None:
-                    raise RealtimeCaptureError("映像Partが見つかりません")
-                part = finish_realtime_video_part(
+                part = await run_in_threadpool(
+                    finish_realtime_video_part,
                     db,
                     realtime_session,
                     part,
@@ -414,7 +458,7 @@ async def realtime_websocket(
                 )
                 continue
             if message_type == "stop":
-                job = finalize_realtime_session(db, realtime_session)
+                job = await run_in_threadpool(finalize_realtime_session, db, realtime_session)
                 stopped_normally = True
                 await websocket.send_json(
                     {
@@ -438,25 +482,4 @@ async def realtime_websocket(
             and not stopped_normally
             and realtime_session.status == RealtimeSessionStatus.RECORDING
         ):
-            try:
-                if realtime_session.received_bytes > 0:
-                    if realtime_session.split_capture:
-                        open_parts = list(
-                            db.scalars(
-                                select(RealtimeVideoPart).where(
-                                    RealtimeVideoPart.session_id == realtime_session.id,
-                                    RealtimeVideoPart.end_ms.is_(None),
-                                )
-                            )
-                        )
-                        for part in open_parts:
-                            part.end_ms = max(
-                                realtime_session.duration_ms,
-                                part.start_ms + 1,
-                            )
-                        db.commit()
-                    finalize_realtime_session(db, realtime_session)
-                else:
-                    _discard_empty_session(db, realtime_session, storage)
-            except Exception:
-                db.rollback()
+            await run_in_threadpool(_close_interrupted_session, db, realtime_session, storage)
