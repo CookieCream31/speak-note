@@ -1,5 +1,6 @@
 "use client";
 
+import { Info } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
 import { analysisApi, type AIProfile, type MeetingTemplate, type MeetingTemplateSnapshot } from "@/lib/api";
@@ -86,26 +87,28 @@ export function SummaryRegenerationButton({
     <dialog ref={dialog} className={styles.dialog} aria-labelledby={`regeneration-title-${meetingId}`}
       onCancel={(event) => { if (busy) event.preventDefault(); }}>
       <form onSubmit={(event) => void start(event)}>
-        <header><h2 id={`regeneration-title-${meetingId}`}>要約を再生成</h2><p>今回の生成に使う設定を選びます。</p></header>
-        <label><span>AIプロファイル</span>
-          <select aria-label="AIプロファイル" value={profileId} disabled={busy}
-            onChange={(event) => { setProfileId(event.target.value); selectChanged(); }}>
-            <option value="">{aiDisabled ? "AIプロファイルを選択" : "会議のAI設定を使用"}</option>
-            {currentProfileId && !profiles.some((profile) => profile.id === currentProfileId)
-              && <option value={currentProfileId}>会議で使用したプロファイル（利用不可）</option>}
-            {profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name} · {profile.model}</option>)}
-          </select>
-        </label>
-        <label><span>議事録テンプレート</span>
-          <select aria-label="議事録テンプレート" value={templateId} disabled={busy}
-            onChange={(event) => { setTemplateId(event.target.value); selectChanged(); }}>
-            <option value="">{currentTemplate ? `会議で使用した設定 · ${currentTemplate.name} · v${currentTemplate.revision}` : "会議で使用した設定（標準形式）"}</option>
-            {templates.map((template) => <option key={template.id} value={template.id}>{template.name} · v{template.revision}</option>)}
-          </select>
-        </label>
-        <p className={styles.hint}>テンプレートの「確定後」の構成と指示を使用します。会議やリアルタイム解析の設定は変更しません。</p>
-        <p className={styles.hint}>{hasFinal ? "保存済みの全体文字起こしを使い、要約だけを生成します。" : "初回はWhisperXで全体文字起こしを保存してから生成します。次回から文字起こしを再利用します。"}</p>
-        {error && <p role="alert" className={styles.error}>{error}</p>}
+        <header><h2 id={`regeneration-title-${meetingId}`}>要約を再生成</h2><p>今回の生成に使う設定を選びます。会議の設定は変わりません。</p></header>
+        <div className={styles.body}>
+          <label><span>AIプロファイル</span>
+            <select aria-label="AIプロファイル" value={profileId} disabled={busy}
+              onChange={(event) => { setProfileId(event.target.value); selectChanged(); }}>
+              <option value="">{aiDisabled ? "AIプロファイルを選択" : "会議のAI設定を使用"}</option>
+              {currentProfileId && !profiles.some((profile) => profile.id === currentProfileId)
+                && <option value={currentProfileId}>会議で使用したプロファイル（利用不可）</option>}
+              {profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name} · {profile.model}</option>)}
+            </select>
+          </label>
+          <label><span>議事録テンプレート</span>
+            <select aria-label="議事録テンプレート" value={templateId} disabled={busy}
+              onChange={(event) => { setTemplateId(event.target.value); selectChanged(); }}>
+              <option value="">{currentTemplate ? `会議で使用した設定 · ${currentTemplate.name} · v${currentTemplate.revision}` : "会議で使用した設定（標準形式）"}</option>
+              {templates.map((template) => <option key={template.id} value={template.id}>{template.name} · v{template.revision}</option>)}
+            </select>
+          </label>
+          <p className={styles.hint}>テンプレートの「確定後」の構成と指示を使用します。会議やリアルタイム解析の設定は変更しません。</p>
+          <p className={styles.notice}><Info size={16} aria-hidden="true" />{hasFinal ? "保存済みの全体文字起こしを使い、要約だけを生成します。" : "初回はWhisperXで全体文字起こしを保存してから生成します。次回から文字起こしを再利用します。"}</p>
+          {error && <p role="alert" className={styles.error}>{error}</p>}
+        </div>
         <footer>
           <button type="button" disabled={busy} onClick={() => dialog.current?.close()}>キャンセル</button>
           <button type="submit" disabled={unavailable || (aiDisabled && !profileId)}>{busy ? "送信中…" : "再生成を開始"}</button>

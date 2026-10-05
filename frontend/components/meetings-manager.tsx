@@ -2,7 +2,7 @@
 
 import {
   AudioLines, Check, ChevronRight, CircleAlert, Ellipsis, Folder, Hash, House, Inbox, Mic, MonitorUp, Plus, Search, SearchX,
-  Sparkles, Star, Upload, Video, X,
+  Sparkles, Star, Trash2, Upload, Video, X,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -1387,17 +1387,18 @@ export function MeetingsManager({
             aria-labelledby="tag-dialog-title"
           >
             <header>
-              <div>
-                <h2 id="tag-dialog-title">タグを管理</h2>
-              </div>
+              <h2 id="tag-dialog-title">タグを管理</h2>
               <button
                 type="button"
+                aria-label="閉じる"
                 disabled={tagManaging}
                 onClick={() => setTagDialogOpen(false)}
-              >×</button>
+              >
+                <X size={18} aria-hidden="true" />
+              </button>
             </header>
             <form className={styles.tagCreateForm} onSubmit={(event) => void createTag(event)}>
-              <label htmlFor="new-tag-name">新しいタグ</label>
+              <label className={styles.visuallyHidden} htmlFor="new-tag-name">新しいタグ</label>
               <div>
                 <input
                   id="new-tag-name"
@@ -1419,14 +1420,17 @@ export function MeetingsManager({
                 )).length;
                 return (
                   <div key={tag.id}>
-                    <span className={styles.tagChip}># {tag.name}</span>
+                    <span className={styles.tagName}># {tag.name}</span>
                     <small>{usedCount}件の会議</small>
                     <button
                       type="button"
                       disabled={tagManaging}
                       aria-label={`${tag.name}タグを削除`}
+                      title="削除"
                       onClick={() => void deleteTag(tag)}
-                    >削除</button>
+                    >
+                      <Trash2 size={16} aria-hidden="true" />
+                    </button>
                   </div>
                 );
               }) : (

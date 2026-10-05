@@ -243,20 +243,22 @@
 .dialogActions button:first-child { color: var(--ink); background: var(--surface); border: 1px solid var(--line); }
 .dialogActions button:last-child { color: var(--on-primary); background: var(--primary-bg); border: 0; font-weight: 500; }
 .dialogActions button:disabled { cursor: wait; opacity: .55; }
-.tagDialog { width: min(540px, 100%); }
-.tagCreateForm { display: grid; gap: 8px; padding: 20px 22px 16px; border-bottom: 1px solid var(--line); }
-.tagCreateForm > label { font-size: 12px; font-weight: 800; }
+.tagDialog { width: min(480px, 100%); }
+.tagDialog > header { padding-bottom: 12px; }
+.tagCreateForm { display: grid; gap: 8px; padding: 0 24px 16px; }
 .tagCreateForm > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
-.tagCreateForm input { min-width: 0; min-height: 40px; padding: 0 11px; border: 1px solid var(--control-border); border-radius: 8px; font-size: 11px; }
+.tagCreateForm input { min-width: 0; min-height: 38px; padding: 0 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 14px; }
 .tagCreateForm input:focus { border-color: var(--focus); outline: 3px solid var(--focus-ring); }
-.tagCreateForm button { min-height: 40px; padding: 0 16px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 800; }
+.tagCreateForm button { min-height: 38px; padding: 0 16px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; }
 .tagCreateForm button:disabled, .tagList button:disabled { cursor: wait; opacity: .55; }
-.tagList { max-height: 360px; overflow: auto; padding: 8px 22px 20px; }
-.tagList > div { min-height: 48px; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; border-bottom: 1px solid var(--line-soft); }
+.tagList { max-height: 360px; overflow: auto; border-top: 1px solid var(--line); }
+.tagList > div { min-height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 24px; border-bottom: 1px solid var(--line-soft); }
 .tagList > div:last-child { border-bottom: 0; }
-.tagList small { color: var(--text-subtle); font-size: 12px; }
-.tagList button { padding: 6px 9px; color: var(--danger); background: var(--danger-soft); border: 0; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 800; }
-.noTags { margin: 16px 0 0; padding: 18px; color: var(--muted); text-align: center; background: var(--panel); border-radius: 8px; font-size: 12px; }
+.tagName { min-width: 0; flex: 1; overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.tagList small { color: var(--muted); font-size: 12px; }
+.tagList button { width: 32px; height: 32px; display: grid; place-items: center; color: var(--muted); background: transparent; border: 0; border-radius: 8px; cursor: pointer; }
+.tagList button:hover { color: var(--danger); background: var(--danger-soft); }
+.noTags { margin: 0; padding: 24px; color: var(--muted); text-align: center; font-size: 13px; }
 
 @media (max-width: 1220px) {
   .listHeading, .record { grid-template-columns: 44px minmax(0, 1fr) 150px 72px 120px 40px 40px; }
@@ -380,8 +382,8 @@
   .dialogBody { padding: 0 16px 16px; }
   .dialogActions { padding: 12px 16px max(12px, env(safe-area-inset-bottom)); }
   .dialogActions button { flex: 1; min-height: 44px; }
-  .tagCreateForm { padding: 16px; }
-  .tagList { padding-right: 16px; padding-left: 16px; }
+  .tagCreateForm { padding: 0 16px 16px; }
+  .tagList > div { padding: 0 16px; }
 }
 @media (max-width: 380px) {
   .tagCreateForm > div { grid-template-columns: 1fr; }
