@@ -7,10 +7,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.dependencies import DbSession, get_storage
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 from app.db.session import get_db
-from app.models.media import Media
-from app.models.meeting import Meeting, MeetingStatus
+from app.models.meeting import Meeting
 from app.models.realtime import RealtimeSession, RealtimeSessionStatus, RealtimeVideoPart
 from app.models.realtime_analysis import RealtimeAnalysisState
 from app.models.transcript import TranscriptSegment, TranscriptVersion
@@ -28,8 +27,10 @@ from app.services.realtime import (
     append_realtime_chunk,
     append_realtime_video_chunk,
     append_streaming_transcript_segment,
+    close_interrupted_realtime_session,
     finalize_realtime_session,
     finish_realtime_video_part,
+    resume_realtime_session,
     start_realtime_session,
     start_realtime_video_part,
 )
@@ -189,40 +190,6 @@ def _optional_number(message: dict[str, Any], field: str) -> float | None:
     return float(value)
 
 
-def _discard_empty_session(
-    db: Session,
-    realtime_session: RealtimeSession,
-    storage: MediaStorage,
-) -> None:
-    media = db.get(Media, realtime_session.media_id)
-    transcript = db.get(TranscriptVersion, realtime_session.transcript_version_id)
-    meeting = db.get(Meeting, realtime_session.meeting_id)
-    storage_path = media.storage_path if media is not None else None
-    capture_paths = [
-        realtime_session.audio_storage_path,
-        *db.scalars(
-            select(RealtimeVideoPart.storage_path).where(
-                RealtimeVideoPart.session_id == realtime_session.id
-            )
-        ),
-    ]
-    db.delete(realtime_session)
-    if media is not None:
-        db.delete(media)
-    if transcript is not None:
-        db.delete(transcript)
-    if meeting is not None:
-        meeting.status = MeetingStatus.CREATED
-        meeting.started_at = None
-        meeting.duration_ms = None
-    db.commit()
-    if storage_path is not None:
-        storage.delete_file(storage_path)
-    for capture_path in capture_paths:
-        if capture_path is not None:
-            storage.delete_file(capture_path)
-
-
 def _get_video_part(
     db: Session, realtime_session: RealtimeSession, part_sequence: int
 ) -> RealtimeVideoPart:
@@ -237,33 +204,91 @@ def _get_video_part(
     return part
 
 
-def _close_interrupted_session(
+# Close codes a browser sends when the user ends the page or recorder on purpose.
+# Anything else (network loss, server restart) keeps the session resumable.
+_INTENTIONAL_CLOSE_CODES = frozenset({1000, 1001, 1005})
+
+
+async def _open_session(
+    websocket: WebSocket,
     db: Session,
-    realtime_session: RealtimeSession,
     storage: MediaStorage,
-) -> None:
-    try:
-        if realtime_session.received_bytes > 0:
-            if realtime_session.split_capture:
-                open_parts = list(
-                    db.scalars(
-                        select(RealtimeVideoPart).where(
-                            RealtimeVideoPart.session_id == realtime_session.id,
-                            RealtimeVideoPart.end_ms.is_(None),
-                        )
-                    )
-                )
-                for part in open_parts:
-                    part.end_ms = max(
-                        realtime_session.duration_ms,
-                        part.start_ms + 1,
-                    )
-                db.commit()
-            finalize_realtime_session(db, realtime_session)
-        else:
-            _discard_empty_session(db, realtime_session, storage)
-    except Exception:
-        db.rollback()
+    meeting_id: uuid.UUID,
+    settings: Settings,
+) -> RealtimeSession:
+    first_message = await websocket.receive_json()
+    if not isinstance(first_message, dict) or first_message.get("type") not in {
+        "start",
+        "resume",
+    }:
+        raise RealtimeCaptureError("最初にstartメッセージを送信してください")
+    if first_message["type"] == "resume":
+        try:
+            session_id = uuid.UUID(str(first_message.get("session_id")))
+        except ValueError as exc:
+            raise RealtimeCaptureError("再開する録音セッションIDが不正です") from exc
+        resumed = await run_in_threadpool(resume_realtime_session, db, meeting_id, session_id)
+        await websocket.send_json(
+            {
+                "type": "resumed",
+                "session_id": str(resumed.id),
+                "chunk_ms": settings.realtime_chunk_ms,
+                "transcription_provider": resumed.transcription_provider,
+                "duration_ms": resumed.duration_ms,
+            }
+        )
+        return resumed
+
+    split_capture = first_message.get("capture_mode") == "split"
+    mime_type = (
+        first_message.get("video_mime_type") if split_capture else first_message.get("mime_type")
+    )
+    audio_mime_type = first_message.get("audio_mime_type") if split_capture else None
+    has_system_audio = first_message.get("has_system_audio")
+    if (
+        not isinstance(mime_type, str)
+        or not isinstance(has_system_audio, bool)
+        or (split_capture and not isinstance(audio_mime_type, str))
+    ):
+        raise RealtimeCaptureError("startメッセージの形式が不正です")
+
+    def start() -> tuple[RealtimeSession, str]:
+        meeting = db.get(Meeting, meeting_id)
+        if meeting is None:
+            raise RealtimeCaptureError("会議が見つかりません")
+        try:
+            provider, model, language, region = resolve_realtime_transcription(db, settings)
+        except RealtimeTranscriptionConfigurationError as exc:
+            raise RealtimeCaptureError(str(exc)) from exc
+        started = start_realtime_session(
+            db,
+            meeting,
+            storage,
+            mime_type=mime_type,
+            has_system_audio=has_system_audio,
+            model=model,
+            language=language,
+            transcription_provider=provider.value,
+            transcription_region=region,
+            split_capture=split_capture,
+            audio_mime_type=audio_mime_type,
+        )
+        return started, language
+
+    # The DB session and file writes are synchronous. Run them in the thread
+    # pool so one recording never blocks other requests on the event loop.
+    started_session, language = await run_in_threadpool(start)
+    await websocket.send_json(
+        {
+            "type": "started",
+            "session_id": str(started_session.id),
+            "chunk_ms": settings.realtime_chunk_ms,
+            "transcription_provider": started_session.transcription_provider,
+            "transcription_region": started_session.transcription_region,
+            "transcription_language": language,
+        }
+    )
+    return started_session
 
 
 @router.websocket("/ws")
@@ -276,63 +301,10 @@ async def realtime_websocket(
     await websocket.accept()
     realtime_session: RealtimeSession | None = None
     stopped_normally = False
+    close_immediately = False
     settings = get_settings()
     try:
-        start_message = await websocket.receive_json()
-        if not isinstance(start_message, dict) or start_message.get("type") != "start":
-            raise RealtimeCaptureError("最初にstartメッセージを送信してください")
-        split_capture = start_message.get("capture_mode") == "split"
-        mime_type = (
-            start_message.get("video_mime_type")
-            if split_capture
-            else start_message.get("mime_type")
-        )
-        audio_mime_type = start_message.get("audio_mime_type") if split_capture else None
-        has_system_audio = start_message.get("has_system_audio")
-        if (
-            not isinstance(mime_type, str)
-            or not isinstance(has_system_audio, bool)
-            or (split_capture and not isinstance(audio_mime_type, str))
-        ):
-            raise RealtimeCaptureError("startメッセージの形式が不正です")
-
-        def start() -> tuple[RealtimeSession, str]:
-            meeting = db.get(Meeting, meeting_id)
-            if meeting is None:
-                raise RealtimeCaptureError("会議が見つかりません")
-            try:
-                provider, model, language, region = resolve_realtime_transcription(db, settings)
-            except RealtimeTranscriptionConfigurationError as exc:
-                raise RealtimeCaptureError(str(exc)) from exc
-            started = start_realtime_session(
-                db,
-                meeting,
-                storage,
-                mime_type=mime_type,
-                has_system_audio=has_system_audio,
-                model=model,
-                language=language,
-                transcription_provider=provider.value,
-                transcription_region=region,
-                split_capture=split_capture,
-                audio_mime_type=audio_mime_type,
-            )
-            return started, language
-
-        # The DB session and file writes are synchronous. Run them in the thread
-        # pool so one recording never blocks other requests on the event loop.
-        started_session, language = await run_in_threadpool(start)
-        realtime_session = started_session
-        await websocket.send_json(
-            {
-                "type": "started",
-                "session_id": str(realtime_session.id),
-                "chunk_ms": settings.realtime_chunk_ms,
-                "transcription_provider": realtime_session.transcription_provider,
-                "transcription_region": realtime_session.transcription_region,
-                "transcription_language": language,
-            }
-        )
+        realtime_session = await _open_session(websocket, db, storage, meeting_id, settings)
 
         while True:
             message = await websocket.receive_json()
@@ -419,6 +391,7 @@ async def realtime_websocket(
                 part = await run_in_threadpool(
                     _get_video_part, db, realtime_session, _integer(message, "part_sequence")
                 )
+                chunk_sequence = _integer(message, "chunk_sequence")
                 content = await websocket.receive_bytes()
                 part = await run_in_threadpool(
                     append_realtime_video_chunk,
@@ -426,7 +399,7 @@ async def realtime_websocket(
                     realtime_session,
                     part,
                     storage,
-                    sequence=_integer(message, "chunk_sequence"),
+                    sequence=chunk_sequence,
                     content=content,
                     max_chunk_bytes=settings.realtime_max_chunk_mb * 1024 * 1024,
                 )
@@ -434,7 +407,7 @@ async def realtime_websocket(
                     {
                         "type": "video_chunk_saved",
                         "part_sequence": part.sequence,
-                        "chunk_sequence": part.chunk_count - 1,
+                        "chunk_sequence": chunk_sequence,
                     }
                 )
                 continue
@@ -470,9 +443,10 @@ async def realtime_websocket(
                 await websocket.close(code=1000)
                 return
             raise RealtimeCaptureError("未対応のメッセージです")
-    except WebSocketDisconnect:
-        pass
+    except WebSocketDisconnect as exc:
+        close_immediately = exc.code in _INTENTIONAL_CLOSE_CODES
     except RealtimeCaptureError as exc:
+        close_immediately = True
         if websocket.client_state.name == "CONNECTED":
             await websocket.send_json({"type": "error", "message": str(exc)})
             await websocket.close(code=1008)
@@ -480,6 +454,11 @@ async def realtime_websocket(
         if (
             realtime_session is not None
             and not stopped_normally
+            and close_immediately
             and realtime_session.status == RealtimeSessionStatus.RECORDING
         ):
-            await run_in_threadpool(_close_interrupted_session, db, realtime_session, storage)
+            await run_in_threadpool(
+                close_interrupted_realtime_session, db, realtime_session, storage
+            )
+        # Otherwise the session stays "recording" so the client can resume it; the
+        # live worker finalizes it if no data arrives within the resume timeout.

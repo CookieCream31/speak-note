@@ -4,7 +4,7 @@
 WhisperXを確定版の文字起こし・話者分離に、Ollama / Geminiを要約・質問回答に使用します。
 録音中の文字起こしはWhisperXまたはAzure AI Speechを選べます。
 
-最終照合: **2026-10-05**（Live文字起こし専用Worker `live-worker` の追加・ホーム一覧の全件取得・現行機能・Migration 0023・回答支援の根拠検証と再試行・Git管理・新規環境の起動手順・リデザイン第1〜2段階の見た目と第3段階の各画面を照合）。この文書は現在のソースコードとCompose設定を説明します。
+最終照合: **2026-10-05**（録音接続の自動再接続とMigration 0024・Live文字起こし専用Worker `live-worker` の追加・ホーム一覧の全件取得・現行機能・Migration 0023・回答支援の根拠検証と再試行・Git管理・新規環境の起動手順・リデザイン第1〜2段階の見た目と第3段階の各画面を照合）。この文書は現在のソースコードとCompose設定を説明します。
 外部APIの実接続、認識精度、すべての端末での動作を保証するものではありません。
 
 今後の機能追加・修正では毎回、実装とこのREADMEを照合し、操作・構成・設定・制約などの説明に影響する変更を同じ作業で反映します。詳しい作業ルールは[AGENTS.md](AGENTS.md)と[開発ガイド](docs/development.md)を参照してください。
@@ -170,7 +170,7 @@ curl --fail http://localhost:8001/api/v1/health
 sudo docker compose exec -T backend alembic current
 ```
 
-`config --quiet` は構文確認のみです。値を展開する `docker compose config` の出力にはSecretが含まれ得るため、共有しないでください。Backendは起動時にAlembic Migrationを実行します。現行ソースのheadは `20260927_0023` です。Frontendは起動時にlockfileを確認し、必要なら `npm ci` を実行します。初回ビルド中はヘルスチェックが通るまで待ってから確認してください。エラー時は[障害調査](docs/operations.md#troubleshooting)を参照してください。
+`config --quiet` は構文確認のみです。値を展開する `docker compose config` の出力にはSecretが含まれ得るため、共有しないでください。Backendは起動時にAlembic Migrationを実行します。現行ソースのheadは `20261005_0024` です。Frontendは起動時にlockfileを確認し、必要なら `npm ci` を実行します。初回ビルド中はヘルスチェックが通るまで待ってから確認してください。エラー時は[障害調査](docs/operations.md#troubleshooting)を参照してください。
 
 - 画面（Compose既定）: [http://localhost:3000](http://localhost:3000)。`FRONTEND_PORT` を変えた場合はそのホスト側ポートを使用します。2026-09-28のユーザー提供ログでは3001→コンテナ3000です。
 - APIドキュメント: [http://localhost:8001/docs](http://localhost:8001/docs)
@@ -209,6 +209,14 @@ DB・環境変数の変更はありません。リデザイン第2段階でFront
 録音中のLive文字起こしは `live-worker` が担当し、通常の `worker` は担当しません。これにより、別の会議のFinal文字起こしやAI要約が長時間かかっても、会議中の文字起こしが止まりません。各区間の音声は録音ファイル全体をコピーせずに切り出すため、長い会議でも1区間あたりの処理時間が増えません。
 
 この変更を取り込んだ既存環境では、録音・録画を終えてから `sudo docker compose up -d --build live-worker` と `sudo docker compose restart worker` を実行します。`live-worker` を起動しないと、Live文字起こしのJobが `queued` のまま進みません。DB Migration・環境変数の追加はありません。[反映手順](docs/operations.md#live-worker)。
+
+### 録音中の接続切れと自動再接続
+
+録音・画面共有の途中で通信が切れたりBackendが再起動したりしても、ブラウザは録音を続け、最大5分間自動で再接続します。再接続すると同じ録音セッションへ戻り、切断中に録った分を含めて未送信のデータを順番どおり送ります（Backendは重複を無視します）。再接続中は録音画面に「再接続しています…」と表示されます。
+
+ブラウザの再読み込み・タブを閉じる・録音画面から移動する操作は意図した終了として扱い、従来どおり受信済みのデータですぐ確定します。5分以内に再接続できなかった場合や、ブラウザ自体が終了した場合は、最後にデータが届いてから `REALTIME_RESUME_TIMEOUT_SECONDS`（既定600秒）後に `live-worker` が受信済みデータで確定します。送信待ちのデータはブラウザのメモリに保持するため、タブが閉じると未送信分は失われます。
+
+この変更にはMigration `20261005_0024`（録音セッションの最終受信時刻）と `live-worker` が必要です。新しい環境変数 `REALTIME_RESUME_TIMEOUT_SECONDS` は省略できます（既定600秒）。[反映手順](docs/operations.md#recording-resume)。
 
 ## 既知の制約・引き継ぎ時の注意
 

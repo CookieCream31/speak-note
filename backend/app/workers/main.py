@@ -1,7 +1,7 @@
 import logging
 import signal
 import time
-from collections.abc import Collection
+from collections.abc import Callable, Collection
 from types import FrameType
 
 from sqlalchemy.orm import Session
@@ -108,6 +108,7 @@ def process_job(session: Session, job: Job) -> None:
 def run(
     job_types: Collection[JobType] = GENERAL_JOB_TYPES,
     worker_name: str = "speak-note worker",
+    maintenance: Callable[[Session], None] | None = None,
 ) -> None:
     signal.signal(signal.SIGTERM, stop_worker)
     signal.signal(signal.SIGINT, stop_worker)
@@ -119,6 +120,13 @@ def run(
     logger.info("%s started", worker_name)
 
     while running:
+        if maintenance is not None:
+            with SessionLocal() as session:
+                try:
+                    maintenance(session)
+                except Exception:
+                    session.rollback()
+                    logger.exception("%s maintenance failed", worker_name)
         with SessionLocal() as session:
             job = claim_next_job(session, job_types)
             if job is None:

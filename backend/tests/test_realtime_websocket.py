@@ -1,6 +1,7 @@
 import asyncio
 import uuid
 from collections.abc import Generator
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -14,8 +15,10 @@ from app.api.routes import realtime as realtime_routes
 from app.main import app
 from app.models.job import Job, JobType
 from app.models.media import Media
-from app.models.meeting import Meeting, MeetingSourceType, MeetingStatus
+from app.models.meeting import Meeting, MeetingSourceType, MeetingStatus, utc_now
+from app.models.realtime import RealtimeSession, RealtimeVideoPart
 from app.services.media import MediaStorage
+from app.services.realtime import finalize_stale_realtime_sessions
 
 
 @pytest.fixture
@@ -140,3 +143,163 @@ def test_websocket_disconnect_finalizes_received_audio(
         assert meeting is not None
         assert meeting.status == MeetingStatus.COMPLETED
         assert meeting.duration_ms == 15000
+
+
+def _send_chunk(websocket: Any, sequence: int, content: bytes) -> dict[str, Any]:
+    websocket.send_json(
+        {
+            "type": "chunk",
+            "sequence": sequence,
+            "start_ms": sequence * 15000,
+            "end_ms": (sequence + 1) * 15000,
+        }
+    )
+    websocket.send_bytes(content)
+    return websocket.receive_json()
+
+
+def test_websocket_resumes_after_network_loss_and_ignores_replayed_chunks(
+    client: TestClient,
+    session_factory: sessionmaker[Session],
+    storage: MediaStorage,
+) -> None:
+    meeting_id = _create_meeting(session_factory)
+    url = f"/api/v1/meetings/{meeting_id}/live/ws"
+
+    with client.websocket_connect(url) as websocket:
+        session_id = _start(websocket)["session_id"]
+        assert _send_chunk(websocket, 0, b"first")["type"] == "chunk_saved"
+        # Not a browser-initiated close: the recording must stay resumable.
+        websocket.close(code=4001)
+
+    with session_factory() as session:
+        meeting = session.get(Meeting, meeting_id)
+        assert meeting is not None
+        assert meeting.status == MeetingStatus.RECORDING
+
+    with client.websocket_connect(url) as websocket:
+        websocket.send_json({"type": "resume", "session_id": session_id})
+        resumed = websocket.receive_json()
+        assert resumed["type"] == "resumed"
+        assert resumed["session_id"] == session_id
+        assert resumed["duration_ms"] == 15000
+        # The client never saw the first acknowledgement and sends it again.
+        assert _send_chunk(websocket, 0, b"first") == {
+            "type": "chunk_saved",
+            "sequence": 0,
+            "end_ms": 15000,
+        }
+        assert _send_chunk(websocket, 1, b"second")["type"] == "chunk_saved"
+        websocket.send_json({"type": "stop"})
+        assert websocket.receive_json()["type"] == "finalized"
+
+    with session_factory() as session:
+        media = session.scalar(select(Media).where(Media.meeting_id == meeting_id))
+        assert media is not None
+        assert storage.absolute_path(media.storage_path).read_bytes() == b"firstsecond"
+        live_jobs = session.scalars(select(Job).where(Job.type == JobType.TRANSCRIBE_LIVE))
+        assert len(list(live_jobs)) == 2
+
+
+def test_websocket_rejects_resuming_a_finished_session(
+    client: TestClient,
+    session_factory: sessionmaker[Session],
+    storage: MediaStorage,
+) -> None:
+    meeting_id = _create_meeting(session_factory)
+    url = f"/api/v1/meetings/{meeting_id}/live/ws"
+    with client.websocket_connect(url) as websocket:
+        session_id = _start(websocket)["session_id"]
+        assert _send_chunk(websocket, 0, b"first")["type"] == "chunk_saved"
+        websocket.send_json({"type": "stop"})
+        assert websocket.receive_json()["type"] == "finalized"
+
+    with client.websocket_connect(url) as websocket:
+        websocket.send_json({"type": "resume", "session_id": session_id})
+        error = websocket.receive_json()
+
+    assert error["type"] == "error"
+    assert "再開できません" in error["message"]
+
+
+def test_replayed_video_chunk_is_acknowledged_without_appending(
+    client: TestClient,
+    session_factory: sessionmaker[Session],
+    storage: MediaStorage,
+) -> None:
+    with session_factory() as session:
+        meeting = Meeting(title="Screen", source_type=MeetingSourceType.LIVE)
+        session.add(meeting)
+        session.commit()
+        meeting_id = meeting.id
+
+    with client.websocket_connect(f"/api/v1/meetings/{meeting_id}/live/ws") as websocket:
+        websocket.send_json(
+            {
+                "type": "start",
+                "capture_mode": "split",
+                "audio_mime_type": "audio/webm",
+                "video_mime_type": "video/webm",
+                "has_system_audio": True,
+            }
+        )
+        assert websocket.receive_json()["type"] == "started"
+        part_start = {
+            "type": "video_part_start",
+            "part_sequence": 0,
+            "start_ms": 0,
+            "mime_type": "video/webm",
+        }
+        websocket.send_json(part_start)
+        assert websocket.receive_json()["type"] == "video_part_started"
+        for content in (b"frame-0", b"frame-0"):
+            websocket.send_json({"type": "video_chunk", "part_sequence": 0, "chunk_sequence": 0})
+            websocket.send_bytes(content)
+            assert websocket.receive_json() == {
+                "type": "video_chunk_saved",
+                "part_sequence": 0,
+                "chunk_sequence": 0,
+            }
+        websocket.send_json(part_start)
+        assert websocket.receive_json()["type"] == "video_part_started"
+        websocket.send_json({"type": "video_chunk", "part_sequence": 0, "chunk_sequence": 1})
+        websocket.send_bytes(b"frame-1")
+        assert websocket.receive_json()["chunk_sequence"] == 1
+        websocket.close(code=4001)
+
+    with session_factory() as session:
+        part = session.scalar(select(RealtimeVideoPart))
+        assert part is not None
+        assert part.chunk_count == 2
+        assert storage.absolute_path(part.storage_path).read_bytes() == b"frame-0frame-1"
+
+
+def test_stale_recording_is_finalized_after_resume_timeout(
+    client: TestClient,
+    session_factory: sessionmaker[Session],
+    storage: MediaStorage,
+) -> None:
+    stale_meeting_id = _create_meeting(session_factory)
+    active_meeting_id = _create_meeting(session_factory)
+    for meeting_id in (stale_meeting_id, active_meeting_id):
+        with client.websocket_connect(f"/api/v1/meetings/{meeting_id}/live/ws") as websocket:
+            assert _start(websocket)["type"] == "started"
+            assert _send_chunk(websocket, 0, b"audio")["type"] == "chunk_saved"
+            websocket.close(code=4001)
+
+    with session_factory() as session:
+        stale = session.scalar(
+            select(RealtimeSession).where(RealtimeSession.meeting_id == stale_meeting_id)
+        )
+        assert stale is not None
+        stale.last_activity_at = utc_now() - timedelta(minutes=11)
+        session.commit()
+
+        assert finalize_stale_realtime_sessions(session, storage, idle_seconds=600) == 1
+
+        stale_meeting = session.get(Meeting, stale_meeting_id)
+        active_meeting = session.get(Meeting, active_meeting_id)
+        assert stale_meeting is not None and active_meeting is not None
+        assert stale_meeting.status == MeetingStatus.COMPLETED
+        assert stale_meeting.duration_ms == 15000
+        assert active_meeting.status == MeetingStatus.RECORDING

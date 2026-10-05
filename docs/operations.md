@@ -81,6 +81,7 @@ sudo docker compose restart worker frontend
 | REALTIME_CHUNK_MS | 15000。録音保存用Chunk間隔 |
 | REALTIME_WINDOW_MS | 30000。WhisperX Liveの音声Window |
 | REALTIME_MAX_CHUNK_MB | 64。録音WebSocketのChunk受付上限 |
+| REALTIME_RESUME_TIMEOUT_SECONDS | 600。切断された録音を再開待ちにしておく秒数。最後にデータを受信してからこの時間を過ぎると `live-worker` が受信済みデータで確定する。ブラウザの再接続時間（5分）より長くする |
 | REALTIME_ANALYSIS_INTERVAL_MS | 30000。Live AI解析を予約する会議時間間隔（処理完了時間の保証ではない） |
 | REALTIME_ANALYSIS_DRAFT_TAIL_MS | 2000。Live AIで暫定として扱う末尾時間幅 |
 | REALTIME_ANALYSIS_TIMEOUT_SECONDS | 300。Live AIのAPI timeout |
@@ -284,3 +285,28 @@ sudo docker compose logs --tail=50 live-worker
 ```
 
 ログに `speak-note live transcription worker started` が出れば起動しています。`live-worker` を起動しないと、録音中の文字起こしJobが `queued` のまま進みません。同じ録音の区間を順番に保存するため、`live-worker` は複数台に増やさないでください。
+
+<a id="recording-resume"></a>
+## 録音の自動再接続の反映（Migration 0024）
+
+録音WebSocketが切れても録音セッションを残し、ブラウザが再接続して再開できるようにする変更です。Backend起動時に0023から0024へMigrationし、`realtime_sessions` に最終受信時刻 `last_activity_at` と索引を追加します。既存の行にはMigration時刻が入るため、過去の障害で `recording` のまま残っていた録音セッションも、反映から `REALTIME_RESUME_TIMEOUT_SECONDS` 後に `live-worker` が受信済みデータで確定します。
+
+先に[Live文字起こし専用Workerの反映](#live-worker)を済ませてください。録音・録画と保存を終えてから実行します。
+
+```bash
+cd /home/llm/speak-note
+sudo docker compose config --quiet
+sudo docker compose stop worker live-worker realtime-ai-worker answer-worker
+sudo docker compose restart backend
+sudo docker compose up -d --wait --no-deps backend
+sudo docker compose exec -T backend alembic current
+```
+
+`20261005_0024 (head)` とBackendの正常起動を確認してからWorkerを再開し、ブラウザを再読み込みします。`.env` で `REALTIME_RESUME_TIMEOUT_SECONDS` を変更した場合は `live-worker` を再作成します。
+
+```bash
+sudo docker compose up -d --no-deps --force-recreate worker live-worker realtime-ai-worker answer-worker
+sudo docker compose ps
+```
+
+動作確認は、短い録音を開始し、録音中に `sudo docker compose restart backend` を実行します。録音画面に再接続中の表示が出た後に復旧し、停止後の録音に再起動前後の音声が欠けずに入っていることを確認します。ブラウザの再読み込みは意図した終了として扱われ、その時点で確定します。

@@ -1,4 +1,6 @@
+import logging
 import uuid
+from datetime import timedelta
 from pathlib import Path
 
 from sqlalchemy import func, select
@@ -27,6 +29,8 @@ from app.services.realtime.windows import build_realtime_transcription_windows
 
 ALLOWED_REALTIME_MIME_TYPES = frozenset({"video/webm", "video/mp4"})
 ALLOWED_REALTIME_AUDIO_MIME_TYPES = frozenset({"audio/webm", "audio/mp4"})
+
+logger = logging.getLogger(__name__)
 
 
 class RealtimeCaptureError(RuntimeError):
@@ -202,6 +206,21 @@ def append_realtime_chunk(
         if realtime_session.split_capture
         else realtime_session.chunk_count
     )
+    if sequence < expected_sequence:
+        existing = db.scalar(
+            select(RealtimeChunk).where(
+                RealtimeChunk.session_id == realtime_session.id,
+                RealtimeChunk.sequence == sequence,
+            )
+        )
+        if (
+            existing is not None
+            and existing.start_ms == start_ms
+            and existing.end_ms == end_ms
+            and existing.size_bytes == len(content)
+        ):
+            # A reconnected client replays chunks whose acknowledgement was lost.
+            return existing
     if sequence != expected_sequence:
         raise RealtimeCaptureError(f"Chunkの順序が不正です（expected={expected_sequence}）")
     if start_ms < 0 or end_ms <= start_ms:
@@ -275,6 +294,7 @@ def append_realtime_chunk(
         realtime_session.audio_chunk_count += 1
     realtime_session.received_bytes += len(content)
     realtime_session.duration_ms = end_ms
+    realtime_session.last_activity_at = utc_now()
     if not realtime_session.split_capture:
         media.size_bytes = realtime_session.received_bytes
     media.duration_ms = end_ms
@@ -378,6 +398,15 @@ def start_realtime_video_part(
         raise RealtimeCaptureError("この録画セッションは映像Partに対応していません")
     if realtime_session.status != RealtimeSessionStatus.RECORDING:
         raise RealtimeCaptureError("録画セッションは終了しています")
+    if sequence < realtime_session.video_part_count:
+        existing_part = db.scalar(
+            select(RealtimeVideoPart).where(
+                RealtimeVideoPart.session_id == realtime_session.id,
+                RealtimeVideoPart.sequence == sequence,
+            )
+        )
+        if existing_part is not None and existing_part.start_ms == start_ms:
+            return existing_part
     if sequence != realtime_session.video_part_count:
         raise RealtimeCaptureError(
             f"映像Partの順序が不正です（expected={realtime_session.video_part_count}）"
@@ -447,6 +476,9 @@ def append_realtime_video_chunk(
         raise RealtimeCaptureError("録画セッションは終了しています")
     if part.session_id != realtime_session.id:
         raise RealtimeCaptureError("映像Partが録画セッションと一致しません")
+    if 0 <= sequence < part.chunk_count:
+        # Replayed after a reconnect; the bytes were already appended.
+        return part
     if part.end_ms is not None:
         raise RealtimeCaptureError("映像Partはすでに終了しています")
     if sequence != part.chunk_count:
@@ -466,6 +498,7 @@ def append_realtime_video_chunk(
     part.chunk_count += 1
     part.size_bytes += len(content)
     realtime_session.received_bytes += len(content)
+    realtime_session.last_activity_at = utc_now()
     try:
         db.commit()
     except Exception:
@@ -550,3 +583,125 @@ def finalize_realtime_session(db: Session, realtime_session: RealtimeSession) ->
     db.commit()
     db.refresh(job)
     return job
+
+
+def resume_realtime_session(
+    db: Session, meeting_id: uuid.UUID, session_id: uuid.UUID
+) -> RealtimeSession:
+    realtime_session = db.get(RealtimeSession, session_id)
+    if realtime_session is None or realtime_session.meeting_id != meeting_id:
+        raise RealtimeCaptureError("再開する録音セッションが見つかりません")
+    if realtime_session.status != RealtimeSessionStatus.RECORDING:
+        raise RealtimeCaptureError("録音セッションはすでに終了しているため再開できません")
+    realtime_session.last_activity_at = utc_now()
+    db.commit()
+    db.refresh(realtime_session)
+    return realtime_session
+
+
+def _discard_empty_session(
+    db: Session,
+    realtime_session: RealtimeSession,
+    storage: MediaStorage,
+) -> None:
+    media = db.get(Media, realtime_session.media_id)
+    transcript = db.get(TranscriptVersion, realtime_session.transcript_version_id)
+    meeting = db.get(Meeting, realtime_session.meeting_id)
+    storage_path = media.storage_path if media is not None else None
+    capture_paths = [
+        realtime_session.audio_storage_path,
+        *db.scalars(
+            select(RealtimeVideoPart.storage_path).where(
+                RealtimeVideoPart.session_id == realtime_session.id
+            )
+        ),
+    ]
+    db.delete(realtime_session)
+    if media is not None:
+        db.delete(media)
+    if transcript is not None:
+        db.delete(transcript)
+    if meeting is not None:
+        meeting.status = MeetingStatus.CREATED
+        meeting.started_at = None
+        meeting.duration_ms = None
+    db.commit()
+    if storage_path is not None:
+        storage.delete_file(storage_path)
+    for capture_path in capture_paths:
+        if capture_path is not None:
+            storage.delete_file(capture_path)
+
+
+def close_interrupted_realtime_session(
+    db: Session,
+    realtime_session: RealtimeSession,
+    storage: MediaStorage,
+) -> bool:
+    """Save what was received, or discard a session that never received data."""
+    try:
+        # Another connection may have resumed and appended since this one loaded it.
+        db.refresh(realtime_session)
+        if realtime_session.status != RealtimeSessionStatus.RECORDING:
+            return True
+        if realtime_session.received_bytes > 0:
+            if realtime_session.split_capture:
+                open_parts = list(
+                    db.scalars(
+                        select(RealtimeVideoPart).where(
+                            RealtimeVideoPart.session_id == realtime_session.id,
+                            RealtimeVideoPart.end_ms.is_(None),
+                        )
+                    )
+                )
+                for part in open_parts:
+                    part.end_ms = max(
+                        realtime_session.duration_ms,
+                        part.start_ms + 1,
+                    )
+                db.commit()
+            finalize_realtime_session(db, realtime_session)
+        else:
+            _discard_empty_session(db, realtime_session, storage)
+    except Exception:
+        db.rollback()
+        return False
+    return True
+
+
+def finalize_stale_realtime_sessions(
+    db: Session,
+    storage: MediaStorage,
+    *,
+    idle_seconds: float,
+) -> int:
+    """Finalize recordings whose client never reconnected within the resume timeout."""
+    cutoff = utc_now() - timedelta(seconds=idle_seconds)
+    stale_sessions = list(
+        db.scalars(
+            select(RealtimeSession)
+            .where(
+                RealtimeSession.status == RealtimeSessionStatus.RECORDING,
+                RealtimeSession.last_activity_at < cutoff,
+            )
+            .order_by(RealtimeSession.last_activity_at)
+            .with_for_update(skip_locked=True)
+        )
+    )
+    for realtime_session in stale_sessions:
+        session_id = realtime_session.id
+        if close_interrupted_realtime_session(db, realtime_session, storage):
+            logger.warning("Finalized interrupted realtime session %s", session_id)
+            continue
+        # Never leave an unrecoverable capture blocking the meeting forever.
+        failed_session = db.get(RealtimeSession, session_id)
+        if failed_session is None:
+            continue
+        failed_session.status = RealtimeSessionStatus.FAILED
+        failed_session.ended_at = utc_now()
+        meeting = db.get(Meeting, failed_session.meeting_id)
+        if meeting is not None:
+            meeting.status = MeetingStatus.FAILED
+        db.commit()
+        logger.warning("Could not finalize interrupted realtime session %s", session_id)
+    return len(stale_sessions)

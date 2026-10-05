@@ -65,6 +65,7 @@ DESIGNの推奨ツリーにある `frontend/features/` は現状の配置では�
 | AI議事録、プロンプト、Evidence | [analysis/processor.py](../backend/app/services/analysis/processor.py)、[schemas/analysis.py](../backend/app/schemas/analysis.py)、[llm/](../backend/app/services/llm/) | `test_analysis_phase5.py`、`test_llm_providers.py` |
 | Live AI要約 | [analysis/realtime.py](../backend/app/services/analysis/realtime.py)、[workers/realtime_ai.py](../backend/app/workers/realtime_ai.py) | `test_realtime_analysis.py` |
 | 会議への質問、手動AI取り込み | [questions/processor.py](../backend/app/services/questions/processor.py)、[analysis/manual.py](../backend/app/services/analysis/manual.py) | `test_meeting_questions.py`、`test_manual_analysis.py` |
+| 録音WebSocketの切断・再接続・再送 | [recording-connection.ts](../frontend/lib/recording-connection.ts)、[api/routes/realtime.py](../backend/app/api/routes/realtime.py)、[realtime/capture.py](../backend/app/services/realtime/capture.py)、[workers/live_transcription.py](../backend/app/workers/live_transcription.py) | `recording-connection.test.ts`、`test_realtime_websocket.py` |
 | Job進行、失敗、再試行、Queueの分担 | [jobs/service.py](../backend/app/services/jobs/service.py)、[workers/main.py](../backend/app/workers/main.py)、[workers/live_transcription.py](../backend/app/workers/live_transcription.py) | `test_jobs.py`、`job-status-panel.test.ts` |
 
 FrontendのAPI型は [lib/api.ts](../frontend/lib/api.ts)、Backendの入口一覧は [api/router.py](../backend/app/api/router.py)です。

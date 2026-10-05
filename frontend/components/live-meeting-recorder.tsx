@@ -24,6 +24,7 @@ import {
 } from "@/lib/live-capture";
 import { publishLiveTranscriptEvent } from "@/lib/live-transcript-events";
 import { takePendingLiveCapture } from "@/lib/pending-live-capture";
+import { RecordingConnection } from "@/lib/recording-connection";
 
 import styles from "./live-meeting-recorder.module.css";
 
@@ -69,9 +70,6 @@ function audioRecorderMimeType(): string | undefined {
   return candidates.find((candidate) => MediaRecorder.isTypeSupported(candidate));
 }
 
-const MAX_WEBSOCKET_BUFFER_BYTES = 8 * 1024 * 1024;
-const MAX_WEBSOCKET_WAIT_MS = 30_000;
-const WEBSOCKET_KEEPALIVE_MS = 20_000;
 const recorderStopPromises = new WeakMap<MediaRecorder, Promise<void>>();
 
 function observeMediaRecorderStop(recorder: MediaRecorder): Promise<void> {
@@ -82,19 +80,6 @@ function observeMediaRecorderStop(recorder: MediaRecorder): Promise<void> {
   });
   recorderStopPromises.set(recorder, stopped);
   return stopped;
-}
-
-async function waitForSocketCapacity(websocket: WebSocket): Promise<void> {
-  const startedAt = performance.now();
-  while (websocket.bufferedAmount > MAX_WEBSOCKET_BUFFER_BYTES) {
-    if (websocket.readyState !== WebSocket.OPEN) {
-      throw new Error("録画データの送信中に接続が切れました");
-    }
-    if (performance.now() - startedAt > MAX_WEBSOCKET_WAIT_MS) {
-      throw new Error("録画データの送信が追いついていません。通信状態を確認してください");
-    }
-    await new Promise((resolve) => window.setTimeout(resolve, 50));
-  }
 }
 
 async function stopMediaRecorder(recorder: MediaRecorder | null): Promise<void> {
@@ -166,7 +151,7 @@ export function LiveMeetingRecorder({
       : "",
   );
   const videoRef = useRef<HTMLVideoElement>(null);
-  const websocketRef = useRef<WebSocket | null>(null);
+  const connectionRef = useRef<RecordingConnection | null>(null);
   const audioRecorderRef = useRef<MediaRecorder | null>(null);
   const videoRecorderRef = useRef<MediaRecorder | null>(null);
   const azureSpeechRef = useRef<AzureSpeechStreamController | null>(null);
@@ -192,9 +177,8 @@ export function LiveMeetingRecorder({
   const currentVideoPartStartRef = useRef(0);
   const videoPartCloseRef = useRef<Promise<void>>(Promise.resolve());
   const chunkMsRef = useRef(15_000);
-  const sendQueueRef = useRef<Promise<void>>(Promise.resolve());
-  const keepaliveTimerRef = useRef<number | null>(null);
   const stoppingRef = useRef(false);
+  const recordingMessageRef = useRef("");
   const recordingActiveRef = useRef(false);
 
   useEffect(() => {
@@ -215,18 +199,10 @@ export function LiveMeetingRecorder({
   ), []);
 
   const queuePayload = useCallback((payload: Record<string, unknown>, blob?: Blob) => {
-    const websocket = websocketRef.current;
-    if (!websocket) throw new Error("Backendへ接続されていません");
-    sendQueueRef.current = sendQueueRef.current.then(async () => {
-      if (blob) {
-        await waitForSocketCapacity(websocket);
-      }
-      if (websocket.readyState !== WebSocket.OPEN) {
-        throw new Error("録画データの送信中に接続が切れました");
-      }
-      websocket.send(JSON.stringify(payload));
-      if (blob) websocket.send(await blob.arrayBuffer());
-    });
+    const connection = connectionRef.current;
+    if (!connection) throw new Error("Backendへ接続されていません");
+    // 切断中も保持し、再接続後に同じ録音セッションへ送る。
+    connection.send(payload, blob);
   }, []);
 
   const startVideoPart = useCallback((displayStream: MediaStream, startMs: number) => {
@@ -290,10 +266,6 @@ export function LiveMeetingRecorder({
   }, [queuePayload]);
 
   const releaseMedia = useCallback(() => {
-    if (keepaliveTimerRef.current !== null) {
-      window.clearInterval(keepaliveTimerRef.current);
-      keepaliveTimerRef.current = null;
-    }
     void azureSpeechRef.current?.stop();
     azureSpeechRef.current = null;
     if (audioRecorderRef.current?.state === "recording") audioRecorderRef.current.stop();
@@ -310,7 +282,7 @@ export function LiveMeetingRecorder({
   }, []);
 
   useEffect(() => () => {
-    websocketRef.current?.close();
+    connectionRef.current?.close();
     releaseMedia();
   }, [releaseMedia]);
 
@@ -351,12 +323,10 @@ export function LiveMeetingRecorder({
       if (!isMicrophoneOnly) await stopVideoPart(stoppedAtMs);
       await stopMediaRecorder(audioRecorderRef.current);
       audioRecorderRef.current = null;
-      await sendQueueRef.current;
-      const websocket = websocketRef.current;
-      if (websocket?.readyState !== WebSocket.OPEN) {
-        throw new Error("接続が切れました。受信済みデータから最終処理を開始します。");
-      }
-      websocket.send(JSON.stringify({ type: "stop" }));
+      const connection = connectionRef.current;
+      if (!connection) throw new Error("Backendへ接続されていません");
+      // 送信待ちのデータを（必要なら再接続して）送り切ってから停止を送る。
+      connection.stop();
     } catch (error) {
       setPhase("error");
       setMessage(
@@ -366,7 +336,7 @@ export function LiveMeetingRecorder({
             ? "録音を保存できませんでした"
             : "録画を保存できませんでした",
       );
-      websocketRef.current?.close();
+      connectionRef.current?.close();
     }
     releaseMedia();
   }, [currentElapsedMs, isMicrophoneOnly, releaseMedia, stopVideoPart]);
@@ -477,105 +447,75 @@ export function LiveMeetingRecorder({
       observeMediaRecorderStop(audioRecorder);
       audioRecorderRef.current = audioRecorder;
       const videoMimeType = isMicrophoneOnly ? undefined : videoRecorderMimeType();
-      const websocket = new WebSocket(websocketUrl(meetingId));
-      websocket.binaryType = "arraybuffer";
-      websocketRef.current = websocket;
-
-      const started = await new Promise<{
-        chunkMs: number;
-        transcriptionProvider: "whisperx" | "azure_speech";
-      }>((resolve, reject) => {
-        const timeout = window.setTimeout(
-          () => reject(new Error("Backendへの接続がタイムアウトしました")),
-          10_000,
-        );
-        websocket.addEventListener("open", () => {
-          websocket.send(JSON.stringify(
-            isMicrophoneOnly
-              ? {
-                  type: "start",
-                  capture_mode: "audio",
-                  mime_type: audioRecorder.mimeType || "audio/webm",
-                  has_system_audio: false,
-                }
-              : {
-                  type: "start",
-                  capture_mode: "split",
-                  audio_mime_type: audioRecorder.mimeType || "audio/webm",
-                  video_mime_type: videoMimeType || "video/webm",
-                  has_system_audio: systemAudioTracks.length > 0,
-                },
-          ));
-        });
-        websocket.addEventListener("message", (event) => {
-          if (typeof event.data !== "string") return;
-          const payload = JSON.parse(event.data) as {
-            type: string;
-            chunk_ms?: number;
-            transcription_provider?: "whisperx" | "azure_speech";
-            message?: string;
-          };
-          if (payload.type === "started") {
-            window.clearTimeout(timeout);
-            resolve({
-              chunkMs: payload.chunk_ms ?? 15_000,
-              transcriptionProvider: payload.transcription_provider ?? "whisperx",
+      const captureLabel = isMicrophoneOnly ? "録音" : "録画";
+      const connection = new RecordingConnection({
+        url: websocketUrl(meetingId),
+        onMessage: (payload) => {
+          if (
+            payload.type === "azure_result_saved"
+            && typeof payload.result_id === "string"
+            && typeof payload.segment_id === "string"
+          ) {
+            publishLiveTranscriptEvent({
+              type: "persisted",
+              meetingId,
+              resultId: payload.result_id,
+              segmentId: payload.segment_id,
             });
-          } else if (payload.type === "error") {
-            window.clearTimeout(timeout);
-            reject(new Error(payload.message ?? `${recordingLabel}を開始できませんでした`));
+          } else if (payload.type === "finalized") {
+            if (typeof payload.duration_ms === "number") setElapsedMs(payload.duration_ms);
+            setPhase("finalized");
+            setMessage(
+              isMicrophoneOnly
+                ? "録音を保存しました。リアルタイム版を会議ノートで確認し、「要約を再生成」から生成できます。"
+                : "録画を保存しました。動画変換後、会議ノートの「要約を再生成」から生成できます。",
+            );
+            router.refresh();
+            onFinalized?.();
           }
-        });
-        websocket.addEventListener("error", () => {
-          window.clearTimeout(timeout);
-          reject(new Error("Backendへ接続できませんでした"));
-        }, { once: true });
+        },
+        onStatus: (status) => {
+          if (status.state === "reconnecting") {
+            setMessage(
+              `Backendとの接続が切れました。${captureLabel}は続けています。再接続しています…（${status.attempt}回目）`,
+            );
+          } else if (status.state === "connected") {
+            setMessage(
+              stoppingRef.current
+                ? `最後の${captureLabel}データを保存しています…`
+                : `接続が復旧しました。切断中の${captureLabel}データも送信しています。${recordingMessageRef.current}`,
+            );
+          } else {
+            recordingActiveRef.current = false;
+            releaseMedia();
+            setPhase("error");
+            setMessage(`${status.message} Backendに届いた${captureLabel}データは自動で保存されます。`);
+          }
+        },
       });
-
-      websocket.addEventListener("message", (event) => {
-        if (typeof event.data !== "string") return;
-        const payload = JSON.parse(event.data) as {
-          type: string;
-          message?: string;
-          duration_ms?: number;
-          result_id?: string;
-          segment_id?: string;
-        };
-        if (
-          payload.type === "azure_result_saved"
-          && payload.result_id
-          && payload.segment_id
-        ) {
-          publishLiveTranscriptEvent({
-            type: "persisted",
-            meetingId,
-            resultId: payload.result_id,
-            segmentId: payload.segment_id,
-          });
-        } else if (payload.type === "finalized") {
-          if (typeof payload.duration_ms === "number") setElapsedMs(payload.duration_ms);
-          setPhase("finalized");
-          setMessage(
-            isMicrophoneOnly
-              ? "録音を保存しました。リアルタイム版を会議ノートで確認し、「要約を再生成」から生成できます。"
-              : "録画を保存しました。動画変換後、会議ノートの「要約を再生成」から生成できます。",
-          );
-          router.refresh();
-          onFinalized?.();
-        } else if (payload.type === "error") {
-          recordingActiveRef.current = false;
-          releaseMedia();
-          setPhase("error");
-          setMessage(payload.message ?? `${recordingLabel}処理に失敗しました`);
-        }
-      });
-      websocket.addEventListener("close", () => {
-        if (!recordingActiveRef.current) return;
-        recordingActiveRef.current = false;
-        releaseMedia();
-        setPhase("error");
-        setMessage("Backendとの接続が切れました。受信済みデータから最終処理を開始します。");
-      });
+      connectionRef.current = connection;
+      const startedMessage = await connection.start(
+        isMicrophoneOnly
+          ? {
+              type: "start",
+              capture_mode: "audio",
+              mime_type: audioRecorder.mimeType || "audio/webm",
+              has_system_audio: false,
+            }
+          : {
+              type: "start",
+              capture_mode: "split",
+              audio_mime_type: audioRecorder.mimeType || "audio/webm",
+              video_mime_type: videoMimeType || "video/webm",
+              has_system_audio: systemAudioTracks.length > 0,
+            },
+      );
+      const started = {
+        chunkMs: typeof startedMessage.chunk_ms === "number" ? startedMessage.chunk_ms : 15_000,
+        transcriptionProvider: startedMessage.transcription_provider === "azure_speech"
+          ? "azure_speech" as const
+          : "whisperx" as const,
+      };
 
       speechDiagnosticsRef.current = [];
       setHasSpeechDiagnostics(false);
@@ -588,7 +528,6 @@ export function LiveMeetingRecorder({
       currentVideoPartRef.current = null;
       videoPartCloseRef.current = Promise.resolve();
       chunkMsRef.current = started.chunkMs;
-      sendQueueRef.current = Promise.resolve();
       if (started.transcriptionProvider === "azure_speech") {
         azureSpeechRef.current = await startAzureSpeechStream({
           tokenUrl: `/api/v1/meetings/${meetingId}/live/azure-token`,
@@ -651,9 +590,6 @@ export function LiveMeetingRecorder({
           },
         });
       }
-      keepaliveTimerRef.current = window.setInterval(() => {
-        queuePayload({ type: "ping" });
-      }, WEBSOCKET_KEEPALIVE_MS);
       audioRecorder.addEventListener("dataavailable", (event) => {
         if (event.data.size === 0) return;
         const startMs = audioChunkStartRef.current;
@@ -676,19 +612,18 @@ export function LiveMeetingRecorder({
       audioRecorder.start(started.chunkMs);
       if (displayStream) startVideoPart(displayStream, 0);
       setPhase("recording");
-      setMessage(
-        started.transcriptionProvider === "azure_speech"
-          ? isMicrophoneOnly
-            ? "録音中です。Azure AI Speechが発話ごとに文字起こしします。"
-            : "録画中です。プレビュー音声だけを消音し、Azure AI Speechが発話ごとに文字起こしします。"
-          : isMicrophoneOnly
-            ? "録音中です。文字起こしは数十秒遅れて表示されます。"
-            : "録画中です。ハウリング防止のためプレビュー音声だけを消音しています。音声は録画に保存され、文字起こしは数十秒遅れて表示されます。",
-      );
+      recordingMessageRef.current = started.transcriptionProvider === "azure_speech"
+        ? isMicrophoneOnly
+          ? "録音中です。Azure AI Speechが発話ごとに文字起こしします。"
+          : "録画中です。プレビュー音声だけを消音し、Azure AI Speechが発話ごとに文字起こしします。"
+        : isMicrophoneOnly
+          ? "録音中です。文字起こしは数十秒遅れて表示されます。"
+          : "録画中です。ハウリング防止のためプレビュー音声だけを消音しています。音声は録画に保存され、文字起こしは数十秒遅れて表示されます。";
+      setMessage(recordingMessageRef.current);
     } catch (error) {
       recordingActiveRef.current = false;
       releaseMedia();
-      websocketRef.current?.close();
+      connectionRef.current?.close();
       setPhase("error");
       setMessage(error instanceof Error ? error.message : `${recordingLabel}を開始できませんでした`);
     }

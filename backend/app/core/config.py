@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     realtime_chunk_ms: int = 15000
     realtime_window_ms: int = 30000
     realtime_max_chunk_mb: int = 64
+    realtime_resume_timeout_seconds: float = Field(default=600.0, gt=0)
     realtime_analysis_interval_ms: int = 30000
     realtime_analysis_draft_tail_ms: int = 2000
     realtime_analysis_timeout_seconds: float = 300.0

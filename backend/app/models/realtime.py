@@ -9,10 +9,12 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     String,
     UniqueConstraint,
     Uuid,
+    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -37,6 +39,7 @@ class RealtimeSession(Base):
         CheckConstraint("video_part_count >= 0", name="ck_realtime_session_video_part_count"),
         UniqueConstraint("media_id", name="uq_realtime_session_media"),
         UniqueConstraint("transcript_version_id", name="uq_realtime_session_transcript"),
+        Index("ix_realtime_sessions_status_last_activity", "status", "last_activity_at"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -69,6 +72,11 @@ class RealtimeSession(Base):
     duration_ms: Mapped[int] = mapped_column(BigInteger, default=0)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Updated whenever recording data arrives. A session that stops receiving data
+    # stays resumable until the live worker finalizes it after a timeout.
+    last_activity_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, server_default=func.now()
+    )
 
 
 class RealtimeChunk(Base):
