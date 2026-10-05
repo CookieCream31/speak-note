@@ -1,8 +1,11 @@
+import uuid
+
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.models.job import Job, JobStatus, JobType
-from app.models.meeting import Meeting, MeetingSourceType
+from app.models.meeting import Meeting, MeetingSourceType, MeetingStatus
+from app.models.transcript import TranscriptKind, TranscriptStatus, TranscriptVersion
 from app.services.jobs import (
     LIVE_TRANSCRIPTION_JOB_TYPES,
     claim_next_job,
@@ -125,3 +128,82 @@ def test_general_worker_does_not_recover_running_live_transcription(
         assert recover_interrupted_jobs(session) == 1
         assert final_job.status == JobStatus.QUEUED
         assert live_job.status == JobStatus.RUNNING
+
+
+def _meeting_with_failed_job(
+    session: Session,
+    *,
+    source_type: MeetingSourceType,
+    job_type: JobType,
+    live_transcript: bool = False,
+    previous_analysis: bool = False,
+) -> Meeting:
+    meeting = Meeting(title="Failure status", source_type=source_type)
+    session.add(meeting)
+    session.flush()
+    if live_transcript:
+        session.add(
+            TranscriptVersion(
+                meeting_id=meeting.id,
+                version=1,
+                kind=TranscriptKind.LIVE,
+                status=TranscriptStatus.COMPLETED,
+                language="ja",
+                model="large-v3",
+                diarization_enabled=True,
+            )
+        )
+    if previous_analysis:
+        meeting.active_analysis_version_id = uuid.uuid4()
+    job = Job(meeting_id=meeting.id, type=job_type, status=JobStatus.RUNNING)
+    session.add(job)
+    session.commit()
+    fail_job(session, job, "外部API障害")
+    assert job.status == JobStatus.FAILED
+    return meeting
+
+
+def test_failed_regeneration_keeps_meeting_with_previous_summary_completed(
+    session_factory: sessionmaker[Session],
+) -> None:
+    with session_factory() as session:
+        meeting = _meeting_with_failed_job(
+            session,
+            source_type=MeetingSourceType.AUDIO_UPLOAD,
+            job_type=JobType.ANALYZE,
+            previous_analysis=True,
+        )
+        assert meeting.status == MeetingStatus.COMPLETED
+
+
+def test_failed_regeneration_keeps_recorded_meeting_with_realtime_notes_completed(
+    session_factory: sessionmaker[Session],
+) -> None:
+    with session_factory() as session:
+        for job_type in (JobType.TRANSCRIBE, JobType.ANALYZE):
+            meeting = _meeting_with_failed_job(
+                session,
+                source_type=MeetingSourceType.AUDIO_RECORDING,
+                job_type=job_type,
+                live_transcript=True,
+            )
+            assert meeting.status == MeetingStatus.COMPLETED
+
+
+def test_failure_without_any_viewable_result_marks_meeting_failed(
+    session_factory: sessionmaker[Session],
+) -> None:
+    with session_factory() as session:
+        for job_type in (JobType.TRANSCRIBE, JobType.ANALYZE):
+            meeting = _meeting_with_failed_job(
+                session, source_type=MeetingSourceType.AUDIO_UPLOAD, job_type=job_type
+            )
+            assert meeting.status == MeetingStatus.FAILED
+        # A broken video conversion needs attention even when realtime notes exist.
+        meeting = _meeting_with_failed_job(
+            session,
+            source_type=MeetingSourceType.LIVE,
+            job_type=JobType.PREPROCESS_MEDIA,
+            live_transcript=True,
+        )
+        assert meeting.status == MeetingStatus.FAILED

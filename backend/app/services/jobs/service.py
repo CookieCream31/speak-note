@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.models.job import Job, JobStatus, JobType
 from app.models.meeting import Meeting, MeetingStatus, utc_now
+from app.models.transcript import TranscriptKind, TranscriptStatus, TranscriptVersion
 
 # Live transcription has its own worker so captions never wait behind
 # hour-long final transcription or AI jobs on the general queue.
@@ -102,5 +103,30 @@ def fail_job(session: Session, job: Job, error_message: str) -> None:
         JobType.ASK_MEETING,
         JobType.ANSWER_LIVE,
     }:
-        meeting.status = MeetingStatus.FAILED
+        meeting.status = (
+            MeetingStatus.COMPLETED
+            if _keeps_previous_result(session, meeting, job)
+            else MeetingStatus.FAILED
+        )
     session.commit()
+
+
+def _keeps_previous_result(session: Session, meeting: Meeting, job: Job) -> bool:
+    """A failed (re)generation leaves earlier notes viewable, so the meeting is not failed.
+
+    The failed job itself stays visible with its retry button in the job panel.
+    """
+    if job.type not in {JobType.TRANSCRIBE, JobType.ANALYZE}:
+        return False
+    if meeting.active_analysis_version_id is not None:
+        return True
+    completed_live_transcript = session.scalar(
+        select(TranscriptVersion.id)
+        .where(
+            TranscriptVersion.meeting_id == meeting.id,
+            TranscriptVersion.kind == TranscriptKind.LIVE,
+            TranscriptVersion.status == TranscriptStatus.COMPLETED,
+        )
+        .limit(1)
+    )
+    return completed_live_transcript is not None
