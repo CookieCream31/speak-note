@@ -19,6 +19,8 @@ class RealtimeWindowMediaService:
         if start_ms < 0 or end_ms <= start_ms:
             raise MediaProcessingError("Realtime Windowの時刻が不正です")
         output_path.parent.mkdir(parents=True, exist_ok=True)
+        # -ss before -i seeks in the demuxer instead of decoding from the start of
+        # the recording, so the cost per window does not grow with meeting length.
         arguments = [
             self.ffmpeg_binary,
             "-nostdin",
@@ -26,10 +28,10 @@ class RealtimeWindowMediaService:
             "-loglevel",
             "error",
             "-y",
-            "-i",
-            str(source_path),
             "-ss",
             f"{start_ms / 1000:.3f}",
+            "-i",
+            str(source_path),
             "-t",
             f"{(end_ms - start_ms) / 1000:.3f}",
             "-map",

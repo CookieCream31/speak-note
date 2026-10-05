@@ -1,4 +1,3 @@
-import shutil
 import tempfile
 import uuid
 from pathlib import Path
@@ -277,9 +276,12 @@ def process_live_transcription_job(
     transcript_changed = False
     with tempfile.TemporaryDirectory(prefix="speak-note-live-") as temporary_directory:
         temporary_root = Path(temporary_directory)
-        source_storage_path = realtime_session.audio_storage_path or media.storage_path
-        snapshot_path = temporary_root / Path(source_storage_path).name
-        shutil.copyfile(storage.absolute_path(source_storage_path), snapshot_path)
+        # The recording is append-only and every window ends inside chunks that
+        # were fully written before this job was queued, so FFmpeg can read it in
+        # place. Copying the whole file per window made long meetings fall behind.
+        source_path = storage.absolute_path(
+            realtime_session.audio_storage_path or media.storage_path
+        )
         for index, window in enumerate(windows):
             transcription_window = window
             if not getattr(client, "supports_overlap_context", True):
@@ -293,7 +295,7 @@ def process_live_transcription_job(
                 )
             audio_path = temporary_root / f"window-{index}.wav"
             media_service.extract_audio_window(
-                snapshot_path,
+                source_path,
                 audio_path,
                 start_ms=transcription_window.start_ms,
                 end_ms=transcription_window.end_ms,

@@ -1,3 +1,4 @@
+import subprocess
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -10,6 +11,7 @@ from app.models.meeting import Meeting, MeetingSourceType, MeetingStatus
 from app.models.realtime import RealtimeSessionStatus, RealtimeVideoPart
 from app.models.transcript import TranscriptKind, TranscriptSegment, TranscriptVersion
 from app.services.media import MediaStorage
+from app.services.media.realtime import RealtimeWindowMediaService
 from app.services.realtime import (
     append_realtime_chunk,
     append_realtime_video_chunk,
@@ -794,3 +796,27 @@ def test_retrying_a_legacy_delayed_job_expands_it_into_independent_windows(
         ]
         assert all(job.status == JobStatus.QUEUED for job in jobs)
         assert db.get(Meeting, meeting.id).status == MeetingStatus.RECORDING
+
+
+def test_realtime_window_extraction_seeks_before_opening_input(monkeypatch, tmp_path: Path):
+    calls: list[list[str]] = []
+
+    def fake_run(arguments: list[str], **_kwargs):
+        calls.append(arguments)
+        Path(arguments[-1]).write_bytes(b"RIFF-fake")
+        return subprocess.CompletedProcess(arguments, 0, "", "")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    source = tmp_path / "audio.webm"
+    source.write_bytes(b"webm")
+
+    RealtimeWindowMediaService().extract_audio_window(
+        source, tmp_path / "window.wav", start_ms=3_590_000, end_ms=3_620_000
+    )
+
+    arguments = calls[0]
+    # Input seeking keeps each window cheap regardless of how long the meeting is.
+    assert arguments.index("-ss") < arguments.index("-i")
+    assert arguments[arguments.index("-ss") + 1] == "3590.000"
+    assert arguments[arguments.index("-t") + 1] == "30.000"
+    assert arguments[arguments.index("-i") + 1] == str(source)
