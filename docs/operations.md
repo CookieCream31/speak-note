@@ -15,10 +15,10 @@ Composeはソースをbind mountしますが、プロセスの再起動・依存
 | README、docs | なし | アプリは変わらない |
 | FrontendのTSX/CSS/JS | 通常はHMR。必要ならブラウザ再読み込み | ソースを直接マウント |
 | Frontendのpackage.json / lockfile / 起動処理 | `sudo docker compose restart frontend` | 起動時に依存チェックと必要な `npm ci` |
-| BackendのPython | APIはreload。Workerは `sudo docker compose restart worker realtime-ai-worker` | Workerには自動reloadがない |
+| BackendのPython | APIはreload。Workerは `sudo docker compose restart worker live-worker realtime-ai-worker` | Workerには自動reloadがない |
 | Alembic Migration | `sudo docker compose restart backend`、完了後にWorkerを再起動 | APIのreloadだけでは起動時Migrationを再実行しない |
 | FrontendのDockerfile | `sudo docker compose up --build -d --no-deps frontend` | イメージを再ビルド・反映 |
-| BackendのDockerfile / pyproject.toml | `sudo docker compose up --build -d backend worker realtime-ai-worker` | 3サービスでBackendイメージを使用 |
+| BackendのDockerfile / pyproject.toml | `sudo docker compose up --build -d backend worker live-worker realtime-ai-worker answer-worker` | 5サービスでBackendイメージを使用 |
 | .env / Composeの設定 | 対象サービスを `up -d --force-recreate` | `restart` だけではコンテナの環境変数は変わらない |
 | Caddyfile | `sudo docker compose restart caddy` | ルーティングを再読込 |
 | AI設定画面の保存 | 原則Docker操作不要 | DBへ保存。録音用設定は新しい録音で確認 |
@@ -26,7 +26,7 @@ Composeはソースをbind mountしますが、プロセスの再起動・依存
 `.env` / Compose変更例（変えた設定を使用するサービスだけ指定）:
 
 ```bash
-sudo docker compose up -d --force-recreate backend worker realtime-ai-worker frontend
+sudo docker compose up -d --force-recreate backend worker live-worker realtime-ai-worker frontend
 ```
 
 Tunnel Token変更時はcloudflaredを再作成します。`restart cloudflared` だけでは新しいTokenは入りません。
@@ -186,7 +186,7 @@ CaddyのData Volumeを失うとローカルCAも変わり、端末への信頼�
 
 ```bash
 sudo docker compose ps
-sudo docker compose logs --tail=100 backend worker realtime-ai-worker frontend
+sudo docker compose logs --tail=100 backend worker live-worker realtime-ai-worker frontend
 curl --fail http://localhost:8001/api/v1/health
 ```
 
@@ -195,10 +195,10 @@ curl --fail http://localhost:8001/api/v1/health
 | UIが変わらない | ソース反映、FrontendのHMRエラー、ブラウザ再読み込み。必要ならFrontend再起動 |
 | Speech SDK等のModule not found | package.jsonとlockfileの整合、Frontend起動ログのnpm ci完了。イメージ再buildだけではnode_modules Volumeが古い場合がある |
 | pytestが見つからない | 開発依存がない。[一時コンテナのテスト手順](development.md#テスト)を使う |
-| APIは変わったのにJobが古い動作 | worker / realtime-ai-workerを再起動したか |
+| APIは変わったのにJobが古い動作 | worker / live-worker / realtime-ai-workerを再起動したか |
 | .env変更が反映されない | 対象コンテナを再作成したか。restartだけでは反映されない |
 | storage Permission denied | ホストの所有者・UID/GIDとCompose user。プロジェクト全体へ安易なchmod/chownは行わない |
-| Jobがqueuedのまま | 担当Workerの起動・ログ。通常WorkerとLive AI Workerを取り違えていないか |
+| Jobがqueuedのまま | 担当Workerの起動・ログ。Live文字起こし（`transcribe_live`）は `live-worker`、Live AI要約は `realtime-ai-worker`、それ以外は `worker` |
 | WhisperX / Ollamaへ接続できない | コンテナのlocalhostを指定していないか、host.docker.internalから到達できるか、許可host・認証・外部サービス状態 |
 | Geminiで404等 | 選択モデルの提供状況・利用権限・モデルIDを確認。Profileのモデル取得結果と実行時エラーを確認する |
 | 画面共有・マイクを開始できない | Secure Context、権限、ブラウザAPI対応、音声共有の選択。非対応時は保存済みファイルで取り込む |
@@ -266,3 +266,21 @@ sudo docker compose ps frontend
 2026-09-28のユーザー提供ログで `speak-note-frontend-1` が再起動後に `Up 43 seconds`、ホスト側 `3001` → コンテナ側 `3000` であることを確認しました。ホストの `http://localhost:3001/` でHTTP 200、ダークへの切替、ブラウザ再読み込み後の選択保持、スマートフォン幅での横はみ出しなしを確認しています。`127.0.0.1` など別のホスト名で開く場合は `NEXT_ALLOWED_DEV_ORIGINS` の許可対象を確認してください。今回の既定設定では `localhost` が許可対象です。実会議の各画面や録音中の動作は[確認手順](dark-mode.md#check)を参照してください。
 
 Backend・Worker・他サービス・Docker Volumeは操作しません。別環境へ配布する場合は全変更ファイルを反映し、開発用Compose以外ではその環境のFrontendビルド／配布手順を使用します。テーマ選択はブラウザに保存するため、Frontendの再起動後も残ります。
+
+<a id="live-worker"></a>
+## Live文字起こし専用Workerの反映
+
+録音中のLive文字起こし（`transcribe_live` Job）は `live-worker` が担当します。通常の `worker` はこのJobをclaimせず、再起動時のrecover対象にもしません。DB Migration・環境変数の追加はありません。`live-worker` は `worker` と同じWhisperX・Azure・storageの設定を使います。
+
+録音・録画を終え、実行中のLive文字起こしJobがないことを確認してから反映します。
+
+```bash
+cd /home/llm/speak-note
+sudo docker compose config --quiet
+sudo docker compose up -d --build live-worker
+sudo docker compose restart worker
+sudo docker compose ps live-worker worker
+sudo docker compose logs --tail=50 live-worker
+```
+
+ログに `speak-note live transcription worker started` が出れば起動しています。`live-worker` を起動しないと、録音中の文字起こしJobが `queued` のまま進みません。同じ録音の区間を順番に保存するため、`live-worker` は複数台に増やさないでください。

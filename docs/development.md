@@ -32,7 +32,7 @@ backend/
   app/models/          SQLAlchemyの永続モデル
   app/schemas/         API入出力・AI出力の検証
   app/services/        メディア、文字起こし、AI、Job処理
-  app/workers/         通常Worker / リアルタイムAI Worker
+  app/workers/         通常Worker / Live文字起こしWorker / リアルタイムAI Worker / 回答支援Worker
   app/core/config.py   環境変数・既定値
   alembic/versions/    DB Migration
   tests/              pytest
@@ -65,7 +65,7 @@ DESIGNの推奨ツリーにある `frontend/features/` は現状の配置では�
 | AI議事録、プロンプト、Evidence | [analysis/processor.py](../backend/app/services/analysis/processor.py)、[schemas/analysis.py](../backend/app/schemas/analysis.py)、[llm/](../backend/app/services/llm/) | `test_analysis_phase5.py`、`test_llm_providers.py` |
 | Live AI要約 | [analysis/realtime.py](../backend/app/services/analysis/realtime.py)、[workers/realtime_ai.py](../backend/app/workers/realtime_ai.py) | `test_realtime_analysis.py` |
 | 会議への質問、手動AI取り込み | [questions/processor.py](../backend/app/services/questions/processor.py)、[analysis/manual.py](../backend/app/services/analysis/manual.py) | `test_meeting_questions.py`、`test_manual_analysis.py` |
-| Job進行、失敗、再試行 | [jobs/service.py](../backend/app/services/jobs/service.py)、[workers/main.py](../backend/app/workers/main.py) | `test_jobs.py`、`job-status-panel.test.ts` |
+| Job進行、失敗、再試行、Queueの分担 | [jobs/service.py](../backend/app/services/jobs/service.py)、[workers/main.py](../backend/app/workers/main.py)、[workers/live_transcription.py](../backend/app/workers/live_transcription.py) | `test_jobs.py`、`job-status-panel.test.ts` |
 
 FrontendのAPI型は [lib/api.ts](../frontend/lib/api.ts)、Backendの入口一覧は [api/router.py](../backend/app/api/router.py)です。
 HTTPの詳細は起動中の `/docs`、WebSocketのメッセージは `api/routes/realtime.py` と録音コンポーネントを対で確認します。
@@ -75,6 +75,7 @@ HTTPの詳細は起動中の `/docs`、WebSocketのメッセージは `api/route
 ```text
 ブラウザ → 同一Origin /api → Backend → DBのJob
                                         ├─ worker → FFmpeg / WhisperX / Ollama・Gemini
+                                        ├─ live-worker → FFmpeg / WhisperX（録音中の区間）
                                         └─ realtime-ai-worker → Ollama・Gemini
 
 Azure Live:

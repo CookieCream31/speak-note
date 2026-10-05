@@ -1,6 +1,7 @@
 import logging
 import signal
 import time
+from collections.abc import Collection
 from types import FrameType
 
 from sqlalchemy.orm import Session
@@ -10,7 +11,13 @@ from app.db.session import SessionLocal
 from app.models.job import Job, JobType
 from app.models.realtime import RealtimeChunk, RealtimeSession
 from app.services.analysis import process_analysis_job
-from app.services.jobs import claim_next_job, fail_job, finish_job, recover_interrupted_jobs
+from app.services.jobs import (
+    GENERAL_JOB_TYPES,
+    claim_next_job,
+    fail_job,
+    finish_job,
+    recover_interrupted_jobs,
+)
 from app.services.media import (
     FFmpegMediaService,
     MediaStorage,
@@ -98,19 +105,22 @@ def process_job(session: Session, job: Job) -> None:
     raise UnsupportedJobTypeError(f"No processor is registered for job type '{job.type.value}'")
 
 
-def run() -> None:
+def run(
+    job_types: Collection[JobType] = GENERAL_JOB_TYPES,
+    worker_name: str = "speak-note worker",
+) -> None:
     signal.signal(signal.SIGTERM, stop_worker)
     signal.signal(signal.SIGINT, stop_worker)
     poll_interval = get_settings().worker_poll_interval_seconds
     with SessionLocal() as session:
-        recovered_jobs = recover_interrupted_jobs(session)
+        recovered_jobs = recover_interrupted_jobs(session, job_types)
     if recovered_jobs:
         logger.warning("Requeued %s interrupted job(s)", recovered_jobs)
-    logger.info("speak-note worker started")
+    logger.info("%s started", worker_name)
 
     while running:
         with SessionLocal() as session:
-            job = claim_next_job(session)
+            job = claim_next_job(session, job_types)
             if job is None:
                 time.sleep(poll_interval)
                 continue
@@ -130,7 +140,7 @@ def run() -> None:
             else:
                 finish_job(session, job)
 
-    logger.info("speak-note worker stopped")
+    logger.info("%s stopped", worker_name)
 
 
 if __name__ == "__main__":

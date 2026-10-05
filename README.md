@@ -4,7 +4,7 @@
 WhisperXを確定版の文字起こし・話者分離に、Ollama / Geminiを要約・質問回答に使用します。
 録音中の文字起こしはWhisperXまたはAzure AI Speechを選べます。
 
-最終照合: **2026-09-30**（現行機能・Migration 0023・回答支援の根拠検証と再試行・Git管理・新規環境の起動手順・リデザイン第1〜2段階の見た目と第3段階の各画面を照合）。この文書は現在のソースコードとCompose設定を説明します。
+最終照合: **2026-10-05**（Live文字起こし専用Worker `live-worker` の追加・ホーム一覧の全件取得・現行機能・Migration 0023・回答支援の根拠検証と再試行・Git管理・新規環境の起動手順・リデザイン第1〜2段階の見た目と第3段階の各画面を照合）。この文書は現在のソースコードとCompose設定を説明します。
 外部APIの実接続、認識精度、すべての端末での動作を保証するものではありません。
 
 今後の機能追加・修正では毎回、実装とこのREADMEを照合し、操作・構成・設定・制約などの説明に影響する変更を同じ作業で反映します。詳しい作業ルールは[AGENTS.md](AGENTS.md)と[開発ガイド](docs/development.md)を参照してください。
@@ -91,6 +91,7 @@ Dockerfileだけで判断せず、[docker-compose.yml](docker-compose.yml)のcom
 | frontend | Next.js / React / TypeScript | 3000 |
 | backend | FastAPI / SQLAlchemy、API・WebSocket、起動時Migration | 8001 |
 | worker | 動画変換、WhisperX、確定議事録、質問回答 | 公開なし |
+| live-worker | 録音中のLive文字起こし（WhisperX / Azure短時間音声）専用。1台で動かす | 公開なし |
 | realtime-ai-worker | Live文字起こしを使うAI解析 | 公開なし |
 | answer-worker | 会議中の回答支援専用の生成Job | 公開なし |
 | postgres | PostgreSQL 17、Jobと会議データ | 公開なし |
@@ -196,12 +197,18 @@ DB・環境変数の変更はありません。リデザイン第2段階でFront
 | README・文書だけ | Docker操作不要 |
 | FrontendのTSX / CSS | bind mountとHMRで反映。ブラウザを再読み込み |
 | Frontendの依存関係 / 起動スクリプト | `sudo docker compose restart frontend` |
-| BackendのPython | APIはreload。Workerにも関係するなら `sudo docker compose restart worker realtime-ai-worker` |
+| BackendのPython | APIはreload。Workerにも関係するなら `sudo docker compose restart worker live-worker realtime-ai-worker` |
 | DB Migration追加 | 録音を終えてBackendを再起動し、Migration結果を確認 |
 | .env / Compose / Dockerfile / Python依存関係 | 再起動だけでは不十分な場合あり。[反映手順](docs/operations.md#apply)を参照 |
 
 録音中の再読み込み・再起動は避け、保存完了を確認してから操作してください。
 新しい録音処理のコードを試すときは、更新後のページで新しい録音を開始します。
+
+### Live文字起こし専用Worker
+
+録音中のLive文字起こしは `live-worker` が担当し、通常の `worker` は担当しません。これにより、別の会議のFinal文字起こしやAI要約が長時間かかっても、会議中の文字起こしが止まりません。各区間の音声は録音ファイル全体をコピーせずに切り出すため、長い会議でも1区間あたりの処理時間が増えません。
+
+この変更を取り込んだ既存環境では、録音・録画を終えてから `sudo docker compose up -d --build live-worker` と `sudo docker compose restart worker` を実行します。`live-worker` を起動しないと、Live文字起こしのJobが `queued` のまま進みません。DB Migration・環境変数の追加はありません。[反映手順](docs/operations.md#live-worker)。
 
 ## 既知の制約・引き継ぎ時の注意
 

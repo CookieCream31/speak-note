@@ -114,6 +114,9 @@ AI議事録生成
 Thumbnail生成
 ```
 
+録音中のLive文字起こし（`transcribe_live` Job）は専用の `live-worker` で処理し、長時間のFinal文字起こし・AI解析・動画変換のQueueと分離する。
+同じ録音の区間を順番に保存するため、`live-worker` は1台で動かす。各Workerは自分の担当Job種別だけをclaim・再起動時のrecoverの対象にする。
+
 ### Media
 
 ```text

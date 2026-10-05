@@ -94,6 +94,45 @@ services:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
+  # Live文字起こし専用。長いFinal文字起こしやAI解析の後ろで待たないよう分離する。
+  # 同じ録音の区間を順番に保存するため、1台だけで動かす。
+  live-worker:
+    build:
+      context: ./backend
+    user: "${SPEAK_NOTE_UID:-1000}:${SPEAK_NOTE_GID:-1000}"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://speak_note:change-me@postgres:5432/speak_note}
+      WORKER_POLL_INTERVAL_SECONDS: ${WORKER_POLL_INTERVAL_SECONDS:-2}
+      REALTIME_ANALYSIS_INTERVAL_MS: ${REALTIME_ANALYSIS_INTERVAL_MS:-30000}
+      REALTIME_CHUNK_MS: ${REALTIME_CHUNK_MS:-15000}
+      REALTIME_WINDOW_MS: ${REALTIME_WINDOW_MS:-30000}
+      STORAGE_ROOT: ${STORAGE_ROOT:-/app/storage}
+      MAX_AUDIO_UPLOAD_MB: ${MAX_AUDIO_UPLOAD_MB:-1024}
+      MAX_VIDEO_UPLOAD_MB: ${MAX_VIDEO_UPLOAD_MB:-4096}
+      WHISPERX_BASE_URL: ${WHISPERX_BASE_URL:-http://host.docker.internal:8000}
+      WHISPERX_API_KEY: ${WHISPERX_API_KEY:-}
+      WHISPERX_MODEL: ${WHISPERX_MODEL:-large-v3}
+      WHISPERX_LANGUAGE: ${WHISPERX_LANGUAGE:-ja}
+      WHISPERX_TIMEOUT_SECONDS: ${WHISPERX_TIMEOUT_SECONDS:-7200}
+      WHISPERX_MAX_ATTEMPTS: ${WHISPERX_MAX_ATTEMPTS:-3}
+      WHISPERX_RETRY_DELAY_SECONDS: ${WHISPERX_RETRY_DELAY_SECONDS:-1}
+      AZURE_SPEECH_TIMEOUT_SECONDS: ${AZURE_SPEECH_TIMEOUT_SECONDS:-60}
+      AZURE_SPEECH_MAX_ATTEMPTS: ${AZURE_SPEECH_MAX_ATTEMPTS:-3}
+      AZURE_SPEECH_RETRY_DELAY_SECONDS: ${AZURE_SPEECH_RETRY_DELAY_SECONDS:-1}
+      MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY:-}
+    command: python -m app.workers.live_transcription
+    volumes:
+      - ./backend:/app
+      - ./storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
   realtime-ai-worker:
     build:
       context: ./backend
