@@ -1,12 +1,16 @@
 import { MeetingsManager } from "@/components/meetings-manager";
 import type { AIProfile, MeetingList, MeetingTag, MeetingTemplate, Project } from "@/lib/api";
+import { loadAllMeetings, MEETING_PAGE_SIZE } from "@/lib/meeting-list";
 
 export const dynamic = "force-dynamic";
 
 const backendInternalUrl = process.env.BACKEND_INTERNAL_URL ?? "http://backend:8001";
 
-async function loadMeetings(): Promise<MeetingList> {
-  const response = await fetch(`${backendInternalUrl}/api/v1/meetings`, { cache: "no-store" });
+async function loadMeetingPage(offset: number): Promise<MeetingList> {
+  const response = await fetch(
+    `${backendInternalUrl}/api/v1/meetings?limit=${MEETING_PAGE_SIZE}&offset=${offset}`,
+    { cache: "no-store" },
+  );
   if (!response.ok) {
     throw new Error(`Backend returned status ${response.status}`);
   }
@@ -44,8 +48,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ c
   let templateLoadError: string | undefined;
 
   try {
-    const result = await loadMeetings();
-    meetings = result.items;
+    meetings = await loadAllMeetings(loadMeetingPage);
   } catch {
     loadError = "会議一覧を取得できませんでした。Backendの状態を確認してください。";
   }
