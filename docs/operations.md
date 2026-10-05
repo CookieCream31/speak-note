@@ -284,7 +284,7 @@ sudo docker compose ps live-worker worker
 sudo docker compose logs --tail=50 live-worker
 ```
 
-ログに `speak-note live transcription worker started` が出れば起動しています。2026-10-05のユーザー提供ログで、Migration `20261005_0024 (head)` の適用、`live-worker` の起動（06:49:44）、録音中の `transcribe_live` Jobの処理とWhisperXの `200 OK` を確認しました。録音中にBackendを再起動する再接続の確認は未実施です。`live-worker` を起動しないと、録音中の文字起こしJobが `queued` のまま進みません。同じ録音の区間を順番に保存するため、`live-worker` は複数台に増やさないでください。
+ログに `speak-note live transcription worker started` が出れば起動しています。2026-10-05のユーザー提供ログで、Migration `20261005_0024 (head)` の適用、`live-worker` の起動（06:49:44）、録音中の `transcribe_live` Jobの処理とWhisperXの `200 OK` を確認しました。同日、録音中に `sudo docker compose restart backend` を実行し、録音が止まらず再接続されることをユーザーが確認しました。`live-worker` を起動しないと、録音中の文字起こしJobが `queued` のまま進みません。同じ録音の区間を順番に保存するため、`live-worker` は複数台に増やさないでください。
 
 <a id="recording-resume"></a>
 ## 録音の自動再接続の反映（Migration 0024）
