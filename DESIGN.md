@@ -1094,6 +1094,10 @@ Segmentが存在する
 
 ことを検証する。
 
+確定議事録の生成でEvidence IDの検証、またはChapter・Highlightの時刻範囲の検証に失敗した場合は、
+失敗理由と、入力のevidence_idだけを使う指示を添えて一度だけ再生成を求める。
+再生成の結果も不正ならAnalysisを失敗にし、未知のEvidence IDは保存しない。
+
 ```text
 AI情報
 ↓

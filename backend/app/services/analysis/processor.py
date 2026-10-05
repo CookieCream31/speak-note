@@ -245,16 +245,28 @@ def _chapter_user_prompt(meeting: Meeting, segments: list[TranscriptSegment]) ->
     )
 
 
+def _evidence_correction(error: AnalysisProcessingError, segments: list[TranscriptSegment]) -> str:
+    transcript_end_ms = max(segment.end_ms for segment in segments)
+    return (
+        f"\n\n前回の出力は検証に失敗しました（{error}）。"
+        "evidence_segment_idsとsummary_evidence_segment_idsには、上の文字起こしに"
+        "記載されたevidence_idだけをそのままコピーしてください。"
+        f"chaptersとhighlightsのend_msは{transcript_end_ms}以下にしてください。"
+        "根拠となる発言が見つからない項目は出力しないでください。"
+    )
+
+
 async def _generate_minutes(
     runtime: LLMProvider,
     provider_type: AIProviderType,
     meeting: Meeting,
     segments: list[TranscriptSegment],
     template_snapshot: dict[str, Any] | None = None,
+    correction: str = "",
 ) -> StructuredMinutesOutput:
     result = await runtime.generate_structured(
         _system_prompt(),
-        _user_prompt(meeting, segments, template_snapshot),
+        _user_prompt(meeting, segments, template_snapshot) + correction,
         StructuredMinutesOutput,
     )
     if provider_type != AIProviderType.OLLAMA or result.chapters:
@@ -262,7 +274,7 @@ async def _generate_minutes(
 
     chapter_result = await runtime.generate_structured(
         _chapter_system_prompt(),
-        _chapter_user_prompt(meeting, segments),
+        _chapter_user_prompt(meeting, segments) + correction,
         StructuredChaptersOutput,
     )
     result.chapters = chapter_result.chapters
@@ -554,12 +566,30 @@ def process_analysis_job(
         )
 
     segments = list(transcript.segments)
-    result = asyncio.run(
-        _generate_minutes(
-            runtime, provider_config.provider_type, meeting, segments, analysis.template_snapshot
+    segment_by_id = {segment.id: segment for segment in segments}
+    correction = ""
+    for attempt in range(2):
+        result = asyncio.run(
+            _generate_minutes(
+                runtime,
+                provider_config.provider_type,
+                meeting,
+                segments,
+                analysis.template_snapshot,
+                correction,
+            )
         )
-    )
-    result = _resolve_evidence_aliases(result, segments)
+        result = _resolve_evidence_aliases(result, segments)
+        try:
+            _validate_evidence(result, segment_by_id)
+        except AnalysisProcessingError as exc:
+            # Small models sometimes return an ID or time outside the transcript.
+            # Ask once for a corrected answer; unknown evidence is never stored.
+            if attempt:
+                raise
+            correction = _evidence_correction(exc, segments)
+        else:
+            break
     _store_result(session, meeting, analysis, result, segments)
     analysis.status = AnalysisStatus.COMPLETED
     analysis.completed_at = utc_now()

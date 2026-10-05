@@ -1,5 +1,6 @@
 import uuid
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -403,3 +404,91 @@ def test_search_bookmark_timeline_and_item_edit_api(
     timeline = client.get(f"/api/v1/meetings/{meeting_id}/timeline")
     assert timeline.status_code == 200
     assert {item["kind"] for item in timeline.json()} >= {"decision", "bookmark", "chapter"}
+
+
+class SequenceProvider(FakeProvider):
+    """Returns each payload in turn and records the prompts it received."""
+
+    def __init__(self, *results: dict[str, object]) -> None:
+        super().__init__(results[0])
+        self.results = list(results)
+        self.prompts: list[str] = []
+
+    async def generate_structured(self, system_prompt, prompt, schema):
+        self.prompts.append(prompt)
+        self.result = self.results[min(len(self.prompts), len(self.results)) - 1]
+        return await super().generate_structured(system_prompt, prompt, schema)
+
+
+def _result_with_unknown_evidence(segment_id: uuid.UUID) -> dict[str, object]:
+    invalid_result = result_for(segment_id)
+    invalid_result["decisions"] = [
+        {"content": "根拠なし", "evidence_segment_ids": [str(uuid.uuid4())]}
+    ]
+    return invalid_result
+
+
+def test_invalid_evidence_is_corrected_by_one_retry(
+    session_factory: sessionmaker[Session],
+) -> None:
+    with session_factory() as session:
+        meeting, _transcript, segment, profile = seed_transcript_and_profile(session)
+        analysis, job = create_analysis_job(session, meeting, profile.id)
+        provider = SequenceProvider(
+            _result_with_unknown_evidence(segment.id), result_for(segment.id)
+        )
+
+        process_analysis_job(session, job, get_settings(), provider_override=provider)
+
+        assert len(provider.prompts) == 2
+        assert "前回の出力は検証に失敗しました" not in provider.prompts[0]
+        assert "前回の出力は検証に失敗しました" in provider.prompts[1]
+        assert "evidence_id" in provider.prompts[1]
+        assert analysis.status == AnalysisStatus.COMPLETED
+        assert meeting.active_analysis_version_id == analysis.id
+        stored_evidence = {
+            evidence.segment_id for item in analysis.items for evidence in item.evidence
+        }
+        assert stored_evidence == {segment.id}
+
+
+def test_out_of_range_chapter_time_is_corrected_by_one_retry(
+    session_factory: sessionmaker[Session],
+) -> None:
+    with session_factory() as session:
+        meeting, _transcript, segment, profile = seed_transcript_and_profile(session)
+        analysis, job = create_analysis_job(session, meeting, profile.id)
+        out_of_range = result_for(segment.id)
+        out_of_range["chapters"] = [
+            {
+                "title": "長すぎる章",
+                "start_ms": 0,
+                "end_ms": 10_000_000,
+                "evidence_segment_ids": [str(segment.id)],
+            }
+        ]
+        provider = SequenceProvider(out_of_range, result_for(segment.id))
+
+        process_analysis_job(session, job, get_settings(), provider_override=provider)
+
+        assert len(provider.prompts) == 2
+        assert "end_msは18000以下" in provider.prompts[1]
+        assert analysis.status == AnalysisStatus.COMPLETED
+
+
+def test_invalid_evidence_after_retry_fails_without_storing_it(
+    session_factory: sessionmaker[Session],
+) -> None:
+    with session_factory() as session:
+        meeting, _transcript, segment, profile = seed_transcript_and_profile(session)
+        analysis, job = create_analysis_job(session, meeting, profile.id)
+        provider = SequenceProvider(_result_with_unknown_evidence(segment.id))
+
+        with pytest.raises(AnalysisProcessingError, match="存在しないEvidence"):
+            process_analysis_job(session, job, get_settings(), provider_override=provider)
+        session.rollback()
+
+        assert len(provider.prompts) == 2
+        session.refresh(meeting)
+        assert meeting.active_analysis_version_id is None
+        assert analysis.items == []
