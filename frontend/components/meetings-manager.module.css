@@ -389,3 +389,27 @@
   .tagCreateForm > div { grid-template-columns: 1fr; }
   .tagCreateForm button { width: 100%; }
 }
+
+/* Redesign 3-8 - phones: the sidebar becomes a bottom tab bar, "new meeting" a floating button,
+   and dialogs open as bottom sheets. */
+@media (max-width: 760px) {
+  .sidebar { position: fixed; top: auto; right: 0; bottom: 0; left: 0; z-index: 60; width: auto; height: auto; min-height: 64px; flex-direction: row; justify-content: center; padding: 4px max(8px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); background: var(--surface-glass); border-top: 1px solid var(--line); border-bottom: 0; backdrop-filter: blur(10px); }
+  .brand { display: none; }
+  .navigation { flex: 1; flex-direction: row; justify-content: space-around; gap: 0; }
+  .navigation a, .navigation button { width: auto; min-width: 0; flex: 1; min-height: 56px; flex-direction: column; justify-content: center; gap: 2px; padding: 4px 0; font-size: 11px; background: transparent; }
+  .navigation .favoritesNav { display: none; }
+  .navigation a > span, .navigation button > span { position: static; width: auto; height: auto; overflow: visible; clip: auto; flex: none; }
+  .navigation small { display: none; }
+  .navigation .activeNav { color: var(--ink); background: transparent; font-weight: 600; }
+  .main { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+  .topbar { top: 0; }
+  .primaryButton { position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: calc(80px + env(safe-area-inset-bottom)); z-index: 55; width: 56px; min-height: 56px; justify-content: center; padding: 0; border-radius: 50%; box-shadow: 0 8px 24px var(--shadow-strong); }
+  .primaryButton .lucide { width: 22px; height: 22px; }
+  .primaryLabel { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .bulkBar { bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .dashboard[data-bulk-open="true"] { padding-bottom: 220px; }
+  .overlay { padding: 0; place-items: end stretch; }
+  .createDialog { width: 100%; max-height: calc(100dvh - 24px); border-radius: 16px 16px 0 0; }
+  /* Grab handle that marks the dialog as a sheet. */
+  .createDialog::before { content: ""; width: 36px; height: 4px; flex: 0 0 auto; margin: 8px auto 0; background: var(--blue-border); border-radius: 2px; }
+}

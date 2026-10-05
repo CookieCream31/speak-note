@@ -12,6 +12,6 @@
 }
 @media (max-width: 760px) {
   .shell { display: block; }
-  .header { top: 60px; padding: 10px 16px; }
+  .header { top: 0; padding: 10px 16px; }
   .content { padding: 16px 16px 0; }
 }

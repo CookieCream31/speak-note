@@ -661,7 +661,7 @@ export function MeetingsManager({
           </button>
           <button
             type="button"
-            className={recordView === "favorites" ? styles.activeNav : undefined}
+            className={`${styles.favoritesNav} ${recordView === "favorites" ? styles.activeNav : ""}`}
             onClick={() => showRecords("favorites")}
           >
             <Star size={18} aria-hidden="true" />
@@ -724,7 +724,7 @@ export function MeetingsManager({
             <ThemeSelector />
             <button className={styles.primaryButton} type="button" onClick={() => openCreate("media_upload")}>
               <Plus size={16} aria-hidden="true" />
-              新しい会議
+              <span className={styles.primaryLabel}>新しい会議</span>
             </button>
           </div>
         </header>

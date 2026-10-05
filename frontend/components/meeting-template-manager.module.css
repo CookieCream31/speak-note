@@ -97,7 +97,8 @@
   .cardMain, .fieldRow, .fieldRow:has(.fieldOptions) { grid-template-columns: minmax(0, 1fr); }
   .fieldOrder { flex-direction: row; }
   .cardToggle { flex-direction: column; gap: 2px; }
-  .footer { margin: 0 -16px; padding-right: 16px; padding-left: 16px; flex-wrap: wrap; }
+  /* Sit above the bottom tab bar. */
+  .footer { bottom: calc(64px + env(safe-area-inset-bottom)); margin: 0 -16px; padding-right: 16px; padding-bottom: 14px; padding-left: 16px; flex-wrap: wrap; }
   .footer > span { flex-basis: 100%; }
   .cardName input, .coreType select, .instructions textarea, .fieldName input, .fieldType select, .fieldOptions input, .nameField input { min-height: 44px; font-size: 16px; }
 }

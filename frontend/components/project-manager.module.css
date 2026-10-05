@@ -88,7 +88,7 @@
 }
 @media (max-width: 760px) {
   .shell { display: block; }
-  .header { top: 60px; flex-wrap: wrap; padding: 10px 16px; }
+  .header { top: 0; flex-wrap: wrap; padding: 10px 16px; }
   .content { grid-template-columns: minmax(0, 1fr); padding: 16px 16px 48px; }
   .list { position: static; }
   .twoColumns { grid-template-columns: 1fr; }
