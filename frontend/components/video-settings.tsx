@@ -72,11 +72,18 @@ export function VideoSettings({ playbackUrl, originalUrl }: VideoSettingsProps) 
 
   useEffect(() => {
     if (!open) return;
-    const outside = (event: PointerEvent) => {
-      if (event.target instanceof Node && !container.current?.contains(event.target)) {
-        setOpen(false);
-        setPage(null);
+    let switchingByPointer = false;
+    const outside = (event: Event) => {
+      if (!(event.target instanceof Node) || container.current?.contains(event.target)) return;
+      if (event.type === "pointerdown") {
+        // Closing before click would move the other menu's button on narrow screens.
+        switchingByPointer = event.target instanceof Element
+          && Boolean(event.target.closest("[data-player-settings]"));
+        if (switchingByPointer) return;
       }
+      if (event.type === "focusin" && switchingByPointer) return;
+      setOpen(false);
+      setPage(null);
     };
     const escape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
@@ -87,9 +94,13 @@ export function VideoSettings({ playbackUrl, originalUrl }: VideoSettingsProps) 
       trigger.current?.focus();
     };
     document.addEventListener("pointerdown", outside);
+    document.addEventListener("click", outside);
+    document.addEventListener("focusin", outside);
     document.addEventListener("keydown", escape, true);
     return () => {
       document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("click", outside);
+      document.removeEventListener("focusin", outside);
       document.removeEventListener("keydown", escape, true);
     };
   }, [open]);

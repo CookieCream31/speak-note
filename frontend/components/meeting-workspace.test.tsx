@@ -77,33 +77,33 @@ describe("MeetingWorkspace", () => {
     expect(html.indexOf("data-playback-rate")).toBeLessThan(
       html.indexOf("data-secondary-button-group"),
     );
-    expect(html.indexOf('<option value="2"')).toBeLessThan(
-      html.indexOf('<option value="1.75"'),
+    expect(html.indexOf('data-playback-rate-option="2"')).toBeLessThan(
+      html.indexOf('data-playback-rate-option="1.75"'),
     );
-    expect(html.indexOf('<option value="1.75"')).toBeLessThan(
-      html.indexOf('<option value="1.5"'),
+    expect(html.indexOf('data-playback-rate-option="1.75"')).toBeLessThan(
+      html.indexOf('data-playback-rate-option="1.5"'),
     );
-    expect(html.indexOf('<option value="1.5"')).toBeLessThan(
-      html.indexOf('<option value="1.25"'),
+    expect(html.indexOf('data-playback-rate-option="1.5"')).toBeLessThan(
+      html.indexOf('data-playback-rate-option="1.25"'),
     );
-    expect(html.indexOf('<option value="1.25"')).toBeLessThan(
-      html.indexOf('<option value="1"'),
+    expect(html.indexOf('data-playback-rate-option="1.25"')).toBeLessThan(
+      html.indexOf('data-playback-rate-option="1"'),
     );
-    expect(html.indexOf('<option value="1"')).toBeLessThan(
-      html.indexOf('<option value="0.75"'),
+    expect(html.indexOf('data-playback-rate-option="1"')).toBeLessThan(
+      html.indexOf('data-playback-rate-option="0.75"'),
     );
-    expect(html.indexOf('<option value="0.75"')).toBeLessThan(
-      html.indexOf('<option value="0.5"'),
+    expect(html.indexOf('data-playback-rate-option="0.75"')).toBeLessThan(
+      html.indexOf('data-playback-rate-option="0.5"'),
     );
     expect(html).toContain("data-volume-slider");
     expect(html).toContain("data-vector-volume-icon");
     expect(html.indexOf("data-volume-toggle")).toBeLessThan(
       html.indexOf("data-media-time"),
     );
-    expect(html).toContain('<option value="0.5">0.5×</option>');
-    expect(html).toContain('<option value="1.25">1.25×</option>');
-    expect(html).toContain('<option value="1.75">1.75×</option>');
-    expect(html).toContain('<option value="2">2×</option>');
+    expect(html).toContain('data-playback-rate-option="0.5"');
+    expect(html).toContain('data-playback-rate-option="1.25"');
+    expect(html).toContain('data-playback-rate-option="1.75"');
+    expect(html).toContain('data-playback-rate-option="2"');
     expect(html).toContain("data-subtitle-cue");
     expect(html).toContain('data-subtitle-speaker-id="speaker-1"');
     expect(html).toContain("話者の名前を変更");
@@ -117,7 +117,7 @@ describe("MeetingWorkspace", () => {
     const runtime = TranscriptRuntime({ turns: [] });
     const children = Children.toArray(runtime.props.children) as ReactElement<{ src?: string }>[];
 
-    expect(children[1]?.props.src).toBe("/transcript-player.js?v=20260930-3");
+    expect(children[1]?.props.src).toBe("/transcript-player.js?v=20261007-1");
   });
 
   it("renders audio playback as a persistent custom control bar", () => {
@@ -164,9 +164,9 @@ describe("MeetingWorkspace", () => {
     expect(html).toContain('data-skip-seconds="-10"');
     expect(html).toContain('data-skip-seconds="10"');
     expect(html).toContain("data-playback-rate");
-    expect(html).toContain('<option value="0.5">0.5×</option>');
-    expect(html).toContain('<option value="1.25">1.25×</option>');
-    expect(html).toContain('<option value="1.75">1.75×</option>');
+    expect(html).toContain('data-playback-rate-option="0.5"');
+    expect(html).toContain('data-playback-rate-option="1.25"');
+    expect(html).toContain('data-playback-rate-option="1.75"');
     expect(html).toContain("data-play-toggle");
     expect(html).toContain('href="/api/media/audio/download"');
     expect(html).toContain('aria-label="この音声をダウンロード"');

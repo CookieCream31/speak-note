@@ -8,6 +8,7 @@ import { ChunkedMediaUploader } from "@/components/chunked-media-uploader";
 import { LiveMeetingRecorder } from "@/components/live-meeting-recorder";
 import { AnswerAssistPanel } from "@/components/answer-assist-panel";
 import { MeetingAISelector } from "@/components/meeting-ai-selector";
+import { MeetingTitleEditor } from "@/components/meeting-title-editor";
 import { MeetingProjectSelector } from "@/components/meeting-project-selector";
 import { MeetingQuestionPanel } from "@/components/meeting-question-panel";
 import { MeetingReviewPanel } from "@/components/meeting-review-panel";
@@ -335,7 +336,7 @@ export default async function MeetingDetailPage({
 
       <section className={styles.titleBlock}>
         <div className={styles.titleMain}>
-          <h1>{meeting.title}</h1>
+          <MeetingTitleEditor meetingId={meeting.id} title={meeting.title} />
           <div className={styles.meta}>
             <span className={styles.statusPill} data-status={meeting.status}>
               {meeting.source_type === "audio_recording" && meeting.status === "recording"

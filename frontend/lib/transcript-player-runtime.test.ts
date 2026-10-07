@@ -20,6 +20,15 @@ beforeEach(() => {
           <button data-fullscreen-toggle>全画面</button>
           <div data-player-settings><button data-settings-trigger>設定</button></div>
           <button data-subtitle-toggle>字幕</button>
+          <div data-playback-rate data-player-settings>
+            <button data-playback-rate-option="2">2×</button>
+            <button data-playback-rate-option="1.75">1.75×</button>
+            <button data-playback-rate-option="1.5">1.5×</button>
+            <button data-playback-rate-option="1.25">1.25×</button>
+            <button data-playback-rate-option="1">1×</button>
+            <button data-playback-rate-option="0.75">0.75×</button>
+            <button data-playback-rate-option="0.5">0.5×</button>
+          </div>
         </div>
       </div></div>
       <div data-transcript-document>
@@ -69,6 +78,26 @@ function advance(time: number, top: number) {
 }
 
 describe("transcript playback runtime", () => {
+  it("changes menu rates with Shift shortcuts and preserves the playback position", () => {
+    const shortcut = (code: string) => document.body.dispatchEvent(
+      new KeyboardEvent("keydown", { code, shiftKey: true, bubbles: true, cancelable: true }),
+    );
+    media.currentTime = 42;
+    shortcut("Period");
+    expect(media.playbackRate).toBe(1.25);
+    shortcut("Period");
+    expect(media.playbackRate).toBe(1.5);
+    shortcut("Comma");
+    expect(media.playbackRate).toBe(1.25);
+    expect(media.currentTime).toBe(42);
+    media.playbackRate = 2;
+    shortcut("Period");
+    expect(media.playbackRate).toBe(2);
+    media.playbackRate = 0.5;
+    shortcut("Comma");
+    expect(media.playbackRate).toBe(0.5);
+  });
+
   it("releases pointer-clicked controls so Space pauses the video", () => {
     const fullscreen = document.querySelector<HTMLButtonElement>("[data-fullscreen-toggle]")!;
     const pause = vi.spyOn(media, "pause").mockImplementation(() => {});

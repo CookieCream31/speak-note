@@ -5,6 +5,7 @@ import Script from "next/script";
 
 import { InlineSpeakerName } from "./inline-speaker-name";
 import { VideoSettings } from "./video-settings";
+import { PlaybackRateControl } from "./playback-rate-control";
 
 import styles from "./transcript-player.module.css";
 
@@ -66,33 +67,6 @@ interface SubtitleCue extends SubtitlePart {
 const SUBTITLE_MAX_CHARACTERS = 34;
 const SUBTITLE_MAX_DURATION_MS = 6_000;
 const SUBTITLE_MAX_GAP_MS = 1_200;
-const PLAYBACK_RATES = [2, 1.75, 1.5, 1.25, 1, 0.75, 0.5] as const;
-
-function PlaybackRateControl({ video = false }: { video?: boolean }) {
-  return (
-    <label
-      className={`${styles.playbackRate} ${video ? styles.videoPlaybackRate : ""}`}
-      title="再生速度"
-    >
-      <span className={styles.visuallyHidden}>再生速度</span>
-      {video && (
-        <span
-          className={styles.playbackRateValue}
-          data-playback-rate-value
-          aria-hidden="true"
-        >
-          1×
-        </span>
-      )}
-      <select defaultValue="1" data-playback-rate aria-label="再生速度">
-        {PLAYBACK_RATES.map((rate) => (
-          <option key={rate} value={rate}>{rate}×</option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
 function VideoVolumeControl() {
   return (
     <div className={styles.videoVolumeControl}>
@@ -556,7 +530,7 @@ export function TranscriptRuntime({ turns }: Pick<TranscriptPlayerProps, "turns"
         data-transcript-timeline
         dangerouslySetInnerHTML={{ __html: compactTimeline }}
       />
-      <Script src="/transcript-player.js?v=20260930-3" strategy="afterInteractive" />
+      <Script src="/transcript-player.js?v=20261007-1" strategy="afterInteractive" />
     </>
   );
 }

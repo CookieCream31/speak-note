@@ -646,7 +646,7 @@
   .secondaryButtonGroup { gap: 0; padding: 2px 4px; }
   .secondaryButtonGroup .controlButton { width: 29px; height: 29px; }
   .videoSettingsIcon { width: 16px; height: 16px; }
-  .playbackRate.videoPlaybackRate { min-width: 34px; height: 34px; padding: 0 8px; }
+  .playbackRateButton.videoPlaybackRate { min-width: 34px; height: 34px; padding: 0 8px; }
   .videoVolumeControl { width: 34px; height: 34px; }
   .videoVolumeButton { flex-basis: 32px; width: 32px; height: 32px; }
   .videoVolumeIcon,
@@ -762,23 +762,23 @@
   justify-content: center;
   gap: 9px;
 }
-.playbackRate { margin-right: 12px; }
-.playbackRate select {
+.playbackRate { display: flex; margin-right: 12px; }
+.videoRateContainer { margin-right: 0; }
+.audioRateContainer { position: relative; }
+.playbackRateButton {
+  min-width: 46px;
   height: 34px;
-  padding: 0 27px 0 12px;
+  padding: 0 12px;
   color: var(--ink);
   background: var(--surface);
   border: 1px solid var(--control-border);
-  border-radius: 999px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 12px;
-  font-weight: 800;
+  font: inherit;
 }
-.playbackRate.videoPlaybackRate {
-  position: relative;
+.playbackRateButton.videoPlaybackRate {
   min-width: 42px;
   height: 42px;
-  margin-right: 0;
   padding: 0 12px;
   display: inline-flex;
   align-items: center;
@@ -800,27 +800,25 @@
   line-height: 1;
   white-space: nowrap;
 }
-.playbackRate.videoPlaybackRate select {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  appearance: none;
-  color: transparent;
-  background: transparent;
-  border: 0;
-  border-radius: 999px;
-  cursor: pointer;
-}
-.playbackRate.videoPlaybackRate:hover { color: var(--media-accent); }
-.playbackRate.videoPlaybackRate select option {
+.playbackRateButton:hover { background: var(--surface-hover); }
+.playbackRateButton.videoPlaybackRate:hover { color: var(--media-accent); background: var(--media-control); }
+.playbackRatePanel { --settings-width: 176px; }
+.playbackRateHeading { margin: 0 0 4px; padding: 8px 10px; border-bottom: 1px solid var(--media-line); font-weight: 650; }
+.settingsPanel.audioPlaybackRatePanel {
+  left: 0;
+  right: auto;
+  bottom: calc(100% + 8px);
+  width: min(176px, calc(100vw - 32px));
+  max-height: min(360px, max(80px, calc(100dvh - 160px)));
   color: var(--ink);
-  background: var(--surface);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
 }
-.playbackRate.videoPlaybackRate select:focus,
-.playbackRate.videoPlaybackRate select:focus-visible { outline: 0; }
+.audioPlaybackRatePanel .playbackRateHeading { border-color: var(--line); }
+.audioPlaybackRatePanel .settingsOption { color: var(--ink); }
+.audioPlaybackRatePanel .settingsOption:hover { background: var(--surface-hover); }
+.audioPlaybackRatePanel .settingsOption[aria-pressed="true"] { background: var(--blue-soft-hover); }
+.audioPlaybackRatePanel button:focus-visible { outline-color: var(--focus); }
 .audioUtilityButton,
 .audioPlayButton {
   min-height: 34px;
@@ -861,14 +859,14 @@
 .audioPlayButton:hover { background: var(--primary-hover); }
 .audioUtilityButton:focus-visible,
 .audioPlayButton:focus-visible,
-.playbackRate select:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.playbackRateButton:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 @media (max-width: 620px) {
   .player.audioPlayer { right: 8px; bottom: 8px; left: 8px; width: calc(100vw - 16px); padding: 11px 12px 10px; }
   .audioChapterStatus > span { display: none; }
   .audioChapterStatus output { max-width: 42vw; }
   .playbackRate { margin-right: 0; }
-  .playbackRate select { width: 54px; padding-right: 5px; padding-left: 8px; }
+  .playbackRateButton { width: 54px; padding-right: 5px; padding-left: 8px; }
   .audioControlRow { gap: 3px; }
   .audioPlayButton { min-width: 94px; padding: 0 16px; }
   .audioUtilityButton { min-width: 34px; padding: 0 5px; }
@@ -899,7 +897,7 @@
   .videoVolumeControl { width: 32px; height: 32px; }
   .videoVolumeButton { flex-basis: 30px; width: 30px; height: 30px; }
   .videoControls .mediaTime { height: 32px; padding: 0 7px; font-size: 11px; }
-  .playbackRate.videoPlaybackRate { min-width: 32px; height: 32px; padding: 0 6px; }
+  .playbackRateButton.videoPlaybackRate { min-width: 32px; height: 32px; padding: 0 6px; }
   .secondaryButtonGroup { padding: 1px 3px; }
   .secondaryButtonGroup .controlButton { width: 28px; height: 28px; }
   .videoSettingsIcon { width: 15px; height: 15px; }
@@ -913,7 +911,7 @@
   .audioControlRow { gap: 2px; }
   .audioPlayButton { min-width: 76px; padding: 0 10px; }
   .audioUtilityButton { min-width: 32px; padding: 0 4px; }
-  .playbackRate select { width: 44px; padding: 0 4px; }
+  .playbackRateButton { width: 44px; padding: 0 4px; }
   .audioStatus { display: none; }
   .audioChapterStatus output { max-width: 48vw; }
 }

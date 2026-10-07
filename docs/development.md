@@ -54,8 +54,9 @@ DESIGNの推奨ツリーにある `frontend/features/` は現状の配置では�
 | AI設定、ProfileとDefault選択 | [ai-settings-manager.tsx](../frontend/components/ai-settings-manager.tsx)、[ai-profile-list.tsx](../frontend/components/ai-profile-list.tsx)、[ai_settings.py](../backend/app/api/routes/ai_settings.py) | `ai-settings-manager.test.tsx`、`ai-profile-list.test.tsx`、`test_ai_settings_api.py` |
 | 議事録テンプレートの管理・会議選択 | [meeting-template-manager.tsx](../frontend/components/meeting-template-manager.tsx)、[meetings-manager.tsx](../frontend/components/meetings-manager.tsx)、[meeting_templates.py](../backend/app/api/routes/meeting_templates.py)、[meeting_template.py](../backend/app/schemas/meeting_template.py) | `meeting-template-manager.test.tsx`、`meetings-manager.test.tsx`、`test_meeting_templates.py` |
 | テンプレートの議事録表示・値検証 | [template-analysis-cards.tsx](../frontend/components/template-analysis-cards.tsx)、[analysis/templates.py](../backend/app/services/analysis/templates.py)、[analysis/realtime_templates.py](../backend/app/services/analysis/realtime_templates.py) | `template-analysis-cards.test.tsx`、`test_analysis_templates.py` |
+| 会議タイトル編集 | [meeting-title-editor.tsx](../frontend/components/meeting-title-editor.tsx)、既存の `PATCH /meetings/{id}` | `meeting-title-editor.test.tsx`、`test_meeting_updates.py` |
 | 会議詳細、横幅、タブ | [page.tsx](../frontend/app/meetings/[meeting_id]/page.tsx)、[meeting-workspace.tsx](../frontend/components/meeting-workspace.tsx) と各CSS Module | `meeting-workspace.test.tsx` |
-| 動画・音声再生、字幕、ショートカット | [transcript-player.tsx](../frontend/components/transcript-player.tsx)、[transcript-player.js](../frontend/public/transcript-player.js)、[video-settings.tsx](../frontend/components/video-settings.tsx) | `transcript-player-runtime.test.ts`、`video-settings.test.tsx`、`playback-chapters.test.ts` とブラウザ操作確認 |
+| 動画・音声再生、字幕、ショートカット | [transcript-player.tsx](../frontend/components/transcript-player.tsx)、[transcript-player.js](../frontend/public/transcript-player.js)、[video-settings.tsx](../frontend/components/video-settings.tsx)、[playback-rate-control.tsx](../frontend/components/playback-rate-control.tsx) | `transcript-player-runtime.test.ts`、`video-settings.test.tsx`、`playback-rate-control.test.tsx`、`playback-chapters.test.ts` とブラウザ操作確認 |
 | 動画変換・録画合成の画質 | [ffmpeg.py](../backend/app/services/media/ffmpeg.py)、[live_recording.py](../backend/app/services/media/live_recording.py) | `test_video_processor.py` |
 | 分割アップロード、配信・ダウンロード | [chunked-media-uploader.tsx](../frontend/components/chunked-media-uploader.tsx)、[meetings.py](../backend/app/api/routes/meetings.py)、[media_content.py](../backend/app/api/routes/media_content.py)、[storage.py](../backend/app/services/media/storage.py) | `test_chunked_upload.py`、`test_audio_upload.py`、`test_video_upload.py`、`test_media_content.py` |
 | マイク・画面共有、録音終了 | [live-meeting-recorder.tsx](../frontend/components/live-meeting-recorder.tsx)、[live-capture.ts](../frontend/lib/live-capture.ts)、[realtime.py](../backend/app/api/routes/realtime.py)、[capture.py](../backend/app/services/realtime/capture.py) | `live-capture.test.ts`、`live-meeting-recorder.test.tsx`、`test_realtime_phase6.py` |
@@ -199,7 +200,8 @@ Migrationの検証は、バックアップまたは検証用DBを準備してか
 - 議事録テンプレート: AI設定でのカード・フィールド編集とrevision更新、会議作成時の選択、旧会議と過去Versionのsnapshot表示。
 - 録音: マイクのみ／共有音声＋マイク、共有先変更、ミュート、停止後の保存、Final生成。
 - Azure: 2人以上の交互発話、途中結果→確定、長い無音、再接続、10分を超えるToken更新、タブ切り替え。
-- 再生: 文字クリック後もSpace再生、速度・字幕・全画面・音量、長文内の行追従と手動スクロール後の再開。画質切替で再生位置・速度・音量を維持し、非対応の元動画で互換MP4に戻ること。歯車メニューを外側クリック/Escapeで閉じられること。スマホ縦横と4K画面で、動画・設定パネルがはみ出さないこと。
+- タイトル編集: 詳細画面の鉛筆から保存・Enter送信・キャンセル・Escape、空白のみの拒否、通信失敗時の入力保持と再試行、送信中の重複防止。保存で見出し・パンくずが更新され、再生位置・再生中の状態を維持すること。
+- 再生: 文字クリック後もSpace再生、速度・字幕・全画面・音量、長文内の行追従と手動スクロール後の再開。画質切替で再生位置・速度・音量を維持し、非対応の元動画で互換MP4に戻ること。速度・歯車メニューを外側クリック/Escapeで閉じられ、同時に開かないこと。速度メニューのチェック・キーボード操作・ショートカットとの同期を確認すること。スマホ縦横と4K画面で、動画・設定パネルがはみ出さないこと。
 - 動画品質: `live-capture.test.ts`の4K制約・解像度別ビットレートと、`test_video_processor.py`のH.264コピー・CRF18変換・縦横比を保つ録画合成を確認。原本を書き換えないこと。
 - DB/API: 正常系だけでなく無効ID・不正入力・外部API失敗・再試行・Version参照。
 

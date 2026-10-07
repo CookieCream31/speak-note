@@ -1,0 +1,21 @@
+.editor { min-width: 0; }
+.heading { display: flex; align-items: flex-start; gap: 8px; }
+.heading h1 { min-width: 0; }
+.editButton { flex: none; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; color: var(--muted); background: transparent; border: 1px solid transparent; border-radius: 8px; cursor: pointer; }
+.editButton:hover { color: var(--ink); background: var(--surface-hover); border-color: var(--line); }
+.form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; max-width: 760px; }
+.form label { grid-column: 1 / -1; color: var(--text-secondary); font-size: 12px; }
+.form input { width: 100%; min-width: 0; min-height: 40px; padding: 8px 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--control-border); border-radius: 8px; font: inherit; }
+.actions { display: flex; gap: 6px; }
+.actions button { min-height: 40px; padding: 8px 12px; color: var(--on-primary); background: var(--primary-bg); border: 1px solid transparent; border-radius: 8px; cursor: pointer; font: 600 12px var(--font-sans); }
+.actions button[type="button"] { color: var(--ink); background: var(--surface); border-color: var(--control-border); }
+.actions button:disabled, .form input:disabled { opacity: .6; cursor: wait; }
+.editButton:focus-visible, .actions button:focus-visible, .form input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.message, .error { margin: 6px 0 0; font-size: 12px; line-height: 1.5; }
+.message { color: var(--muted); }
+.error { grid-column: 1 / -1; color: var(--danger); }
+@media (max-width: 620px) {
+  .editButton { width: 44px; height: 44px; }
+  .form { grid-template-columns: minmax(0, 1fr); }
+  .form input, .actions button { min-height: 44px; }
+}

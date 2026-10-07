@@ -60,7 +60,6 @@
     const volumeSlider = root.querySelector("[data-volume-slider]");
     const fullscreenToggle = root.querySelector("[data-fullscreen-toggle]");
     const playbackRate = root.querySelector("[data-playback-rate]");
-    const playbackRateValue = root.querySelector("[data-playback-rate-value]");
     const subtitleOverlay = root.querySelector("[data-subtitle-overlay]");
     const subtitleSpeaker = root.querySelector("[data-subtitle-speaker]");
     const subtitleText = root.querySelector("[data-subtitle-text]");
@@ -706,21 +705,12 @@
     function setPlaybackRate(rate) {
       if (!Number.isFinite(rate) || rate <= 0) return;
       media.playbackRate = rate;
-      if (playbackRate instanceof HTMLSelectElement) {
-        const matchingOption = Array.from(playbackRate.options).find(
-          (option) => Math.abs(Number(option.value) - rate) < 0.001,
-        );
-        if (matchingOption) playbackRate.value = matchingOption.value;
-        if (playbackRateValue) {
-          playbackRateValue.textContent = matchingOption?.textContent || `${rate}×`;
-        }
-      }
     }
 
     function changePlaybackRate(direction) {
-      if (!(playbackRate instanceof HTMLSelectElement) || direction === 0) return;
-      const rates = Array.from(playbackRate.options)
-        .map((option) => Number(option.value))
+      if (!playbackRate || direction === 0) return;
+      const rates = Array.from(playbackRate.querySelectorAll("[data-playback-rate-option]"))
+        .map((option) => Number(option.dataset.playbackRateOption))
         .filter((rate) => Number.isFinite(rate) && rate > 0)
         .sort((left, right) => left - right);
       if (rates.length === 0) return;
@@ -982,12 +972,6 @@
     }
     if (subtitleToggle instanceof HTMLButtonElement) {
       subtitleToggle.addEventListener("click", toggleSubtitles);
-    }
-    if (playbackRate instanceof HTMLSelectElement) {
-      setPlaybackRate(media.playbackRate);
-      playbackRate.addEventListener("change", () => {
-        setPlaybackRate(Number(playbackRate.value));
-      });
     }
     for (const skipButton of skipButtons) {
       if (!(skipButton instanceof HTMLButtonElement)) continue;
