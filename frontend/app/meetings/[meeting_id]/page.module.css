@@ -312,15 +312,37 @@
   .page > .uploadPanel { margin-right: 24px; margin-left: 24px; }
   .titleBlock { flex-direction: column; align-items: stretch; }
   .titleActions { justify-content: flex-start; }
+  .settingChip { flex-basis: 100%; }
   .regenerate > div { justify-items: start; }
   .regenerate > div > span, .regenerate > div > p { text-align: left; }
 }
 @media (max-width: 560px) {
-  .topHeader { gap: 8px; padding-right: max(12px, env(safe-area-inset-right)); padding-left: max(12px, env(safe-area-inset-left)); }
-  .headerButton { width: 44px; min-height: 44px; justify-content: center; padding: 0; font-size: 0; }
+  .topHeader { gap: 4px; padding-right: max(12px, env(safe-area-inset-right)); padding-left: max(12px, env(safe-area-inset-left)); }
+  .logo { flex: none; width: 44px; height: 44px; align-items: center; justify-content: center; }
+  .breadcrumb { gap: 0; font-size: 13px; }
+  .breadcrumb a { min-height: 44px; display: inline-flex; align-items: center; }
+  .breadcrumb > span { display: none; }
+  .topHeader [data-theme-option] { width: 44px; height: 44px; }
+  .headerButton { flex: none; width: 44px; min-height: 44px; justify-content: center; padding: 0; font-size: 0; }
   .titleBlock { padding: 18px max(16px, env(safe-area-inset-right)) 16px max(16px, env(safe-area-inset-left)); }
   .page > .uploadPanel { margin-right: 16px; margin-left: 16px; }
-  .settingChip > summary, .settingsRow .jobToggle, .downloadMenu > summary { min-height: 44px; }
+  .settingsRow { display: grid; grid-template-columns: minmax(0, 1fr); align-items: stretch; }
+  .settingsRow > * { min-width: 0; }
+  .settingChip > summary, .settingsRow .jobToggle, .downloadMenu > summary { width: 100%; min-height: 44px; box-sizing: border-box; }
+  .settingChip > summary { display: flex; }
+  .settingChip > summary > span { width: 108px; flex: none; white-space: nowrap; font-size: 12px; }
+  .settingChip > summary > strong { min-width: 0; overflow-wrap: anywhere; }
+  .settingChip > summary > svg { flex: none; margin-left: auto; }
+  .chipPopover { top: calc(100% + 8px); width: 100%; box-sizing: border-box; }
+  .settingsRow .jobToggle { display: flex; align-items: center; }
+  .settingsRow .jobToggle > div { flex: none; }
+  .settingsRow .jobToggle em { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+  .settingsRow .jobToggle::after { flex: none; margin-left: auto; }
+  .titleActions { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .regenerate { min-width: 0; }
+  .regenerate > div > button { width: 100%; min-height: 44px; }
+  .regenerate > div > span, .regenerate > div > p { max-width: none; overflow-wrap: anywhere; }
+  .downloadMenu > summary > svg:last-child { margin-left: auto; }
   .chipDivider { display: none; }
 }
 

@@ -15,4 +15,5 @@
 @media (max-width: 520px) {
   .fields input,
   .fields button { min-height: 44px; }
+  .fields input { font-size: 16px; }
 }

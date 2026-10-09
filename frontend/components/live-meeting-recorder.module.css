@@ -95,7 +95,7 @@ button.stopIconButton:hover { color: var(--on-primary) !important; background: v
 @media (max-width: 560px) {
   /* Narrow screens keep round icon buttons; labels stay as accessible names via aria-label. */
   .recordingControls { justify-content: center; gap: 14px; }
-  .recordingControls button.iconButton { width: 60px !important; height: 60px; padding: 0 !important; border-radius: 50% !important; }
+  .recordingControls button.iconButton { width: 60px !important; height: 60px; justify-content: center; padding: 0 !important; border-radius: 50% !important; }
   .recordingControls button.iconButton svg { width: 24px; height: 24px; }
   /* Large elapsed time so the recording state reads at a glance. */
   .elapsed { font-size: 16px; }
