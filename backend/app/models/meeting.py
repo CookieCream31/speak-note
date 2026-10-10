@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
     Boolean,
     CheckConstraint,
@@ -11,7 +12,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     Integer,
-    JSON,
     String,
     Text,
     Uuid,
@@ -34,6 +34,7 @@ if TYPE_CHECKING:
 class MeetingSourceType(enum.StrEnum):
     LIVE = "live"
     AUDIO_RECORDING = "audio_recording"
+    SHARED_AUDIO = "shared_audio"
     MEDIA_UPLOAD = "media_upload"
     VIDEO_UPLOAD = "video_upload"
     AUDIO_UPLOAD = "audio_upload"
@@ -115,7 +116,9 @@ class Meeting(Base):
     template_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("meeting_templates.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    template_snapshot: Mapped[dict | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
+    template_snapshot: Mapped[dict | None] = mapped_column(
+        JSON().with_variant(JSONB, "postgresql"), nullable=True
+    )
     meeting_context: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     ai_profile: Mapped["AIProfile | None"] = relationship(back_populates="meetings")

@@ -175,7 +175,7 @@ export function isCompletedLiveMeetingNotes(
   captureStatus?: "recording" | "finalizing" | "completed" | "failed" | null,
 ): boolean {
   return (
-    (sourceType === "live" || sourceType === "audio_recording")
+    (sourceType === "live" || sourceType === "audio_recording" || sourceType === "shared_audio")
     && (captureStatus === "completed" || (
       captureStatus == null
       && transcriptKind === "final"

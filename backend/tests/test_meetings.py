@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -54,18 +55,19 @@ def test_meeting_crud(client: TestClient) -> None:
     assert client.get(f"/api/v1/meetings/{meeting_id}").status_code == 404
 
 
-def test_microphone_recording_meeting_can_be_created(client: TestClient) -> None:
+@pytest.mark.parametrize("source", ["audio_recording", "shared_audio"])
+def test_audio_recording_meeting_can_be_created(client: TestClient, source: str) -> None:
     response = client.post(
         "/api/v1/meetings",
         json={
             "title": "Voice memo",
-            "source_type": "audio_recording",
+            "source_type": source,
             "summary_format": "concise",
         },
     )
 
     assert response.status_code == 201
-    assert response.json()["source_type"] == "audio_recording"
+    assert response.json()["source_type"] == source
     assert response.json()["summary_format"] == "concise"
 
 
@@ -169,10 +171,7 @@ def test_assign_and_remove_tag_from_multiple_meetings(client: TestClient) -> Non
     )
     assert assign_response.status_code == 200
     assert assign_response.json() == {"action": "tag", "affected": 2}
-    assert all(
-        item["tags"] == [tag]
-        for item in client.get("/api/v1/meetings").json()["items"]
-    )
+    assert all(item["tags"] == [tag] for item in client.get("/api/v1/meetings").json()["items"])
 
     remove_response = client.post(
         "/api/v1/meetings/bulk-actions",

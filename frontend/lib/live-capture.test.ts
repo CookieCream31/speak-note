@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   constrainDisplayTrack,
@@ -7,6 +7,8 @@ import {
   microphoneSpeechConstraints,
   screenRecordingBitrate,
 } from "./live-capture";
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe("microphoneSpeechConstraints", () => {
   it("requests voice processing before mixing microphone and system audio", () => {
@@ -117,5 +119,55 @@ describe("LiveCaptureMixer microphone attachment", () => {
     const mixer = Object.create(LiveCaptureMixer.prototype) as LiveCaptureMixer;
     Object.assign(mixer, { stopped: true });
     expect(() => mixer.attachMicrophone({} as MediaStream)).toThrow("録音は終了");
+  });
+});
+
+describe("LiveCaptureMixer audio-only sharing", () => {
+  it("mixes shared sound and microphone without loading video and keeps the audio destination on replacement", async () => {
+    const track = (kind: string) => ({ kind, enabled: true, readyState: "live", stop: vi.fn(), applyConstraints: vi.fn() });
+    class Stream {
+      constructor(readonly tracks: ReturnType<typeof track>[]) {}
+      getTracks() { return this.tracks; }
+      getAudioTracks() { return this.tracks.filter((item) => item.kind === "audio"); }
+      getVideoTracks() { return this.tracks.filter((item) => item.kind === "video"); }
+    }
+    vi.stubGlobal("MediaStream", Stream);
+    const display = new Stream([track("video"), track("audio")]);
+    const microphone = new Stream([track("audio")]);
+    const mixed = new Stream([track("audio")]);
+    const sources: { connect: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn> }[] = [];
+    const destination = { stream: mixed };
+    const context = {
+      state: "running", createMediaStreamDestination: () => destination,
+      createMediaStreamSource: vi.fn(() => {
+        const source = { connect: vi.fn(), disconnect: vi.fn() };
+        sources.push(source); return source;
+      }),
+      close: vi.fn(),
+    };
+    const mixer = await LiveCaptureMixer.create(display as unknown as MediaStream,
+      microphone as unknown as MediaStream, null, context as unknown as AudioContext);
+    expect(context.createMediaStreamSource).toHaveBeenCalledTimes(2);
+    expect(sources.every((source) => source.connect.mock.calls[0][0] === destination)).toBe(true);
+    expect(mixer.audioStream).toBe(mixed);
+    expect(mixed.getVideoTracks()).toHaveLength(0);
+    expect(display.getVideoTracks()[0].applyConstraints).not.toHaveBeenCalled();
+    mixer.setMicrophoneMuted(true);
+    expect(microphone.getAudioTracks()[0].enabled).toBe(false);
+    expect(display.getAudioTracks()[0].enabled).toBe(true);
+    const replacement = new Stream([track("video"), track("audio")]);
+    await expect(mixer.replaceDisplay(replacement as unknown as MediaStream)).resolves.toBe(true);
+    expect(mixer.audioStream).toBe(mixed);
+    expect(display.getTracks().every((item) => item.stop.mock.calls.length === 1)).toBe(true);
+    expect(sources[1].disconnect).toHaveBeenCalledOnce();
+    expect(mixer.handleDisplayEnded(display as unknown as MediaStream)).toBe(false);
+    expect(mixer.handleDisplayEnded(replacement as unknown as MediaStream)).toBe(true);
+    expect(sources[2].disconnect).toHaveBeenCalledOnce();
+    expect(microphone.getAudioTracks()[0].stop).not.toHaveBeenCalled();
+    expect(mixed.getAudioTracks()[0].stop).not.toHaveBeenCalled();
+    mixer.stop();
+    expect(microphone.getAudioTracks()[0].stop).toHaveBeenCalledOnce();
+    expect(mixed.getAudioTracks()[0].stop).toHaveBeenCalledOnce();
+    expect(context.close).toHaveBeenCalledOnce();
   });
 });

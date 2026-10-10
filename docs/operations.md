@@ -53,6 +53,28 @@ sudo docker compose restart worker frontend
 既存の派生動画は自動再生成されません。元動画の画質確認にはPlayerの歯車から「元動画」を選択します。
 高画質録画では通信量・保存容量・変換負荷が増えるため、空き容量とWorkerのメモリを確認してください。
 
+<a id="shared-audio"></a>
+## 画面共有音声録音の反映（Migration 0025）
+
+会議の取り込み方法に`shared_audio`を追加する変更です。Alembicの既存head `20261005_0024`から`20261010_0025`へ進みます。既存の会議・録画・音声は書き換えず、PostgreSQLの`meeting_source_type`へenum値を追加します。新しい環境変数・依存追加・Volume削除はありません。
+
+録音・録画、保存、実行中のJobがすべて完了してから、このプロジェクトで実行します。
+
+```bash
+cd /home/llm/speak-note
+git pull --ff-only
+sudo docker compose stop worker live-worker realtime-ai-worker answer-worker
+sudo docker compose restart backend
+sudo docker compose up -d --wait --no-deps backend
+sudo docker compose exec -T backend alembic current
+sudo docker compose up -d --no-deps worker live-worker realtime-ai-worker answer-worker
+sudo docker compose restart frontend
+```
+
+`alembic current`が`20261010_0025 (head)`であることを確認してからWorkerを再開します。Backendの起動時にMigrationを実行します。失敗時はログを確認し、Workerを止めたまま原因を解決してください。最後にブラウザを再読み込みし、[共有音声録音の確認手順](usage.md#shared-audio)を実行します。エージェントは稼働中サービスの再起動や運用DBへの適用を行っていません。Migrationの検証はPostgreSQL向けoffline SQL生成で行っています。
+
+このMigrationのdowngradeはenum値を保持します。データを失うenum書き換えは行いません。`shared_audio`の会議を作成した後に古いアプリへ戻すと、その会議の読込に対応しないため、コードだけの巻き戻しはしないでください。
+
 ## 設定の管理場所
 
 - [docker-compose.yml](../docker-compose.yml): コンテナへ渡す変数、volume、port、起動コマンド。

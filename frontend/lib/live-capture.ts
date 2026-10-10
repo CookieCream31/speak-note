@@ -72,7 +72,7 @@ async function waitForVideoFrame(preview: HTMLVideoElement): Promise<void> {
 export class LiveCaptureMixer {
   readonly audioStream: MediaStream;
 
-  private readonly preview: HTMLVideoElement;
+  private readonly preview: HTMLVideoElement | null;
   private readonly audioContext: AudioContext;
   private readonly audioDestination: MediaStreamAudioDestinationNode;
   private microphoneStream: MediaStream | null;
@@ -82,7 +82,7 @@ export class LiveCaptureMixer {
   private stopped = false;
 
   private constructor(
-    preview: HTMLVideoElement,
+    preview: HTMLVideoElement | null,
     microphoneStream: MediaStream | null,
     audioContext: AudioContext | null,
   ) {
@@ -100,7 +100,7 @@ export class LiveCaptureMixer {
   static async create(
     displayStream: MediaStream,
     microphoneStream: MediaStream | null,
-    preview: HTMLVideoElement,
+    preview: HTMLVideoElement | null,
     audioContext: AudioContext | null = null,
   ): Promise<LiveCaptureMixer> {
     const mixer = new LiveCaptureMixer(preview, microphoneStream, audioContext);
@@ -123,7 +123,7 @@ export class LiveCaptureMixer {
     if (!videoTrack || videoTrack.readyState !== "live") {
       throw new Error("共有画面の映像を取得できませんでした");
     }
-    await constrainDisplayTrack(videoTrack);
+    if (this.preview) await constrainDisplayTrack(videoTrack);
 
     const systemAudioTracks = displayStream.getAudioTracks();
     const nextAudioSource = systemAudioTracks.length
@@ -132,17 +132,19 @@ export class LiveCaptureMixer {
     const previousStream = this.displayStream;
     const previousAudioSource = this.displayAudioSource;
 
-    this.preview.autoplay = true;
-    this.preview.muted = true;
-    this.preview.playsInline = true;
-    this.preview.srcObject = displayStream;
-    try {
-      await this.preview.play();
-      await waitForVideoFrame(this.preview);
-    } catch (error) {
-      this.preview.srcObject = previousStream;
-      nextAudioSource?.disconnect();
-      throw error;
+    if (this.preview) {
+      this.preview.autoplay = true;
+      this.preview.muted = true;
+      this.preview.playsInline = true;
+      this.preview.srcObject = displayStream;
+      try {
+        await this.preview.play();
+        await waitForVideoFrame(this.preview);
+      } catch (error) {
+        this.preview.srcObject = previousStream;
+        nextAudioSource?.disconnect();
+        throw error;
+      }
     }
 
     nextAudioSource?.connect(this.audioDestination);
@@ -167,7 +169,7 @@ export class LiveCaptureMixer {
     if (this.stopped || this.displayStream !== displayStream) return false;
     this.displayAudioSource?.disconnect();
     this.displayAudioSource = null;
-    if (this.preview.srcObject === displayStream) {
+    if (this.preview && this.preview.srcObject === displayStream) {
       this.preview.pause();
       this.preview.srcObject = null;
     }
@@ -198,6 +200,6 @@ export class LiveCaptureMixer {
     for (const track of this.microphoneStream?.getTracks() ?? []) track.stop();
     for (const track of this.audioStream.getTracks()) track.stop();
     void this.audioContext.close();
-    this.preview.srcObject = null;
+    if (this.preview) this.preview.srcObject = null;
   }
 }

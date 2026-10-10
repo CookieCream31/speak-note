@@ -219,11 +219,17 @@ speak-note/
 
 ## 6. 入力方法
 
-以下の3種類へ対応する。
+画面共有（録画または音声のみ）、マイク録音、ファイルアップロードへ対応する。
 
 ### 6.1 画面共有・準リアルタイム
 
 ブラウザから画面共有を開始し、MediaRecorderで記録する。
+
+画面共有には「画面共有を録画」（`source_type=live`）と「画面共有の音声を録音」（`source_type=shared_audio`）を提供する。音声のみの場合もBrowserの`getDisplayMedia({video:true,audio:true})`による許可を取得するが、映像Trackは共有の継続・終了確認にだけ使用し、映像Preview・映像MediaRecorder・映像Chunk送信・Video Part保存を行わない。共有音声とONのマイクを既存のAudioContext Destinationへ混合し、音声だけのMediaRecorderから`capture_mode=audio`・`chunk`を送信する。Backendは`original_audio`のみ保存し、音声の容量制限を適用する。動画変換Jobは作成しない。
+
+`shared_audio`はMeetingに保存し、再読み込みや録音接続の復旧後も録画方式へ切り替えない。共有音声が取得できない場合は開始前に案内し、Backendも共有音声なし・動画MIME・分離録画を拒否する。共有先の変更時は同じAudio DestinationとRecorderを維持し、音声なし・選択キャンセルの場合は以前の共有を維持する。共有または共有音声Trackが終了した場合、マイク・Timeline・録音は継続し、共有音声停止の案内と共有再選択を表示する。マイクの初期ミュート・途中追加・回り込み防止は従来方式と共通。Browser・OS・共有元による音声共有の制約を説明し、非対応端末では既存のマイク録音やUploadを使用する。
+
+停止後はマイク録音と同様にリアルタイム版を共通会議ノートへ表示し、「要約を再生成」の初回だけWhisperX全体処理とFinal保存を行う。保存済みFinalを再利用する既存の再生成、Evidence検証、編集保護を維持する。DB変更はAlembic `20261010_0025`（0024の後）で`meeting_source_type`へ値を追加する。downgradeで既存会議や音声を失わないようenum値は保持する。
 
 ```text
 保存: getDisplayMedia -> MediaRecorder -> Media Chunk -> WebSocket -> Backend
@@ -330,8 +336,8 @@ Mediaと`transcribe` Jobを作成する。途中失敗時に不完全なMediaや
 └──────────────┴────────────────────────────────────────────┘
 ```
 
-- ファイルアップロード、マイク録音、画面共有をQuick Actionとして最上部へ表示する。
-- 会議作成Modal内でタイトルと取り込み方法に加え、Uploadでは対象ファイルを、画面共有では録画する画面・Windowとマイク利用有無を、マイク録音ではマイク利用有無を選択する。3つの取り込み方法すべてで、AI利用の有無・使うAI Profile・要約形式・会議の背景を選択する。
+- ファイルアップロード、マイク録音、画面共有録画、画面共有音声録音をQuick Actionとして最上部へ表示する。
+- 会議作成Modal内でタイトルと取り込み方法に加え、Uploadでは対象ファイルを、画面共有では共有する画面・Windowとマイク利用有無を、マイク録音ではマイク利用有無を選択する。4つの取り込み方法すべてで、AI利用の有無・使うAI Profile・要約形式・会議の背景を選択する。方式のカードは2列で狭い画面に対応する。
 - 選択したAI利用の有無とAI Profileは、取り込み方法によらず作成時に会議へ保存する。
 - Uploadでは「文字起こし後にAI要約を自動作成」として表示する。無効時は文字起こしのみを行い、有効時はFinal Transcript完成後に解析Jobを自動作成する。
 - 画面共有・マイク録音では停止時にFinal Transcriptを自動作成しないため、「AIを使う（リアルタイム解析・要約）」として表示する。無効時は録画・録音中のリアルタイム解析を行わない。要約は停止後の「要約を再生成」でAIを選んで作成できる。
@@ -494,6 +500,7 @@ Meeting
 ```text
 live
 audio_recording
+shared_audio（画面共有音声とマイクの音声のみ保存）
 media_upload（ファイル選択前の一時的な種別）
 video_upload
 audio_upload

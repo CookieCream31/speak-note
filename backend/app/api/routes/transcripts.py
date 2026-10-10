@@ -118,6 +118,7 @@ def start_final_transcription(meeting: MeetingDep, session: DbSession) -> Job:
     if meeting.source_type not in {
         MeetingSourceType.LIVE,
         MeetingSourceType.AUDIO_RECORDING,
+        MeetingSourceType.SHARED_AUDIO,
     }:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -135,12 +136,16 @@ def start_final_transcription(meeting: MeetingDep, session: DbSession) -> Job:
         raise HTTPException(
             status_code=409, detail="録音・録画を停止してから高精度版を開始してください"
         )
+    audio_only = meeting.source_type in {
+        MeetingSourceType.AUDIO_RECORDING,
+        MeetingSourceType.SHARED_AUDIO,
+    }
     transcription_audio = session.scalar(
         select(Media.id).where(
             Media.meeting_id == meeting.id,
             Media.kind.in_(
                 (MediaKind.TRANSCRIPTION_AUDIO, MediaKind.ORIGINAL_AUDIO)
-                if meeting.source_type == MeetingSourceType.AUDIO_RECORDING
+                if audio_only
                 else (MediaKind.TRANSCRIPTION_AUDIO,)
             ),
         )
@@ -150,7 +155,7 @@ def start_final_transcription(meeting: MeetingDep, session: DbSession) -> Job:
             status_code=status.HTTP_409_CONFLICT,
             detail=(
                 "録音の保存が完了してから確定版を開始してください"
-                if meeting.source_type == MeetingSourceType.AUDIO_RECORDING
+                if audio_only
                 else "動画変換が完了してから確定版を開始してください"
             ),
         )

@@ -1,4 +1,4 @@
-export type MeetingSourceType = "live" | "audio_recording" | "media_upload" | "video_upload" | "audio_upload";
+export type MeetingSourceType = "live" | "audio_recording" | "shared_audio" | "media_upload" | "video_upload" | "audio_upload";
 export type MeetingSummaryFormat = "standard" | "concise" | "detailed" | "bullet";
 export type TemplateFieldType = "short_text" | "long_text" | "number" | "date" | "boolean" | "single_select";
 export type TemplateCoreKind = AnalysisItemKind;

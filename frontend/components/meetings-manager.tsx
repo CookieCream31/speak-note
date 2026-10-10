@@ -61,6 +61,11 @@ const sourceOptions: SourceOption[] = [
     description: "画面とマイクを記録",
   },
   {
+    value: "shared_audio",
+    label: "画面共有の音声を録音",
+    description: "共有音声とマイクを記録・映像は保存しない",
+  },
+  {
     value: "audio_recording",
     label: "マイク音声を録音",
     description: "画面共有なしで音声を記録",
@@ -108,7 +113,8 @@ function formatDuration(milliseconds: number | null): string {
 function SourceIcon({ sourceType, size = 18 }: { sourceType: MeetingSourceType; size?: number }) {
   switch (sourceType) {
     case "media_upload": return <Upload size={size} />;
-    case "live": return <MonitorUp size={size} />;
+    case "live":
+    case "shared_audio": return <MonitorUp size={size} />;
     case "video_upload": return <Video size={size} />;
     case "audio_upload": return <AudioLines size={size} />;
     default: return <Mic size={size} />;
@@ -153,7 +159,7 @@ const subscribeToNothing = () => () => {};
 const currentTokyoDay = () => tokyoDayNumber(new Date());
 
 function meetingStatusLabel(meeting: Meeting): string {
-  return meeting.source_type === "audio_recording" && meeting.status === "recording"
+  return (meeting.source_type === "audio_recording" || meeting.source_type === "shared_audio") && meeting.status === "recording"
     ? "録音中"
     : statusLabels[meeting.status];
 }
@@ -442,7 +448,7 @@ export function MeetingsManager({
   function openCreate(sourceType: MeetingSourceType) {
     setIncludeMicrophone(false);
     releasePreparedDisplay();
-    if (sourceType === "live") {
+    if (sourceType === "live" || sourceType === "shared_audio") {
       setDisplayCaptureSupport(detectDisplayCaptureSupport());
     }
     setCreateSource(sourceType);
@@ -542,8 +548,11 @@ export function MeetingsManager({
       const displayIsLive = displayStream?.getVideoTracks().some(
         (track) => track.readyState === "live",
       );
-      if (sourceType === "live" && !displayIsLive) {
-        throw new Error("録画する画面またはウィンドウを選択してください");
+      if ((sourceType === "live" || sourceType === "shared_audio") && !displayIsLive) {
+        throw new Error("共有する画面またはウィンドウを選択してください");
+      }
+      if (sourceType === "shared_audio" && !displayStream?.getAudioTracks().some((track) => track.readyState === "live")) {
+        throw new Error("共有音声を取得できません。共有画面を選び直し、共有ダイアログで音声共有を有効にしてください。");
       }
 
       const parseSpeakerCount = (name: "min_speakers" | "max_speakers") => {
@@ -1106,7 +1115,7 @@ export function MeetingsManager({
                           checked={createSource === option.value}
                           disabled={creating || Boolean(pendingMeetingId)}
                           onChange={() => {
-                            if (option.value !== "live") releasePreparedDisplay();
+                            if (option.value !== "live" && option.value !== "shared_audio") releasePreparedDisplay();
                             if (option.value !== "media_upload") {
                               setCreateFile(null);
                               setCreateUploadSession(null);
@@ -1154,7 +1163,7 @@ export function MeetingsManager({
                   <div className={styles.captureSetup}>
                     {displayCaptureSupport && displayCaptureSupport !== "supported" ? (
                       <div className={styles.captureCompatibility} role="status">
-                        <strong>このブラウザでは画面共有録画を開始できません</strong>
+                        <strong>このブラウザでは画面共有を開始できません</strong>
                         <span>{displayCaptureSupportMessage(displayCaptureSupport)}</span>
                         <button type="button" onClick={() => setCreateSource("media_upload")}>
                           ファイル取り込みへ切り替える
@@ -1183,7 +1192,10 @@ export function MeetingsManager({
                           </p>
                         )}
                         <p>
-                          録画開始を押すと会議ページへ移動し、端末の共有選択画面で選んだ内容を録画します。マイクも含める場合は、話者分離のためヘッドホンの使用を推奨します。
+                          {createSource === "shared_audio"
+                            ? "共有ダイアログで音声共有を有効にしてください。録音開始を押すと、共有音声とONにしたマイク音声だけを保存します。映像は保存しません。音声共有の対応はブラウザ・OS・共有元によって異なります。"
+                            : "録画開始を押すと会議ページへ移動し、端末の共有選択画面で選んだ内容を録画します。"}
+                          マイクも含める場合は、ヘッドホンの使用を推奨します。
                         </p>
                       </>
                     )}
@@ -1350,7 +1362,7 @@ export function MeetingsManager({
                     creating || projectCreating
                     || (createSource === "media_upload"
                       ? !createFile
-                      : createSource === "live"
+                      : createSource === "live" || createSource === "shared_audio"
                         ? !displayLabel || displayCaptureSupport !== "supported"
                         : false)
                   }
@@ -1363,7 +1375,7 @@ export function MeetingsManager({
                       ? "アップロードを再試行"
                       : createSource === "media_upload"
                         ? "作成してアップロード"
-                        : createSource === "audio_recording"
+                        : createSource === "audio_recording" || createSource === "shared_audio"
                           ? "作成して録音開始"
                           : "作成して録画開始"}
                 </button>

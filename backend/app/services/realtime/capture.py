@@ -58,11 +58,17 @@ def start_realtime_session(
     if meeting.source_type not in {
         MeetingSourceType.LIVE,
         MeetingSourceType.AUDIO_RECORDING,
+        MeetingSourceType.SHARED_AUDIO,
     }:
         raise RealtimeCaptureError("この会議はリアルタイム録音用ではありません")
-    audio_only = meeting.source_type == MeetingSourceType.AUDIO_RECORDING
+    audio_only = meeting.source_type in {
+        MeetingSourceType.AUDIO_RECORDING,
+        MeetingSourceType.SHARED_AUDIO,
+    }
     if audio_only and split_capture:
-        raise RealtimeCaptureError("マイク録音では分離録画を使用できません")
+        raise RealtimeCaptureError("音声のみの録音では分離録画を使用できません")
+    if meeting.source_type == MeetingSourceType.SHARED_AUDIO and not has_system_audio:
+        raise RealtimeCaptureError("共有元の音声共有を有効にしてください")
     base_mime = _base_mime_type(mime_type)
     allowed_mime_types = (
         ALLOWED_REALTIME_AUDIO_MIME_TYPES if audio_only else ALLOWED_REALTIME_MIME_TYPES
@@ -236,7 +242,7 @@ def append_realtime_chunk(
     if media is None:
         raise RealtimeCaptureError("録画メディアが見つかりません")
     meeting = db.get(Meeting, realtime_session.meeting_id)
-    audio_only = meeting is not None and meeting.source_type == MeetingSourceType.AUDIO_RECORDING
+    audio_only = media.kind == MediaKind.ORIGINAL_AUDIO
     max_upload_bytes = (
         storage.max_audio_upload_bytes if audio_only else storage.max_video_upload_bytes
     )
@@ -532,7 +538,10 @@ def finish_realtime_video_part(
 def finalize_realtime_session(db: Session, realtime_session: RealtimeSession) -> Job | None:
     if realtime_session.status != RealtimeSessionStatus.RECORDING:
         meeting = db.get(Meeting, realtime_session.meeting_id)
-        if meeting is not None and meeting.source_type == MeetingSourceType.AUDIO_RECORDING:
+        if meeting is not None and meeting.source_type in {
+            MeetingSourceType.AUDIO_RECORDING,
+            MeetingSourceType.SHARED_AUDIO,
+        }:
             return None
         expected_job_type = JobType.PREPROCESS_MEDIA
         existing = db.scalar(
@@ -568,7 +577,7 @@ def finalize_realtime_session(db: Session, realtime_session: RealtimeSession) ->
     if meeting is None:
         raise RealtimeCaptureError("会議が見つかりません")
     meeting.duration_ms = realtime_session.duration_ms
-    if meeting.source_type == MeetingSourceType.AUDIO_RECORDING:
+    if meeting.source_type in {MeetingSourceType.AUDIO_RECORDING, MeetingSourceType.SHARED_AUDIO}:
         meeting.status = MeetingStatus.COMPLETED
         db.commit()
         return None

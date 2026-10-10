@@ -96,7 +96,10 @@ def test_existing_final_only_enqueues_analysis_and_request_is_idempotent(client,
         assert (meeting.ai_profile_id, meeting.template_snapshot) == original_settings
 
 
-@pytest.mark.parametrize("source", [MeetingSourceType.LIVE, MeetingSourceType.AUDIO_RECORDING])
+@pytest.mark.parametrize(
+    "source",
+    [MeetingSourceType.LIVE, MeetingSourceType.AUDIO_RECORDING, MeetingSourceType.SHARED_AUDIO],
+)
 def test_first_whole_transcription_freezes_selection_and_retries_reuse_final(
     client,
     session_factory,

@@ -32,7 +32,7 @@ type RecorderPhase = "idle" | "connecting" | "recording" | "stopping" | "finaliz
 
 interface LiveMeetingRecorderProps {
   meetingId: string;
-  captureMode?: "display" | "microphone";
+  captureMode?: "display" | "microphone" | "shared_audio";
   existingRecording: boolean;
   transcriptionReady: boolean;
   hasFinalTranscript: boolean;
@@ -133,6 +133,8 @@ export function LiveMeetingRecorder({
 }: LiveMeetingRecorderProps) {
   const router = useRouter();
   const isMicrophoneOnly = captureMode === "microphone";
+  const isAudioOnly = captureMode !== "display";
+  const captureLabel = isAudioOnly ? "録音" : "録画";
   const [phase, setPhase] = useState<RecorderPhase>(existingRecording ? "finalized" : "idle");
   const [includeMicrophone, setIncludeMicrophone] = useState(initialIncludeMicrophone);
   const [microphoneMuted, setMicrophoneMuted] = useState(!initialIncludeMicrophone);
@@ -145,7 +147,7 @@ export function LiveMeetingRecorder({
     useState<DisplayCaptureSupport | null>(null);
   const [message, setMessage] = useState<string>(
     existingRecording
-      ? isMicrophoneOnly
+      ? isAudioOnly
         ? "録音済みです。"
         : "録画済みです。会議ノートの「要約を再生成」から生成できます。"
       : "",
@@ -309,7 +311,7 @@ export function LiveMeetingRecorder({
     const stoppedAtMs = currentElapsedMs();
     setElapsedMs(stoppedAtMs);
     setPhase("stopping");
-    setMessage(isMicrophoneOnly ? "最後の録音データを保存しています…" : "最後の録画データを保存しています…");
+    setMessage(`最後の${captureLabel}データを保存しています…`);
     try {
       const azureSpeech = azureSpeechRef.current;
       azureSpeechRef.current = null;
@@ -320,7 +322,7 @@ export function LiveMeetingRecorder({
           // The recording still needs to be saved if Azure recognition already stopped.
         }
       }
-      if (!isMicrophoneOnly) await stopVideoPart(stoppedAtMs);
+      if (!isAudioOnly) await stopVideoPart(stoppedAtMs);
       await stopMediaRecorder(audioRecorderRef.current);
       audioRecorderRef.current = null;
       const connection = connectionRef.current;
@@ -332,28 +334,30 @@ export function LiveMeetingRecorder({
       setMessage(
         error instanceof Error
           ? error.message
-          : isMicrophoneOnly
+          : isAudioOnly
             ? "録音を保存できませんでした"
             : "録画を保存できませんでした",
       );
       connectionRef.current?.close();
     }
     releaseMedia();
-  }, [currentElapsedMs, isMicrophoneOnly, releaseMedia, stopVideoPart]);
+  }, [captureLabel, currentElapsedMs, isAudioOnly, releaseMedia, stopVideoPart]);
 
   const handleDisplayEnded = useCallback((displayStream: MediaStream) => {
     const captureMixer = captureMixerRef.current;
     if (!captureMixer?.isCurrentDisplay(displayStream)) return;
     const endedAtMs = currentElapsedMs();
     captureMixer.handleDisplayEnded(displayStream);
-    void stopVideoPart(endedAtMs).catch((error: unknown) => {
-      setPhase("error");
-      setMessage(error instanceof Error ? error.message : "映像Partを保存できませんでした");
-    });
+    if (!isAudioOnly) {
+      void stopVideoPart(endedAtMs).catch((error: unknown) => {
+        setPhase("error");
+        setMessage(error instanceof Error ? error.message : "映像Partを保存できませんでした");
+      });
+    }
     setDisplayInterrupted(true);
     setHasSystemAudio(false);
-    setMessage("画面共有が停止しました。録画セッションは継続しています。左の画面共有ボタンから共有する画面を選び直してください。");
-  }, [currentElapsedMs, stopVideoPart]);
+    setMessage(`画面共有が停止しました。${captureLabel}は継続しています。共有音声は停止中です。画面共有ボタンから共有する画面を選び直してください。`);
+  }, [captureLabel, currentElapsedMs, isAudioOnly, stopVideoPart]);
 
   const startRecording = useCallback(async () => {
     const recordingLabel = isMicrophoneOnly ? "録音" : "画面共有";
@@ -361,6 +365,7 @@ export function LiveMeetingRecorder({
     setMessage(isMicrophoneOnly ? "マイクを準備しています…" : "画面共有を準備しています…");
     setDisplayInterrupted(false);
     stoppingRef.current = false;
+    let preparedAudioContext: AudioContext | null = null;
     try {
       const support = isMicrophoneOnly
         ? detectMicrophoneCaptureSupport()
@@ -398,7 +403,7 @@ export function LiveMeetingRecorder({
         displayStream = initialDisplayStream ?? pendingCapture?.stream ?? null;
         shouldIncludeMicrophone = pendingCapture?.includeMicrophone ?? !microphoneMuted;
         setMicrophoneMuted(!shouldIncludeMicrophone);
-        const preparedAudioContext = pendingCapture?.audioContext ?? null;
+        preparedAudioContext = pendingCapture?.audioContext ?? null;
         if (
           !displayStream
           || !displayStream.getVideoTracks().some((track) => track.readyState === "live")
@@ -411,6 +416,9 @@ export function LiveMeetingRecorder({
         streamsRef.current = [displayStream];
         systemAudioTracks = displayStream.getAudioTracks();
         setHasSystemAudio(systemAudioTracks.length > 0);
+        if (isAudioOnly && !systemAudioTracks.some((track) => track.readyState === "live")) {
+          throw new Error("共有音声を取得できません。共有画面を選び直し、共有ダイアログで音声共有を有効にしてください。");
+        }
 
         if (shouldIncludeMicrophone) {
           microphoneStream = await navigator.mediaDevices.getUserMedia({
@@ -420,14 +428,17 @@ export function LiveMeetingRecorder({
           streamsRef.current.push(microphoneStream);
         }
 
-        if (!videoRef.current) throw new Error("録画プレビューを初期化できませんでした");
+        if (!isAudioOnly && !videoRef.current) throw new Error("録画プレビューを初期化できませんでした");
+        // Display capture still needs a video track to keep sharing alive. Audio-only
+        // capture skips playback and never passes that track to a MediaRecorder.
         const captureMixer = await LiveCaptureMixer.create(
           displayStream,
           microphoneStream,
-          videoRef.current,
+          isAudioOnly ? null : videoRef.current,
           preparedAudioContext,
         );
         captureMixerRef.current = captureMixer;
+        preparedAudioContext = null;
         const videoTrack = captureMixer.currentVideoTrack();
         if (!videoTrack || videoTrack.readyState !== "live") {
           throw new Error("録画用の映像トラックを作成できませんでした。共有画面を選び直してください");
@@ -446,8 +457,7 @@ export function LiveMeetingRecorder({
       });
       observeMediaRecorderStop(audioRecorder);
       audioRecorderRef.current = audioRecorder;
-      const videoMimeType = isMicrophoneOnly ? undefined : videoRecorderMimeType();
-      const captureLabel = isMicrophoneOnly ? "録音" : "録画";
+      const videoMimeType = isAudioOnly ? undefined : videoRecorderMimeType();
       const connection = new RecordingConnection({
         url: websocketUrl(meetingId),
         onMessage: (payload) => {
@@ -466,7 +476,7 @@ export function LiveMeetingRecorder({
             if (typeof payload.duration_ms === "number") setElapsedMs(payload.duration_ms);
             setPhase("finalized");
             setMessage(
-              isMicrophoneOnly
+              isAudioOnly
                 ? "録音を保存しました。リアルタイム版を会議ノートで確認し、「要約を再生成」から生成できます。"
                 : "録画を保存しました。動画変換後、会議ノートの「要約を再生成」から生成できます。",
             );
@@ -495,12 +505,12 @@ export function LiveMeetingRecorder({
       });
       connectionRef.current = connection;
       const startedMessage = await connection.start(
-        isMicrophoneOnly
+        isAudioOnly
           ? {
               type: "start",
               capture_mode: "audio",
               mime_type: audioRecorder.mimeType || "audio/webm",
-              has_system_audio: false,
+              has_system_audio: systemAudioTracks.length > 0,
             }
           : {
               type: "start",
@@ -597,7 +607,7 @@ export function LiveMeetingRecorder({
         const sequence = audioSequenceRef.current++;
         audioChunkStartRef.current = endMs;
         queuePayload({
-          type: isMicrophoneOnly ? "chunk" : "audio_chunk",
+          type: isAudioOnly ? "chunk" : "audio_chunk",
           sequence,
           start_ms: startMs,
           end_ms: endMs,
@@ -607,32 +617,42 @@ export function LiveMeetingRecorder({
         displayStream.getVideoTracks()[0]?.addEventListener("ended", () => {
           handleDisplayEnded(displayStream);
         });
+        if (isAudioOnly) {
+          for (const track of systemAudioTracks) {
+            track.addEventListener("ended", () => handleDisplayEnded(displayStream));
+          }
+        }
       }
       recordingActiveRef.current = true;
       audioRecorder.start(started.chunkMs);
-      if (displayStream) startVideoPart(displayStream, 0);
+      if (displayStream && !isAudioOnly) startVideoPart(displayStream, 0);
       setPhase("recording");
       recordingMessageRef.current = started.transcriptionProvider === "azure_speech"
-        ? isMicrophoneOnly
+        ? isAudioOnly
           ? "録音中です。Azure AI Speechが発話ごとに文字起こしします。"
           : "録画中です。プレビュー音声だけを消音し、Azure AI Speechが発話ごとに文字起こしします。"
-        : isMicrophoneOnly
+        : isAudioOnly
           ? "録音中です。文字起こしは数十秒遅れて表示されます。"
           : "録画中です。ハウリング防止のためプレビュー音声だけを消音しています。音声は録画に保存され、文字起こしは数十秒遅れて表示されます。";
       setMessage(recordingMessageRef.current);
     } catch (error) {
       recordingActiveRef.current = false;
       releaseMedia();
+      if (preparedAudioContext && preparedAudioContext.state !== "closed") {
+        void preparedAudioContext.close();
+      }
       connectionRef.current?.close();
       setPhase("error");
       setMessage(error instanceof Error ? error.message : `${recordingLabel}を開始できませんでした`);
     }
   }, [
+    captureLabel,
     currentElapsedMs,
     handleDisplayEnded,
     microphoneMuted,
     initialDisplayStream,
     isMicrophoneOnly,
+    isAudioOnly,
     meetingId,
     onFinalized,
     queuePayload,
@@ -662,7 +682,7 @@ export function LiveMeetingRecorder({
       return;
     }
     setSwitchingDisplay(true);
-    setMessage("新しい共有画面を選択してください。録画は継続しています…");
+    setMessage(`新しい共有画面を選択してください。${captureLabel}は継続しています…`);
     let replacement: MediaStream | null = null;
     let previousVideoTrack: MediaStreamTrack | null = null;
     let previousPartStopped = false;
@@ -670,17 +690,27 @@ export function LiveMeetingRecorder({
       replacement = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
       streamsRef.current.push(replacement);
       const replacementStream = replacement;
+      if (isAudioOnly && !replacementStream.getAudioTracks().some((track) => track.readyState === "live")) {
+        throw new Error("共有音声を取得できません。音声共有を有効にして選び直してください。");
+      }
       previousVideoTrack = captureMixer.currentVideoTrack();
-      await stopVideoPart(currentElapsedMs());
-      previousPartStopped = true;
+      if (!isAudioOnly) {
+        await stopVideoPart(currentElapsedMs());
+        previousPartStopped = true;
+      }
       const systemAudioAvailable = await captureMixer.replaceDisplay(replacementStream);
-      startVideoPart(replacementStream, currentElapsedMs());
+      if (!isAudioOnly) startVideoPart(replacementStream, currentElapsedMs());
       setHasSystemAudio(systemAudioAvailable);
       setDisplayInterrupted(false);
       replacementStream.getVideoTracks()[0]?.addEventListener("ended", () => {
         handleDisplayEnded(replacementStream);
       });
-      setMessage("共有画面を再開しました。録画と文字起こしは同じタイムラインで継続しています。");
+      if (isAudioOnly) {
+        for (const track of replacementStream.getAudioTracks()) {
+          track.addEventListener("ended", () => handleDisplayEnded(replacementStream));
+        }
+      }
+      setMessage(`共有画面を再開しました。${captureLabel}と文字起こしは同じタイムラインで継続しています。`);
     } catch (error) {
       if (replacement && !captureMixer.isCurrentDisplay(replacement)) {
         for (const track of replacement.getTracks()) track.stop();
@@ -699,19 +729,21 @@ export function LiveMeetingRecorder({
       setMessage(
         error instanceof DOMException && error.name === "NotAllowedError"
           ? displayInterrupted
-            ? "共有画面の再選択をキャンセルしました。録画セッションは継続していますが、画面共有は停止中です。"
-            : "共有画面の変更をキャンセルしました。録画は継続しています。"
+            ? `共有画面の再選択をキャンセルしました。${captureLabel}は継続していますが、画面共有は停止中です。`
+            : `共有画面の変更をキャンセルしました。${captureLabel}は継続しています。`
           : error instanceof Error
             ? `共有画面を変更できませんでした: ${error.message}`
-            : "共有画面を変更できませんでした。録画は継続しています。",
+            : `共有画面を変更できませんでした。${captureLabel}は継続しています。`,
       );
     } finally {
       setSwitchingDisplay(false);
     }
   }, [
+    captureLabel,
     currentElapsedMs,
     displayInterrupted,
     handleDisplayEnded,
+    isAudioOnly,
     phase,
     startVideoPart,
     stopVideoPart,
@@ -760,14 +792,14 @@ export function LiveMeetingRecorder({
           共有音声の回り込みを防ぐため、ヘッドホンの使用を推奨します。
         </p>
       )}
-      <div className={styles.previewFrame} data-audio-only={isMicrophoneOnly}>
-        {isMicrophoneOnly ? (
+      <div className={styles.previewFrame} data-audio-only={isAudioOnly}>
+        {isAudioOnly ? (
           <div className={styles.audioPreview}>
-            <span className={styles.audioPreviewIcon} data-muted={microphoneMuted}>
-              <MicrophoneIcon muted={microphoneMuted} />
+            <span className={styles.audioPreviewIcon} data-muted={isMicrophoneOnly && microphoneMuted}>
+              {isMicrophoneOnly ? <MicrophoneIcon muted={microphoneMuted} /> : <ChangeDisplayIcon />}
             </span>
-            <strong>マイク音声を録音</strong>
-            <span>画面共有は行いません</span>
+            <strong>{isMicrophoneOnly ? "マイク音声を録音" : "共有音声とマイクを録音"}</strong>
+            <span>{isMicrophoneOnly ? "画面共有は行いません" : "映像は保存しません。マイクはONのときに含めます"}</span>
           </div>
         ) : (
           <video ref={videoRef} className={styles.preview} muted playsInline />
@@ -783,7 +815,7 @@ export function LiveMeetingRecorder({
             <span>
               {phase === "stopping"
                 ? "保存中"
-                : isMicrophoneOnly
+                : isAudioOnly
                   ? "録音中"
                   : displayInterrupted
                     ? "録画継続中"
@@ -801,13 +833,13 @@ export function LiveMeetingRecorder({
             </span>
             <strong>画面共有が停止しました</strong>
             <span>
-              録画は継続中です。下の「共有画面を選んで再開」から共有する画面を選び直してください。
+              {captureLabel}は継続中です。下の「共有画面を選んで再開」から共有する画面を選び直してください。
             </span>
           </div>
         )}
       </div>
       {existingRecording ? (
-        isMicrophoneOnly ? (
+        isAudioOnly ? (
           <div className={styles.finalProcessing}>
             <p>
               {finalProcessing
@@ -861,7 +893,7 @@ export function LiveMeetingRecorder({
         <div
           className={styles.recordingControls}
           role="toolbar"
-          aria-label={isMicrophoneOnly ? "録音操作" : "録画操作"}
+          aria-label={isAudioOnly ? "録音操作" : "録画操作"}
         >
           {!isMicrophoneOnly && (
             <button
@@ -917,12 +949,12 @@ export function LiveMeetingRecorder({
           <button
             className={`${styles.iconButton} ${styles.stopIconButton}`}
             type="button"
-            aria-label={isMicrophoneOnly ? "録音を終了して確定" : "録画を終了して確定"}
-            title={isMicrophoneOnly ? "録音を終了して確定" : "録画を終了して確定"}
+            aria-label={`${captureLabel}を終了して確定`}
+            title={`${captureLabel}を終了して確定`}
             onClick={() => void stopRecording()}
           >
             <StopRecordingIcon />
-            <span className={styles.controlLabel}>{isMicrophoneOnly ? "録音を終了して確定" : "録画を終了して確定"}</span>
+            <span className={styles.controlLabel}>{captureLabel}を終了して確定</span>
           </button>
         </div>
       ) : (

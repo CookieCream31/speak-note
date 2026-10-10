@@ -3,6 +3,7 @@ import type { MeetingSourceType, MeetingStatus } from "./api";
 export const sourceLabels: Record<MeetingSourceType, string> = {
   live: "画面共有",
   audio_recording: "録音",
+  shared_audio: "共有音声",
   media_upload: "ファイル",
   video_upload: "動画",
   audio_upload: "音声",
@@ -30,4 +31,3 @@ export function formatDate(isoDate: string): string {
     timeZone: "Asia/Tokyo",
   }).format(new Date(isoDate));
 }
-

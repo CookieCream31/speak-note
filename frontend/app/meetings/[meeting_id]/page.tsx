@@ -200,7 +200,8 @@ export default async function MeetingDetailPage({
   if (!meetingResult) notFound();
   meeting = meetingResult;
   const isRealtimeCapture = meeting.source_type === "live"
-    || meeting.source_type === "audio_recording";
+    || meeting.source_type === "audio_recording" || meeting.source_type === "shared_audio";
+  const isAudioCapture = meeting.source_type === "audio_recording" || meeting.source_type === "shared_audio";
 
   [
     media,
@@ -303,7 +304,7 @@ export default async function MeetingDetailPage({
 
   const regeneration: SummaryRegenerationProps = {
     meetingId: meeting.id,
-    ready: Boolean(finalTranscript) || (archivedLiveMeeting && Boolean(meeting.source_type === "audio_recording" ? originalAudio : transcriptionAudio)),
+    ready: Boolean(finalTranscript) || (archivedLiveMeeting && Boolean(isAudioCapture ? originalAudio : transcriptionAudio)),
     processing: jobs.some((job) => ["preprocess_media", "transcribe", "analyze"].includes(job.type) && ["queued", "running"].includes(job.status))
       || liveSession?.status === "recording" || liveSession?.status === "finalizing",
     profiles: aiProfiles,
@@ -339,7 +340,7 @@ export default async function MeetingDetailPage({
           <MeetingTitleEditor meetingId={meeting.id} title={meeting.title} />
           <div className={styles.meta}>
             <span className={styles.statusPill} data-status={meeting.status}>
-              {meeting.source_type === "audio_recording" && meeting.status === "recording"
+              {isAudioCapture && meeting.status === "recording"
                 ? "録音中"
                 : statusLabels[meeting.status]}
             </span>
@@ -437,14 +438,14 @@ export default async function MeetingDetailPage({
               <div className={styles.uploadPanel}>
                 <LiveMeetingRecorder
                   meetingId={meeting.id}
-                  captureMode={meeting.source_type === "audio_recording" ? "microphone" : "display"}
+                  captureMode={meeting.source_type === "audio_recording" ? "microphone" : meeting.source_type === "shared_audio" ? "shared_audio" : "display"}
                   existingRecording={
-                    meeting.source_type === "audio_recording"
+                    isAudioCapture
                       ? Boolean(originalAudio)
                       : Boolean(originalVideo)
                   }
                   transcriptionReady={
-                    meeting.source_type === "audio_recording"
+                    isAudioCapture
                       ? Boolean(originalAudio)
                       : Boolean(transcriptionAudio)
                   }
@@ -458,9 +459,9 @@ export default async function MeetingDetailPage({
                   initialIncludeMicrophone={startMicrophoneMuted === "0"}
                   autoStart={startRecording === "1" && !uploadedOriginal}
                   resumePendingCapture={
-                    meeting.source_type === "live"
+                    (meeting.source_type === "live" || meeting.source_type === "shared_audio")
                     && startRecording === "1"
-                    && !originalVideo
+                    && !uploadedOriginal
                   }
                 />
               </div>

@@ -1,6 +1,7 @@
 import subprocess
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -295,15 +296,19 @@ def test_azure_streaming_results_are_saved_without_chunk_transcription_jobs(
         assert second.start_ms == 4000
 
 
-def test_microphone_recording_saves_audio_without_automatic_final_transcription(
+@pytest.mark.parametrize(
+    "source", [MeetingSourceType.AUDIO_RECORDING, MeetingSourceType.SHARED_AUDIO]
+)
+def test_audio_recording_saves_audio_without_automatic_final_transcription(
     session_factory: sessionmaker[Session],
     tmp_path: Path,
+    source: MeetingSourceType,
 ) -> None:
     storage = MediaStorage(tmp_path, 10, 10)
     with session_factory() as db:
         meeting = Meeting(
             title="Microphone recording",
-            source_type=MeetingSourceType.AUDIO_RECORDING,
+            source_type=source,
         )
         db.add(meeting)
         db.commit()
@@ -312,7 +317,7 @@ def test_microphone_recording_saves_audio_without_automatic_final_transcription(
             meeting,
             storage,
             mime_type="audio/webm;codecs=opus",
-            has_system_audio=False,
+            has_system_audio=source == MeetingSourceType.SHARED_AUDIO,
             model="large-v3",
             language="ja",
         )
@@ -340,6 +345,9 @@ def test_microphone_recording_saves_audio_without_automatic_final_transcription(
         assert realtime_session.status == RealtimeSessionStatus.COMPLETED
         assert final_job is None
         assert meeting.status == MeetingStatus.COMPLETED
+        assert list(db.scalars(select(RealtimeVideoPart))) == []
+        assert list(db.scalars(select(Media).where(Media.kind == MediaKind.ORIGINAL_VIDEO))) == []
+        assert list(db.scalars(select(Job).where(Job.type == JobType.PREPROCESS_MEDIA))) == []
         assert (
             db.scalar(
                 select(Job.id).where(Job.meeting_id == meeting.id, Job.type == JobType.TRANSCRIBE)

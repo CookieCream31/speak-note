@@ -31,9 +31,9 @@ export function displayCaptureSupportMessage(
   support: Exclude<DisplayCaptureSupport, "supported">,
 ): string {
   if (support === "insecure") {
-    return "画面共有録画にはHTTPS接続が必要です。HTTPSで開き直してください。";
+    return "画面共有にはHTTPS接続が必要です。HTTPSで開き直してください。";
   }
-  return "この端末またはブラウザは、Web画面共有録画に対応していません。端末の画面収録を保存し、音声・動画ファイルとしてアップロードしてください。";
+  return "この端末またはブラウザは、Web画面共有に対応していません。端末の画面収録を保存し、音声・動画ファイルとしてアップロードしてください。";
 }
 
 export function detectMicrophoneCaptureSupport(): DisplayCaptureSupport {

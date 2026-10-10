@@ -29,21 +29,24 @@ def storage(tmp_path: Path) -> Generator[MediaStorage, None, None]:
     app.dependency_overrides.pop(get_storage, None)
 
 
-def _create_meeting(session_factory: sessionmaker[Session]) -> uuid.UUID:
+def _create_meeting(
+    session_factory: sessionmaker[Session],
+    source: MeetingSourceType = MeetingSourceType.AUDIO_RECORDING,
+) -> uuid.UUID:
     with session_factory() as session:
-        meeting = Meeting(title="WebSocket", source_type=MeetingSourceType.AUDIO_RECORDING)
+        meeting = Meeting(title="WebSocket", source_type=source)
         session.add(meeting)
         session.commit()
         return meeting.id
 
 
-def _start(websocket: Any) -> dict[str, Any]:
+def _start(websocket: Any, *, has_system_audio: bool = False) -> dict[str, Any]:
     websocket.send_json(
         {
             "type": "start",
             "capture_mode": "audio",
             "mime_type": "audio/webm;codecs=opus",
-            "has_system_audio": False,
+            "has_system_audio": has_system_audio,
         }
     )
     return websocket.receive_json()
@@ -158,16 +161,22 @@ def _send_chunk(websocket: Any, sequence: int, content: bytes) -> dict[str, Any]
     return websocket.receive_json()
 
 
+@pytest.mark.parametrize(
+    "source", [MeetingSourceType.AUDIO_RECORDING, MeetingSourceType.SHARED_AUDIO]
+)
 def test_websocket_resumes_after_network_loss_and_ignores_replayed_chunks(
     client: TestClient,
     session_factory: sessionmaker[Session],
     storage: MediaStorage,
+    source: MeetingSourceType,
 ) -> None:
-    meeting_id = _create_meeting(session_factory)
+    meeting_id = _create_meeting(session_factory, source)
     url = f"/api/v1/meetings/{meeting_id}/live/ws"
 
     with client.websocket_connect(url) as websocket:
-        session_id = _start(websocket)["session_id"]
+        session_id = _start(websocket, has_system_audio=source == MeetingSourceType.SHARED_AUDIO)[
+            "session_id"
+        ]
         assert _send_chunk(websocket, 0, b"first")["type"] == "chunk_saved"
         # Not a browser-initiated close: the recording must stay resumable.
         websocket.close(code=4001)
