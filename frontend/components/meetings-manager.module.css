@@ -216,7 +216,7 @@
 .autoAnalyzeOption input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .autoAnalyzeOption input:disabled { cursor: not-allowed; opacity: .55; }
 .inlineWarning { margin: 0; padding: 9px 10px; color: var(--warning) !important; background: var(--warning-soft); border-radius: 8px; font-size: 13px; }
-.summaryPreferences label { display: grid; gap: 6px; margin: 0; }
+.summaryPreferences label:not(.autoAnalyzeOption) { display: grid; gap: 6px; margin: 0; }
 .summaryPreferences label:not(.autoAnalyzeOption) > span { color: var(--muted); font-size: 12px; }
 .summaryPreferences select, .summaryPreferences textarea { width: 100%; padding: 0 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 14px; }
 .summaryPreferences select { min-height: 38px; }

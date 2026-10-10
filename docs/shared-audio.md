@@ -77,3 +77,19 @@ Python9ファイルは上記のモデル・Capture Service・Transcript Route・
 再試行テストは初回に失敗し、disabledのradioがFormDataに含まれないことを確認して実装を修正しました。テスト内容を弱めずに成功しています。Backendのコードに変更はないため、Backendの検証結果は初回検証の表を参照してください。実端末・OSの音声共有・外部AI接続・実音声の保存と再生は今回の表示変更でも未検証です。運用中サービスの再起動は行っていません。
 
 ブラウザ確認は既存の一時ハーネスを最新ソースでbundleし、実コンポーネントと合成MediaStream・モックAPIを使用しました。`PLAYWRIGHT_BROWSERS_PATH=/tmp/speak-note-browsers LD_LIBRARY_PATH=/tmp/speak-note-browser-libs/usr/lib/x86_64-linux-gnu FONTCONFIG_FILE=/tmp/speak-note-preview/fonts.conf /tmp/speak-note-title-speed-verify-env/bin/python /tmp/speak-note-shared-audio-browser/check_record_video.py`を実行しました。393pxのダーク表示と1280pxのライト表示のスクリーンショットも確認しました。稼働中アプリ・会議・外部サービスへアクセスせず、一時サーバーは確認後に停止しました。
+
+## 録画・AIスイッチの配置統一（2026-10-11）
+
+AI設定内の一般入力欄向けCSSがスイッチの横並びを上書きし、スイッチを説明の下へ表示していました。`meetings-manager.module.css`の一般ラベル向け指定からスイッチを除外し、「映像を録画する」とAI利用の両方で共通の横並びを使用するよう修正しました。左にタイトル・説明、右にスイッチを置き、狭い画面でも説明だけを折り返します。アップロードのAI自動要約にも同じ表示を適用します。
+
+変更ファイルは上記CSS、README、DESIGN、`docs/usage.md`、この記録の5件です。スイッチの保存内容・AI処理・録画処理は従来どおりです。
+
+| コマンド | 結果 |
+| --- | --- |
+| Frontend: `/tmp/node-v22.16.0-linux-x64/bin/node node_modules/vitest/vitest.mjs run` | 全41ファイル212件成功 |
+| Frontend: `/tmp/node-v22.16.0-linux-x64/bin/node node_modules/typescript/bin/tsc --noEmit` | 成功 |
+| Frontend: `/tmp/node-v22.16.0-linux-x64/bin/node node_modules/eslint/bin/eslint.js .` | 成功。formatter専用設定はなく、既存のESLintで書式を確認 |
+| Chromium: 上記と同じ一時環境で `/tmp/speak-note-title-speed-verify-env/bin/python /tmp/speak-note-shared-audio-browser/check_switch_alignment.py` | 両テーマ・320/393/560/844/1280px・3つの取り込み方法の30ケース成功。両スイッチの右端・40×24pxの寸法・縦中央配置・横はみ出しなしを確認。説明クリック・SpaceでのAI切替、OFF時の関連入力欄の無効化、録画設定の維持も確認 |
+| `git diff --check` | 成功 |
+
+393pxのダーク表示と1280pxのライト表示はスクリーンショットでも確認しました。ブラウザ検証は実コンポーネント・モックAPIを使用し、会議の作成や実録音は行っていません。実スマートフォン・Safariは未検証です。Backend・DB変更はないためBackendテストは再実行していません。稼働中Dockerは操作せず、一時ブラウザ検証サーバーを停止しました。反映は[Frontendのみの手順](operations.md#record-video-toggle)と同じで、録音・録画の停止・保存完了後にブラウザを再読み込みします。
