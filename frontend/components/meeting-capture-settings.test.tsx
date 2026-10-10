@@ -152,7 +152,8 @@ describe("screen sharing recording setting", () => {
   it("restores video ON when a new dialog is opened", async () => {
     await selectMethod("live"); await toggleVideo();
     await act(async () => Array.from(host.querySelectorAll("button")).find((button) => button.textContent === "キャンセル")!.click());
-    await act(async () => Array.from(host.querySelectorAll("button")).find((button) => button.textContent?.startsWith("画面共有"))!.click());
+    await act(async () => Array.from(host.querySelectorAll("button")).find((button) => button.textContent === "新しい会議")!.click());
+    await selectMethod("live");
     expect(videoSwitch().checked).toBe(true);
   });
 });

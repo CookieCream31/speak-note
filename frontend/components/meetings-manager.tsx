@@ -46,24 +46,20 @@ import { NewMeetingProjectField } from "./new-meeting-project-field";
 interface SourceOption {
   value: MeetingSourceType;
   label: string;
-  description: string;
 }
 
 const sourceOptions: SourceOption[] = [
   {
     value: "media_upload",
     label: "音声・動画をアップロード",
-    description: "mp4・mov・webm・m4a・mp3・wav・flac",
   },
   {
     value: "live",
     label: "画面共有",
-    description: "共有音声とマイクを記録・録画は任意",
   },
   {
     value: "audio_recording",
     label: "マイク音声を録音",
-    description: "画面共有なしで音声を記録",
   },
 ];
 
@@ -738,18 +734,6 @@ export function MeetingsManager({
         </header>
 
         <section className={styles.dashboard} data-bulk-open={selectedMeetingIds.length > 0}>
-          <div className={styles.quickActions} role="group" aria-label="取り込み方法">
-            {sourceOptions.map((option) => (
-              <button type="button" key={option.value} onClick={() => openCreate(option.value)}>
-                <span className={styles.sourceIcon} aria-hidden="true"><SourceIcon sourceType={option.value} /></span>
-                <span>
-                  <strong>{option.label}</strong>
-                  <small>{option.description}</small>
-                </span>
-              </button>
-            ))}
-          </div>
-
           {attentionMeetings.length > 0 && (
             <section className={styles.attention} aria-labelledby="attention-title">
               <header>
@@ -853,7 +837,7 @@ export function MeetingsManager({
               <div className={styles.emptyState}>
                 <Inbox size={32} aria-hidden="true" />
                 <h3>最初の会議を作成しましょう</h3>
-                <p>上の取り込み方法から音声・動画・画面共有を選択できます。</p>
+                <p>「新しい会議」から音声・動画・画面共有の取り込み方法を選択できます。</p>
               </div>
             ) : !loadError && visibleMeetings.length === 0 ? (
               <div className={styles.emptyState}>

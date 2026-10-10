@@ -2,11 +2,11 @@
 
 最終照合: 2026-10-11。[README](../README.md) · [操作手順](usage.md#shared-audio) · [Dockerへの反映](operations.md#shared-audio)
 
-取り込み方法は「音声・動画をアップロード」「画面共有」「マイク音声を録音」の3つです。「画面共有」内の「映像を録画する」をOFFにすると、共有音声とONのマイクを混合して音声ファイルだけ保存します。初期値はONで従来の画面共有録画を使用します。音声のみでもブラウザの共有許可は必要ですが、映像Preview・映像Recorder・映像Chunk・動画変換は使用しません。
+ホームの「新しい会議」からダイアログを開き、「音声・動画をアップロード」「画面共有」「マイク音声を録音」の3つから取り込み方法を選びます。ホーム上の取り込み方法のショートカットは表示しません。「画面共有」内の「映像を録画する」をOFFにすると、共有音声とONのマイクを混合して音声ファイルだけ保存します。初期値はONで従来の画面共有録画を使用します。音声のみでもブラウザの共有許可は必要ですが、映像Preview・映像Recorder・映像Chunk・動画変換は使用しません。
 
 ## 主な変更箇所
 
-- `frontend/components/meetings-manager.tsx`とCSS: 3つの取り込み方法、画面共有内の録画スイッチ、音声共有の案内、音声のみの開始。通常3列、スマートフォンでは1列のコンパクトなカード。
+- `frontend/components/meetings-manager.tsx`とCSS: ホームは「新しい会議」から作成し、ダイアログ内で3つの取り込み方法を選択。画面共有内の録画スイッチ、音声共有の案内、音声のみの開始。方法のカードは通常3列、スマートフォンでは1列のコンパクトな表示。
 - `frontend/components/live-meeting-recorder.tsx`、`frontend/lib/live-capture.ts`: 音声だけの保存、共有先の変更・停止・再開、マイク切替、WhisperX/Azureへの混合音声入力。
 - `frontend/app/meetings/[meeting_id]/page.tsx`、`frontend/lib/realtime-analysis-history.ts`: 保存済み音声の再生、Live会議ノート、変換待ちを要しない要約再生成。
 - `frontend/lib/api.ts`、`format.ts`、`display-capture.ts`: source type・一覧表示と共有の対応案内。
@@ -61,7 +61,7 @@ Python9ファイルは上記のモデル・Capture Service・Transcript Route・
 
 ## 画面共有内の録画スイッチ（2026-10-11）
 
-ホームと会議作成の入口を3つにまとめ、「画面共有」内に「映像を録画する」を追加しました。ONは既存の`live`、OFFは既存の`shared_audio`として作成します。切替時に共有画面とマイク状態を保持し、新しい会議ダイアログではONへ戻ります。会議作成後は方式と録画スイッチを固定します。AI設定保存の失敗後も再試行で同じ会議を使用できるよう、無効化されたradioのFormDataではなく保持した選択状態を使用します。
+この作業ではホームと会議作成の取り込み方法を3つにまとめ、「画面共有」内に「映像を録画する」を追加しました。ホームのショートカットは後述の作成入口の整理で撤去しています。ONは既存の`live`、OFFは既存の`shared_audio`として作成します。切替時に共有画面とマイク状態を保持し、新しい会議ダイアログではONへ戻ります。会議作成後は方式と録画スイッチを固定します。AI設定保存の失敗後も再試行で同じ会議を使用できるよう、無効化されたradioのFormDataではなく保持した選択状態を使用します。
 
 変更ファイルは`meetings-manager.tsx`、`meetings-manager.module.css`、`meetings-manager.test.tsx`、新規`meeting-capture-settings.test.tsx`、README・DESIGN・usage・development・operations・この記録です。Backend・Recorder・依存・環境変数・DBに追加変更はありません。反映は[Frontendのみの手順](operations.md#record-video-toggle)を参照してください。
 
@@ -93,3 +93,19 @@ AI設定内の一般入力欄向けCSSがスイッチの横並びを上書きし
 | `git diff --check` | 成功 |
 
 393pxのダーク表示と1280pxのライト表示はスクリーンショットでも確認しました。ブラウザ検証は実コンポーネント・モックAPIを使用し、会議の作成や実録音は行っていません。実スマートフォン・Safariは未検証です。Backend・DB変更はないためBackendテストは再実行していません。稼働中Dockerは操作せず、一時ブラウザ検証サーバーを停止しました。反映は[Frontendのみの手順](operations.md#record-video-toggle)と同じで、録音・録画の停止・保存完了後にブラウザを再読み込みします。
+
+## ホームの作成入口の整理（2026-10-11）
+
+ホーム上の取り込み方法のショートカットカードを撤去し、「新しい会議」から作成ダイアログを開く形に統一しました。会議がまだない場合の案内も同じ入口へ更新しました。作成ダイアログ内の3方式・録画スイッチ・AI設定はそのまま利用できます。専用CSSと使われなくなったショートカットの説明データを削除し、録画ON初期値の既存テストは「新しい会議」から開く操作へ更新しています。
+
+変更は`meetings-manager.tsx`、`meetings-manager.module.css`、`meeting-capture-settings.test.tsx`、README、DESIGN、`docs/{usage,development,operations,redesign,shared-audio}.md`の10ファイルです。初期リデザインのモックアップは参照資料として保持し、現行ホームにカードがないことをガイドに明記しました。
+
+| コマンド | 結果 |
+| --- | --- |
+| Frontend: `/tmp/node-v22.16.0-linux-x64/bin/node node_modules/vitest/vitest.mjs run` | 全41ファイル212件成功 |
+| Frontend: `/tmp/node-v22.16.0-linux-x64/bin/node node_modules/typescript/bin/tsc --noEmit` | 成功 |
+| Frontend: `/tmp/node-v22.16.0-linux-x64/bin/node node_modules/eslint/bin/eslint.js .` | 成功。formatter専用設定はなく、既存のESLintで書式を確認 |
+| Chromium: 上記と同じ一時環境で `/tmp/speak-note-title-speed-verify-env/bin/python /tmp/speak-note-shared-audio-browser/check_home_entry.py` | 両テーマ・320/393/560/844/1280pxの10ケース成功。ショートカットがないこと、ホームの作成ボタンが1つであること、空の会議一覧の案内、ダイアログの3方式・スイッチ、開き直した際の録画ON、横はみ出しなしを確認 |
+| `git diff --check` | 成功 |
+
+ブラウザ検証は実コンポーネント・モックAPIを使用し、実会議は作成していません。実スマートフォン・Safariは未検証です。Backend・DB変更はなく、Backendテストは再実行していません。Dockerの再起動は行っていません。反映は録音・録画の停止・保存完了後のブラウザ再読み込みで確認します。
