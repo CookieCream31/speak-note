@@ -40,7 +40,7 @@
 /* Content */
 .dashboard { max-width: 1400px; display: grid; gap: 24px; margin: 0 auto; padding: 28px 40px; }
 .dashboard[data-bulk-open="true"] { padding-bottom: 96px; }
-.quickActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.quickActions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .quickActions button { min-width: 0; display: flex; align-items: center; gap: 12px; padding: 12px 14px; color: var(--ink); text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; transition: border-color .15s, background-color .15s; }
 .quickActions button:hover { background: var(--surface-hover); border-color: var(--blue-border); }
 .quickActions button > span:last-child { min-width: 0; display: grid; gap: 2px; }
@@ -160,7 +160,7 @@
 .createDialog legend { padding: 0 0 8px; font-size: 13px; font-weight: 500; }
 
 /* Capture method: three selectable cards; the chosen one gets a dark border. */
-.sourcePicker { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.sourcePicker { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .sourcePicker label { position: relative; display: grid; justify-items: start; gap: 8px; padding: 12px; color: var(--ink); background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; cursor: pointer; }
 .sourcePicker label:hover { background: var(--surface-hover); }
 .sourcePicker label[data-selected="true"] { background: var(--surface-hover); border-color: var(--ink); }
@@ -205,8 +205,9 @@
 .summaryPreferences { display: grid; gap: 12px; }
 .autoAnalyzeOption { display: flex; align-items: center; gap: 12px; cursor: pointer; }
 .autoAnalyzeOption > span { min-width: 0; flex: 1; display: grid; gap: 2px; }
-.summaryPreferences .autoAnalyzeOption strong { color: var(--ink); font-size: 14px; font-weight: 500; }
-.summaryPreferences .autoAnalyzeOption small { color: var(--muted); font-size: 12px; }
+.autoAnalyzeOption strong { color: var(--ink); font-size: 14px; font-weight: 500; }
+.autoAnalyzeOption small { color: var(--muted); font-size: 12px; line-height: 1.6; }
+.recordVideoOption { padding: 12px 14px; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; }
 /* The checkbox is drawn as a switch; it stays a native, form-submitted input. */
 .autoAnalyzeOption input { position: relative; width: 40px; height: 24px; flex: 0 0 auto; margin: 0; background: var(--control-border); border-radius: 999px; cursor: pointer; appearance: none; transition: background-color .15s; }
 .autoAnalyzeOption input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background: var(--surface); border-radius: 50%; transition: transform .15s; }
@@ -361,7 +362,8 @@
 @media (max-width: 560px) {
   .overlay { padding: 0; place-items: end stretch; }
   .createDialog { width: 100%; border-radius: 16px 16px 0 0; }
-  .sourcePicker label { min-height: 44px; padding: 10px; }
+  .sourcePicker { grid-template-columns: 1fr; }
+  .sourcePicker label { min-height: 44px; grid-template-columns: 20px minmax(0, 1fr); align-items: center; gap: 10px; padding: 10px; }
   .fieldGrid { grid-template-columns: 1fr; }
   .field > input, .field > select, .summaryPreferences select, .summaryPreferences textarea, .speakerBounds input { min-height: 44px; font-size: 16px; }
   .speakerBounds > div { grid-template-columns: 1fr; }

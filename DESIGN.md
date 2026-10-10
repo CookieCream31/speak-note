@@ -225,7 +225,7 @@ speak-note/
 
 ブラウザから画面共有を開始し、MediaRecorderで記録する。
 
-画面共有には「画面共有を録画」（`source_type=live`）と「画面共有の音声を録音」（`source_type=shared_audio`）を提供する。音声のみの場合もBrowserの`getDisplayMedia({video:true,audio:true})`による許可を取得するが、映像Trackは共有の継続・終了確認にだけ使用し、映像Preview・映像MediaRecorder・映像Chunk送信・Video Part保存を行わない。共有音声とONのマイクを既存のAudioContext Destinationへ混合し、音声だけのMediaRecorderから`capture_mode=audio`・`chunk`を送信する。Backendは`original_audio`のみ保存し、音声の容量制限を適用する。動画変換Jobは作成しない。
+取り込み方法の「画面共有」内に「映像を録画する」スイッチを提供する。初期値はONで`source_type=live`、OFFでは`source_type=shared_audio`として会議を作成する。新しい作成Dialogを開くとONへ戻る。切替時は選択済みの共有Streamとマイク設定を保持する。作成後は録画スイッチと取り込み方法を固定し、設定保存の再試行でも同じ会議・方式を使用する。音声のみの場合もBrowserの`getDisplayMedia({video:true,audio:true})`による許可を取得するが、映像Trackは共有の継続・終了確認にだけ使用し、映像Preview・映像MediaRecorder・映像Chunk送信・Video Part保存を行わない。共有音声とONのマイクを既存のAudioContext Destinationへ混合し、音声だけのMediaRecorderから`capture_mode=audio`・`chunk`を送信する。Backendは`original_audio`のみ保存し、音声の容量制限を適用する。動画変換Jobは作成しない。
 
 `shared_audio`はMeetingに保存し、再読み込みや録音接続の復旧後も録画方式へ切り替えない。共有音声が取得できない場合は開始前に案内し、Backendも共有音声なし・動画MIME・分離録画を拒否する。共有先の変更時は同じAudio DestinationとRecorderを維持し、音声なし・選択キャンセルの場合は以前の共有を維持する。共有または共有音声Trackが終了した場合、マイク・Timeline・録音は継続し、共有音声停止の案内と共有再選択を表示する。マイクの初期ミュート・途中追加・回り込み防止は従来方式と共通。Browser・OS・共有元による音声共有の制約を説明し、非対応端末では既存のマイク録音やUploadを使用する。
 
@@ -336,13 +336,13 @@ Mediaと`transcribe` Jobを作成する。途中失敗時に不完全なMediaや
 └──────────────┴────────────────────────────────────────────┘
 ```
 
-- ファイルアップロード、マイク録音、画面共有録画、画面共有音声録音をQuick Actionとして最上部へ表示する。
-- 会議作成Modal内でタイトルと取り込み方法に加え、Uploadでは対象ファイルを、画面共有では共有する画面・Windowとマイク利用有無を、マイク録音ではマイク利用有無を選択する。4つの取り込み方法すべてで、AI利用の有無・使うAI Profile・要約形式・会議の背景を選択する。方式のカードは2列で狭い画面に対応する。
+- ファイルアップロード、画面共有、マイク録音の3つをQuick Actionとして最上部へ表示する。
+- 会議作成Modal内でタイトルと取り込み方法に加え、Uploadでは対象ファイルを、画面共有では映像録画のON/OFF・共有する画面・Window・マイク利用有無を、マイク録音ではマイク利用有無を選択する。3つの取り込み方法すべてで、AI利用の有無・使うAI Profile・要約形式・会議の背景を選択する。方式のカードは通常3列、スマートフォンでは1列のコンパクトな表示とする。
 - 選択したAI利用の有無とAI Profileは、取り込み方法によらず作成時に会議へ保存する。
 - Uploadでは「文字起こし後にAI要約を自動作成」として表示する。無効時は文字起こしのみを行い、有効時はFinal Transcript完成後に解析Jobを自動作成する。
 - 画面共有・マイク録音では停止時にFinal Transcriptを自動作成しないため、「AIを使う（リアルタイム解析・要約）」として表示する。無効時は録画・録音中のリアルタイム解析を行わない。要約は停止後の「要約を再生成」でAIを選んで作成できる。
 - Uploadは会議作成後もModal内で分割送信と進捗表示を継続し、完了後に対象Meetingへ移動する。失敗時は作成済みMeetingとUpload Sessionを再利用して途中から再試行する。
-- 画面共有は選択済みMediaStreamを一時的に保持し、Meeting作成後に対象Meetingへ移動してからRecorderへ引き継いで録画を開始する。引き継ぎが失敗または期限切れの場合はMeeting画面で共有画面を再選択する。
+- 画面共有は選択済みMediaStreamを一時的に保持し、Meeting作成後に対象Meetingへ移動してからRecorderへ引き継いで、選択した方式の録画または音声録音を開始する。引き継ぎが失敗または期限切れの場合はMeeting画面で共有画面を再選択する。
 - 会議一覧は検索と作成日時・タイトル順の並べ替えに対応する。
 - 会議をお気に入りとして保存し、お気に入りだけを一覧表示できる。
 - 任意のタグを作成・削除でき、1つの会議へ複数のタグを付けられる。

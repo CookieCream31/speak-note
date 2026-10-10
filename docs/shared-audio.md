@@ -2,11 +2,11 @@
 
 最終照合: 2026-10-11。[README](../README.md) · [操作手順](usage.md#shared-audio) · [Dockerへの反映](operations.md#shared-audio)
 
-取り込み方法に「画面共有の音声を録音」を追加しました。共有音声とONのマイクを混合して音声ファイルだけ保存します。従来の画面共有録画・マイクのみ・アップロードは引き続き利用できます。ブラウザの共有許可は必要ですが、映像Preview・映像Recorder・映像Chunk・動画変換は使用しません。
+取り込み方法は「音声・動画をアップロード」「画面共有」「マイク音声を録音」の3つです。「画面共有」内の「映像を録画する」をOFFにすると、共有音声とONのマイクを混合して音声ファイルだけ保存します。初期値はONで従来の画面共有録画を使用します。音声のみでもブラウザの共有許可は必要ですが、映像Preview・映像Recorder・映像Chunk・動画変換は使用しません。
 
 ## 主な変更箇所
 
-- `frontend/components/meetings-manager.tsx`とCSS: 4つの取り込み方法、音声共有の案内、音声のみの開始、2列のカード。
+- `frontend/components/meetings-manager.tsx`とCSS: 3つの取り込み方法、画面共有内の録画スイッチ、音声共有の案内、音声のみの開始。通常3列、スマートフォンでは1列のコンパクトなカード。
 - `frontend/components/live-meeting-recorder.tsx`、`frontend/lib/live-capture.ts`: 音声だけの保存、共有先の変更・停止・再開、マイク切替、WhisperX/Azureへの混合音声入力。
 - `frontend/app/meetings/[meeting_id]/page.tsx`、`frontend/lib/realtime-analysis-history.ts`: 保存済み音声の再生、Live会議ノート、変換待ちを要しない要約再生成。
 - `frontend/lib/api.ts`、`format.ts`、`display-capture.ts`: source type・一覧表示と共有の対応案内。
@@ -15,7 +15,7 @@
 - `backend/tests/test_shared_audio.py`と既存の会議作成・録音・再接続・要約再生成テスト、FrontendのRecorder・Mixer・会議詳細・一覧テスト。
 - README・DESIGN・usage・development・operations: 操作、実装境界、Migrationと反映手順。
 
-## 検証
+## 音声のみ保存する機能の初回検証
 
 バックエンドは一時venvへ`pyproject.toml`の依存・dev依存を導入しました。以前の一時環境のpytest/pipが起動できず、editable installも既存egg-infoの更新権限で失敗したため、ソースを変更せず依存のみを一時venvに導入しました。Frontendは既存node_modulesと一時配置Node 22を使用しました。検証環境の修復に運用サービス・依存定義の変更は行っていません。
 
@@ -57,4 +57,23 @@ Python9ファイルは上記のモデル・Capture Service・Transcript Route・
 
 エージェントはこの反映作業を実行していません。ログはDB版・サービスの起動を確認するものであり、実音声取得・保存・AI生成の成功を示すものではありません。次にブラウザを再読み込みし、[操作手順](usage.md#shared-audio)に沿って共有音声とマイク音の両方が録音されること、映像が保存されないこと、停止後の「要約を再生成」を確認してください。
 
-今回の追記は上記ログに基づく文書3ファイルの更新です。`git diff --check`と相対リンク・反映記録の整合性を確認しました。アプリのコードは変更していないため、formatter・lint・型チェック・単体テストの再実行は行っていません。実装時の検証結果は上記の表を参照してください。
+上記の反映状況を追記した作業では、ログに基づく文書3ファイルを更新しました。`git diff --check`と相対リンク・反映記録の整合性を確認しました。その追記時はアプリのコードを変更していないため、formatter・lint・型チェック・単体テストは再実行していません。
+
+## 画面共有内の録画スイッチ（2026-10-11）
+
+ホームと会議作成の入口を3つにまとめ、「画面共有」内に「映像を録画する」を追加しました。ONは既存の`live`、OFFは既存の`shared_audio`として作成します。切替時に共有画面とマイク状態を保持し、新しい会議ダイアログではONへ戻ります。会議作成後は方式と録画スイッチを固定します。AI設定保存の失敗後も再試行で同じ会議を使用できるよう、無効化されたradioのFormDataではなく保持した選択状態を使用します。
+
+変更ファイルは`meetings-manager.tsx`、`meetings-manager.module.css`、`meetings-manager.test.tsx`、新規`meeting-capture-settings.test.tsx`、README・DESIGN・usage・development・operations・この記録です。Backend・Recorder・依存・環境変数・DBに追加変更はありません。反映は[Frontendのみの手順](operations.md#record-video-toggle)を参照してください。
+
+| コマンド | 結果 |
+| --- | --- |
+| Frontend: `/tmp/node-v22.16.0-linux-x64/bin/node node_modules/vitest/vitest.mjs run meeting-capture-settings meetings-manager` | 関連2ファイル8件成功。ON/OFFの送信、選択済みStream・マイクの保持、共有音声なしの拒否、作成済み会議への再試行、初期値を確認 |
+| Frontend: `/tmp/node-v22.16.0-linux-x64/bin/node node_modules/vitest/vitest.mjs run` | 全41ファイル212件成功。既存Recorder・要約再生成・リアルタイム表示・回答支援・会議後質問・テーマのテストを含む |
+| Frontend: `/tmp/node-v22.16.0-linux-x64/bin/node node_modules/typescript/bin/tsc --noEmit` | 成功 |
+| Frontend: `/tmp/node-v22.16.0-linux-x64/bin/node node_modules/eslint/bin/eslint.js .` | 成功。Frontendにformatter専用設定はなく、既存のESLintで書式を確認 |
+| Chromium: 一時Playwrightハーネス `check_record_video.py` | ライト/ダーク、320/393/560/844/1280px、録画ON/OFFの作成・音声録音・保存後の40ケース成功。3つの入口、通常3列/スマートフォン1列、Spaceキーでの切替、共有選択の保持、送信する方式、作成後のスイッチ固定、横はみ出しなしを確認 |
+| `git diff --check` | 成功 |
+
+再試行テストは初回に失敗し、disabledのradioがFormDataに含まれないことを確認して実装を修正しました。テスト内容を弱めずに成功しています。Backendのコードに変更はないため、Backendの検証結果は初回検証の表を参照してください。実端末・OSの音声共有・外部AI接続・実音声の保存と再生は今回の表示変更でも未検証です。運用中サービスの再起動は行っていません。
+
+ブラウザ確認は既存の一時ハーネスを最新ソースでbundleし、実コンポーネントと合成MediaStream・モックAPIを使用しました。`PLAYWRIGHT_BROWSERS_PATH=/tmp/speak-note-browsers LD_LIBRARY_PATH=/tmp/speak-note-browser-libs/usr/lib/x86_64-linux-gnu FONTCONFIG_FILE=/tmp/speak-note-preview/fonts.conf /tmp/speak-note-title-speed-verify-env/bin/python /tmp/speak-note-shared-audio-browser/check_record_video.py`を実行しました。393pxのダーク表示と1280pxのライト表示のスクリーンショットも確認しました。稼働中アプリ・会議・外部サービスへアクセスせず、一時サーバーは確認後に停止しました。

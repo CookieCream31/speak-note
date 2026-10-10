@@ -256,7 +256,9 @@ sudo docker compose run --rm --no-deps --user root backend sh -c '
 
 停止済みSessionは共通会議ノートへ移行し、Snapshotを既存の読み取り専用履歴カードに変換します。全体処理の入口は以下の要約再生成へ統合しました。マイク録音・共有音声のみの録音停止のfinalized.job_idはnullで、自動TRANSCRIBE Jobは発行しません。画面共有録画のメディア変換とアップロード会議の従来処理は維持します。停止後表示だけの変更はDB変更なしでしたが、要約再生成は0023、共有音声録音は0025の適用が必要です。
 
-共有音声録音は`MeetingSourceType.SHARED_AUDIO`とRecorderの`captureMode="shared_audio"`で区別します。`LiveCaptureMixer`へpreview=nullを渡して映像再生を省き、共通のAudio Destinationを録音・Azure認識に使用します。音声Streamに映像Trackを混ぜず、分離録画メッセージを作成しません。Backendは音声MIMEだけ受け付け、`original_audio`で保存・音声容量制限を適用・停止時の変換Jobを省略します。切断復旧は既存RealtimeSessionとChunk再送を使用します。`test_shared_audio.py`、`shared-audio-recorder.test.tsx`、`live-capture.test.ts`で新しい経路を確認し、`test_summary_regeneration.py`でFinalの初回作成・再利用を確認します。[検証記録](shared-audio.md)も参照してください。
+共有音声録音は`MeetingSourceType.SHARED_AUDIO`とRecorderの`captureMode="shared_audio"`で区別します。作成画面の入口はUpload・画面共有・マイク録音の3つです。`meetings-manager.tsx`の画面共有内にある`record_video`スイッチ（初期ON）から、ONは`live`、OFFは`shared_audio`を保存します。切替で共有Streamやマイク選択を破棄せず、Meeting作成後は方式とスイッチを固定します。再試行時は無効化されたradioのFormDataではなく保持した選択状態から方式を判断します。`meeting-capture-settings.test.tsx`で送信方式・共有の保持・音声なしの開始拒否・AI設定失敗後の同じ会議への再試行・初期値を確認します。
+
+`LiveCaptureMixer`へpreview=nullを渡して映像再生を省き、共通のAudio Destinationを録音・Azure認識に使用します。音声Streamに映像Trackを混ぜず、分離録画メッセージを作成しません。Backendは音声MIMEだけ受け付け、`original_audio`で保存・音声容量制限を適用・停止時の変換Jobを省略します。切断復旧は既存RealtimeSessionとChunk再送を使用します。`test_shared_audio.py`、`shared-audio-recorder.test.tsx`、`live-capture.test.ts`で新しい経路を確認し、`test_summary_regeneration.py`でFinalの初回作成・再利用を確認します。[検証記録](shared-audio.md)も参照してください。
 
 確認: `pytest tests/test_stopped_live_notes.py tests/test_realtime_phase6.py -q`、frontendの`npm test -- realtime-analysis-history meeting-review-panel final-transcript-button`、`npm run typecheck`。実機で停止直後の表示、変換後の再生、AI解析OFF、要約再生成、版切替、録音のみを確認してください。
 

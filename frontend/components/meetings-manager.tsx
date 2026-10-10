@@ -57,13 +57,8 @@ const sourceOptions: SourceOption[] = [
   },
   {
     value: "live",
-    label: "画面共有を録画",
-    description: "画面とマイクを記録",
-  },
-  {
-    value: "shared_audio",
-    label: "画面共有の音声を録音",
-    description: "共有音声とマイクを記録・映像は保存しない",
+    label: "画面共有",
+    description: "共有音声とマイクを記録・録画は任意",
   },
   {
     value: "audio_recording",
@@ -191,6 +186,7 @@ export function MeetingsManager({
   const [bulkTagId, setBulkTagId] = useState("");
   const [createOpen, setCreateOpen] = useState(initialCreateOpen);
   const [createSource, setCreateSource] = useState<MeetingSourceType>("media_upload");
+  const [recordVideo, setRecordVideo] = useState(true);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
   const [createFile, setCreateFile] = useState<File | null>(null);
@@ -447,8 +443,9 @@ export function MeetingsManager({
 
   function openCreate(sourceType: MeetingSourceType) {
     setIncludeMicrophone(false);
+    setRecordVideo(true);
     releasePreparedDisplay();
-    if (sourceType === "live" || sourceType === "shared_audio") {
+    if (sourceType === "live") {
       setDisplayCaptureSupport(detectDisplayCaptureSupport());
     }
     setCreateSource(sourceType);
@@ -511,7 +508,9 @@ export function MeetingsManager({
 
     const formData = new FormData(event.currentTarget);
     const title = String(formData.get("title") ?? "").trim();
-    const sourceType = String(formData.get("source_type") ?? "") as MeetingSourceType;
+    // Disabled method radios are omitted from FormData when retrying a created meeting.
+    const sourceMethod = createSource;
+    const sourceType = sourceMethod === "live" && !recordVideo ? "shared_audio" : sourceMethod;
     const summaryFormatValue = String(formData.get("summary_format") ?? "standard");
     const meetingContext = String(formData.get("meeting_context") ?? "").trim();
     const templateId = String(formData.get("template_id") ?? "") || null;
@@ -522,7 +521,7 @@ export function MeetingsManager({
     setCreating(true);
     setCreateError("");
     try {
-      if (!title || title.length > 200 || !sourceOptions.some(({ value }) => value === sourceType)) {
+      if (!title || title.length > 200 || !sourceOptions.some(({ value }) => value === sourceMethod)) {
         throw new Error("タイトルと取り込み方法を確認してください");
       }
       if (templateId && !templates.some((template) => template.id === templateId)) {
@@ -1115,7 +1114,7 @@ export function MeetingsManager({
                           checked={createSource === option.value}
                           disabled={creating || Boolean(pendingMeetingId)}
                           onChange={() => {
-                            if (option.value !== "live" && option.value !== "shared_audio") releasePreparedDisplay();
+                            if (option.value !== "live") releasePreparedDisplay();
                             if (option.value !== "media_upload") {
                               setCreateFile(null);
                               setCreateUploadSession(null);
@@ -1161,6 +1160,30 @@ export function MeetingsManager({
                   </p>
                 ) : (
                   <div className={styles.captureSetup}>
+                    <label className={`${styles.autoAnalyzeOption} ${styles.recordVideoOption}`}>
+                      <span>
+                        <strong>映像を録画する</strong>
+                        <small id="record-video-description">
+                          {recordVideo
+                            ? "ON：共有画面の映像と音声を保存します"
+                            : "OFF：共有音声とONにしたマイクだけを保存します。映像は保存しません"}
+                        </small>
+                      </span>
+                      <input
+                        type="checkbox"
+                        role="switch"
+                        name="record_video"
+                        aria-label="映像を録画する"
+                        aria-describedby="record-video-description"
+                        checked={recordVideo}
+                        disabled={creating || Boolean(pendingMeetingId)}
+                        onChange={(event) => {
+                          setRecordVideo(event.currentTarget.checked);
+                          setCreateError("");
+                          setCreateStatus("");
+                        }}
+                      />
+                    </label>
                     {displayCaptureSupport && displayCaptureSupport !== "supported" ? (
                       <div className={styles.captureCompatibility} role="status">
                         <strong>このブラウザでは画面共有を開始できません</strong>
@@ -1192,7 +1215,7 @@ export function MeetingsManager({
                           </p>
                         )}
                         <p>
-                          {createSource === "shared_audio"
+                          {!recordVideo
                             ? "共有ダイアログで音声共有を有効にしてください。録音開始を押すと、共有音声とONにしたマイク音声だけを保存します。映像は保存しません。音声共有の対応はブラウザ・OS・共有元によって異なります。"
                             : "録画開始を押すと会議ページへ移動し、端末の共有選択画面で選んだ内容を録画します。"}
                           マイクも含める場合は、ヘッドホンの使用を推奨します。
@@ -1253,7 +1276,7 @@ export function MeetingsManager({
                     ) : (
                       <span>
                         <strong>AIを使う（リアルタイム解析・要約）</strong>
-                        <small>オフにすると{createSource === "live" ? "録画" : "録音"}中のリアルタイム解析を行いません。要約は停止後に「要約を再生成」でAIを選んで作成できます</small>
+                        <small>オフにすると{createSource === "live" && recordVideo ? "録画" : "録音"}中のリアルタイム解析を行いません。要約は停止後に「要約を再生成」でAIを選んで作成できます</small>
                       </span>
                     )}
                     <input
@@ -1362,7 +1385,7 @@ export function MeetingsManager({
                     creating || projectCreating
                     || (createSource === "media_upload"
                       ? !createFile
-                      : createSource === "live" || createSource === "shared_audio"
+                      : createSource === "live"
                         ? !displayLabel || displayCaptureSupport !== "supported"
                         : false)
                   }
@@ -1375,7 +1398,7 @@ export function MeetingsManager({
                       ? "アップロードを再試行"
                       : createSource === "media_upload"
                         ? "作成してアップロード"
-                        : createSource === "audio_recording" || createSource === "shared_audio"
+                        : createSource === "audio_recording" || (createSource === "live" && !recordVideo)
                           ? "作成して録音開始"
                           : "作成して録画開始"}
                 </button>

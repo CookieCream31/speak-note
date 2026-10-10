@@ -77,6 +77,20 @@ sudo docker compose restart frontend
 
 このMigrationのdowngradeはenum値を保持します。データを失うenum書き換えは行いません。`shared_audio`の会議を作成した後に古いアプリへ戻すと、その会議の読込に対応しないため、コードだけの巻き戻しはしないでください。
 
+<a id="record-video-toggle"></a>
+### 3つの入口・画面共有内の録画スイッチへの表示変更
+
+Migration 0025適用済みの環境では、この表示変更による追加のDB変更・Backend/Worker再起動はありません。現行の開発ComposeはFrontendのソースを共有しているため、録音・録画の停止・保存完了後にブラウザを再読み込みし、入口が3つ、「画面共有」内に「映像を録画する」が表示されることを確認します。ソース更新の取り込みやFrontend再起動が必要な場合だけ、停止・保存完了後に実行します。
+
+```bash
+cd /home/llm/speak-note
+git pull --ff-only
+sudo docker compose restart frontend
+sudo docker compose ps frontend
+```
+
+ブラウザを再読み込みし、録画ON（初期値）で「作成して録画開始」、OFFで「作成して録音開始」になることを確認します。既存会議は作成時の方式を維持します。
+
 ## 設定の管理場所
 
 - [docker-compose.yml](../docker-compose.yml): コンテナへ渡す変数、volume、port、起動コマンド。

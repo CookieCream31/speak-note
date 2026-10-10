@@ -115,8 +115,9 @@ describe("MeetingsManager", () => {
     expect(html).toContain("空欄なら自動判定");
     expect(html).toContain("音声・動画をアップロード");
     expect(html).toContain("マイク音声を録音");
-    expect(html).toContain("画面共有の音声を録音");
-    expect(html).toContain('value="shared_audio"');
+    expect(html).toContain("画面共有");
+    expect(html).not.toContain('value="shared_audio"');
+    expect(html.match(/name="source_type"/g)).toHaveLength(3);
     expect(html).toContain('value="audio_recording"');
     expect(html).toContain('id="new-meeting-media"');
     expect(html).toContain('type="file"');
