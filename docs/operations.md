@@ -73,6 +73,8 @@ sudo docker compose restart frontend
 
 `alembic current`が`20261010_0025 (head)`であることを確認してからWorkerを再開します。Backendの起動時にMigrationを実行します。失敗時はログを確認し、Workerを止めたまま原因を解決してください。最後にブラウザを再読み込みし、[共有音声録音の確認手順](usage.md#shared-audio)を実行します。エージェントは稼働中サービスの再起動や運用DBへの適用を行っていません。Migrationの検証はPostgreSQL向けoffline SQL生成で行っています。
 
+2026-10-11受領のユーザー提供ログで、PostgreSQLのMigration `20261010_0025 (head)`、BackendのHealthy、`worker`・`live-worker`・`realtime-ai-worker`・`answer-worker`のStartedを確認しました。Frontendのrestart実行ログも確認しました。再起動後のFrontendの稼働状態は、必要なら`sudo docker compose ps frontend`で確認できます。実際の共有音声取得・録音・要約生成は未確認です。記録は[共有音声録音の反映状況](shared-audio.md#反映状況)を参照してください。
+
 このMigrationのdowngradeはenum値を保持します。データを失うenum書き換えは行いません。`shared_audio`の会議を作成した後に古いアプリへ戻すと、その会議の読込に対応しないため、コードだけの巻き戻しはしないでください。
 
 ## 設定の管理場所

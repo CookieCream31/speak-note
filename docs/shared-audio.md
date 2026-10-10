@@ -1,6 +1,6 @@
 # 映像を保存しない画面共有音声録音
 
-最終照合: 2026-10-10。[README](../README.md) · [操作手順](usage.md#shared-audio) · [Dockerへの反映](operations.md#shared-audio)
+最終照合: 2026-10-11。[README](../README.md) · [操作手順](usage.md#shared-audio) · [Dockerへの反映](operations.md#shared-audio)
 
 取り込み方法に「画面共有の音声を録音」を追加しました。共有音声とONのマイクを混合して音声ファイルだけ保存します。従来の画面共有録画・マイクのみ・アップロードは引き続き利用できます。ブラウザの共有許可は必要ですが、映像Preview・映像Recorder・映像Chunk・動画変換は使用しません。
 
@@ -44,4 +44,17 @@ Python9ファイルは上記のモデル・Capture Service・Transcript Route・
 - 音声共有なしの開始・変更を拒否し、キャンセル時に従来の共有を維持すること、マイクミュートで共有音声を止めないことを検証しました。
 - 音声のみのWebSocket保存、重複Chunk再送、切断復旧、映像Media/VideoPart/変換Jobを作らないこと、音声容量の制限、録音中の全体処理禁止、Live閲覧とFinal再利用を検証しました。
 - 単体/APIテストは合成データ・SQLite・モックを使用します。ブラウザ確認は実コンポーネントと合成MediaStream・モックAPI/通信を使用し、実際の会議音声や外部サービスへ送信しません。
-- 実WhisperX/Azure/Ollama/Gemini接続、OSの共有音声取得、Safari・実スマートフォン、長時間録音、PostgreSQL運用DBへのMigration適用は別途確認が必要です。ブラウザ・OS・共有元による音声共有の対応はアプリ側で保証できません。
+- 実WhisperX/Azure/Ollama/Gemini接続、OSの共有音声取得、Safari・実スマートフォン、長時間録音は別途確認が必要です。運用DBへのMigration適用は下記のユーザー提供ログで確認しました。ブラウザ・OS・共有元による音声共有の対応はアプリ側で保証できません。
+
+## 反映状況
+
+2026-10-11受領のユーザー提供ログで、次を確認しました。
+
+- 4つのWorkerを停止後、Backendを再起動し、`up -d --wait --no-deps backend`でHealthy。
+- `sudo docker compose exec -T backend alembic current`でPostgreSQLの`20261010_0025 (head)`。
+- `worker`・`live-worker`・`realtime-ai-worker`・`answer-worker`のStarted。
+- `sudo docker compose restart frontend`の実行ログ。再起動後の`ps`やブラウザ表示はまだ提示されていません。
+
+エージェントはこの反映作業を実行していません。ログはDB版・サービスの起動を確認するものであり、実音声取得・保存・AI生成の成功を示すものではありません。次にブラウザを再読み込みし、[操作手順](usage.md#shared-audio)に沿って共有音声とマイク音の両方が録音されること、映像が保存されないこと、停止後の「要約を再生成」を確認してください。
+
+今回の追記は上記ログに基づく文書3ファイルの更新です。`git diff --check`と相対リンク・反映記録の整合性を確認しました。アプリのコードは変更していないため、formatter・lint・型チェック・単体テストの再実行は行っていません。実装時の検証結果は上記の表を参照してください。
