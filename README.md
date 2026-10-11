@@ -4,7 +4,7 @@
 確定版の文字起こし・話者分離にはWhisperXまたはSoniox非同期API、要約・質問回答にはOllama / Geminiを使用します。
 録音中の文字起こしはWhisperX / Azure AI Speech / SonioxリアルタイムAPIから、確定版とは独立して選べます。
 
-最終照合: **2026-10-12**（会議ごとの文字起こし言語・検索とタグによる選択UI・自動判定の制限理由・詳細設定のStrict表示、Language hints、設定の固定と互換性、Migration 0027、Sonioxのモデル一覧・用途別APIキー権限、利用者のMigration 0026・0027反映ログ、従来の会議・要約再生成・録音・表示・Git運用・新規環境の起動手順を照合）。この文書は現在のソースコードとCompose設定を説明します。機能ごとの検証と過去の反映ログは関連ガイドへ記録しています。
+最終照合: **2026-10-12**（会議ごとの文字起こし言語・検索とタグによる選択UI・自動判定の制限理由・詳細設定のStrict表示、Language hints、設定の固定と互換性、Migration 0027、Sonioxのモデル一覧・用途別APIキー権限、利用者のMigration 0026・0027反映ログと言語UI変更後のFrontend起動ログ、従来の会議・要約再生成・録音・表示・Git運用・新規環境の起動手順を照合）。この文書は現在のソースコードとCompose設定を説明します。機能ごとの検証と過去の反映ログは関連ガイドへ記録しています。
 外部APIの実接続、認識精度、すべての端末での動作を保証するものではありません。
 
 今後の機能追加・修正では毎回、実装とこのREADMEを照合し、操作・構成・設定・制約などの説明に影響する変更を同じ作業で反映します。詳しい作業ルールは[AGENTS.md](AGENTS.md)と[開発ガイド](docs/development.md)を参照してください。
@@ -270,7 +270,7 @@ Language hintsは認識のヒントで、Sonioxでは他の言語も認識しま
 
 会議ページの「文字起こし設定」でも、録音開始前または初回Finalの予約前に変更できます。録音・保存・処理中とFinal作成後は言語変更を禁止します。選択は会議に保存し、Live開始時と全体処理Job予約時に固定します。再接続・再試行・動画変換後にも引き継ぎます。AI設定の言語入力は廃止し、既存会議の従来設定と履歴を保持します。WhisperX / Azureの現行連携は単一言語です。自動判定・複数言語は使用する文字起こしエンジンがすべてSonioxのときに選べ、StrictはSonioxにだけ適用します。モデルの対応言語・Strict対応は音声送信前に公式モデル情報で検証します。
 
-この追加にはMigration `20261012_0027`が必要です。利用者の提示ログで運用DBの`20261012_0027 (head)`、BackendのHealthy、4つのWorkerの起動を確認しました。Frontendは再起動操作までの記録で、再起動後の状態・画面表示・実APIでの音声認識は未確認です。[反映記録](docs/meeting-transcription-languages.md#deployment-confirmation)、[反映手順](docs/operations.md#meeting-languages)、[操作・検証・制約](docs/meeting-transcription-languages.md)を参照してください。
+この追加にはMigration `20261012_0027`が必要です。利用者の提示ログで運用DBの`20261012_0027 (head)`、BackendのHealthy、4つのWorkerの起動を確認しました。言語UI変更後のログでは、再起動後のFrontendの`Up 5 seconds`も確認しています。新UIの画面表示・実APIでの音声認識は未確認です。[反映記録](docs/meeting-transcription-languages.md#deployment-confirmation)、[反映手順](docs/operations.md#meeting-languages)、[操作・検証・制約](docs/meeting-transcription-languages.md)を参照してください。
 
 0027適用済みの環境で検索一覧・タグの表示改善を取り込む場合、追加Migration・Backend／Worker再起動はありません。[UIの反映手順](docs/operations.md#language-picker-ui)を参照してください。
 

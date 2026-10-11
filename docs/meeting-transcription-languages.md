@@ -104,6 +104,12 @@ Migration `20261012_0027`は0026に続きMeetingの2カラムとRealtimeSession�
 - Backendの再起動後、`docker compose up -d --wait --no-deps backend`でHealthy（7.5秒）。
 - `docker compose exec -T backend alembic current`が`20261012_0027 (head)`。
 - `docker compose up -d --no-deps worker live-worker realtime-ai-worker answer-worker`で4つのWorkerがすべてStarted。
-- `docker compose restart frontend`の実行が報告されています。提示ログはRestarting表示までで、再起動後のUpは未確認です。
+- 初回の`docker compose restart frontend`の提示ログはRestarting表示まででした。後続の言語UI変更後のログで、下記のとおり再起動後のUpを確認しました。
 
-Frontendの状態は`sudo docker compose ps frontend`で確認します。録音・録画中でなければブラウザを再読み込みし、「新しい会議」の言語選択、AI設定の言語欄の廃止、会議ページの文字起こし設定を確認してください。画面表示・Soniox接続・実音声認識はこのログだけでは確認できないため、[動作確認](#動作確認)の短い録音と再生成で確認します。
+録音・録画中でなければブラウザを再読み込みし、「新しい会議」の言語選択、AI設定の言語欄の廃止、会議ページの文字起こし設定を確認してください。画面表示・Soniox接続・実音声認識はこのログだけでは確認できないため、[動作確認](#動作確認)の短い録音と再生成で確認します。
+
+### 言語選択UI変更後のFrontend起動確認
+
+記録日: 2026-10-12（日本時間）。利用者が実行した`sudo docker compose restart frontend`に続く`sudo docker compose ps frontend`の提示ログで、`speak-note-frontend-1`の`Up 5 seconds`と公開ポート`3001 -> 3000`を確認しました。
+
+このログはFrontendの起動確認です。新UIの表示・検索・選択・保存や実音声認識は未確認で、録音・録画と保存の完了後にブラウザを再読み込みして[操作](#操作)を確認します。エージェントはDockerを操作していません。

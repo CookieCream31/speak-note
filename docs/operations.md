@@ -138,7 +138,7 @@ sudo docker compose ps backend frontend worker live-worker realtime-ai-worker an
 
 Backend起動時にMigrationを適用します。失敗した場合はWorkerを止めたまま`sudo docker compose logs --tail=100 backend`で確認します。Volumeを削除しません。ブラウザ再読み込み後、「新しい会議」の「会議で話す言語」、AI設定の言語欄がなくなったこと、会議ページの「文字起こし設定」を確認し、[短い録音と再生成の確認](meeting-transcription-languages.md#動作確認)を行います。
 
-利用者の提示ログで運用DBの`20261012_0027 (head)`、BackendのHealthy、4つのWorkerのStartedを確認しました。Frontendの再起動後の状態、画面表示、実音声認識は未確認です。今回反映済みの環境では再度のMigration適用や再起動は不要で、まず`sudo docker compose ps frontend`で状態を確認します。[0027の反映記録](meeting-transcription-languages.md#deployment-confirmation)を参照してください。
+利用者の提示ログで運用DBの`20261012_0027 (head)`、BackendのHealthy、4つのWorkerのStartedを確認しました。後続の言語UI変更後のログではFrontendの再起動後のUpも確認しました。新UIの画面表示と実音声認識は未確認です。今回反映済みの環境では再度のMigration適用や再起動は不要です。[0027とFrontendの反映記録](meeting-transcription-languages.md#deployment-confirmation)を参照してください。
 
 <a id="language-picker-ui"></a>
 ### 言語の検索一覧・タグ・詳細設定への表示改善
@@ -154,6 +154,8 @@ sudo docker compose ps frontend
 ```
 
 「新しい会議」と会議ページの「文字起こし設定」で、言語タグ・検索一覧・自動判定の制限理由・折りたたんだ詳細設定のStrict状態を確認します。詳しくは[言語選択の操作](meeting-transcription-languages.md#操作)を参照してください。
+
+利用者の2026-10-12（日本時間）の提示ログで、Frontend再起動後の`docker compose ps frontend`が`Up 5 seconds`であることを確認しました。新UIの運用画面と実音声認識は未確認です。上記のブラウザでの確認へ進めます。
 
 <a id="record-video-toggle"></a>
 ### 会議作成の3つの取り込み方法・画面共有内の録画スイッチへの表示変更
