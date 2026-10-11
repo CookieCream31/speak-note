@@ -4,7 +4,7 @@
 確定版の文字起こし・話者分離にはWhisperXまたはSoniox非同期API、要約・質問回答にはOllama / Geminiを使用します。
 録音中の文字起こしはWhisperX / Azure AI Speech / SonioxリアルタイムAPIから、確定版とは独立して選べます。
 
-最終照合: **2026-10-12**（Sonioxのモデル一覧取得・用途別選択・APIキー権限、リアルタイム／非同期の独立設定、短期キー、Workerの再試行、利用者のMigration 0026反映ログ、従来の会議・要約再生成・録音・表示・Git運用・新規環境の起動手順を照合）。この文書は現在のソースコードとCompose設定を説明します。機能ごとの検証と過去の反映ログは関連ガイドへ記録しています。
+最終照合: **2026-10-12**（Sonioxのモデル一覧取得・用途別選択・APIキー権限、モデル一覧追加後の利用者の再起動ログ、リアルタイム／非同期の独立設定、短期キー、Workerの再試行、利用者のMigration 0026反映ログ、従来の会議・要約再生成・録音・表示・Git運用・新規環境の起動手順を照合）。この文書は現在のソースコードとCompose設定を説明します。機能ごとの検証と過去の反映ログは関連ガイドへ記録しています。
 外部APIの実接続、認識精度、すべての端末での動作を保証するものではありません。
 
 今後の機能追加・修正では毎回、実装とこのREADMEを照合し、操作・構成・設定・制約などの説明に影響する変更を同じ作業で反映します。詳しい作業ルールは[AGENTS.md](AGENTS.md)と[開発ガイド](docs/development.md)を参照してください。
@@ -259,6 +259,6 @@ AI設定で「リアルタイム文字起こし」と「非同期・確定版の
 
 両用途を同じキーで使う場合はFull accessをOFFにし、Speech-to-text, real-time／Model listing／Temporary API keysをAccess、Speech-to-text, async／FilesをWrite、その他をNo Accessにします。WriteにはReadが含まれます。用途別の最小権限は[Sonioxガイド](docs/soniox-transcription.md#モデル一覧とapiキーの権限)を参照してください。権限変更の反映には数分かかる場合があります。
 
-恒久キーはBackendで暗号化し、ブラウザには60秒で接続期限が切れる一回限りのキーを渡します。非同期処理は通常Workerがファイル送信・処理予約・状態確認・結果保存を行い、保存後にSoniox上のファイルと文字起こしを削除します。通信障害時は処理IDを再利用し、送信成功が不明なときは照合できるまで再送しません。Sonioxには最小／最大話者数を指定しません。設定・制約・確認手順・Docker反映は[Sonioxガイド](docs/soniox-transcription.md)を参照してください。追加環境変数・依存追加はありません。利用者の反映ログで運用DBの`20261012_0026 (head)`、BackendのHealthy、4つのWorkerの起動を確認しています。Frontendの再起動操作も報告されていますが、反映後の画面表示・実API接続・音声認識は未確認です。
+恒久キーはBackendで暗号化し、ブラウザには60秒で接続期限が切れる一回限りのキーを渡します。非同期処理は通常Workerがファイル送信・処理予約・状態確認・結果保存を行い、保存後にSoniox上のファイルと文字起こしを削除します。通信障害時は処理IDを再利用し、送信成功が不明なときは照合できるまで再送しません。Sonioxには最小／最大話者数を指定しません。設定・制約・確認手順・Docker反映は[Sonioxガイド](docs/soniox-transcription.md)を参照してください。追加環境変数・依存追加はありません。利用者の反映ログで運用DBの`20261012_0026 (head)`、BackendのHealthy、4つのWorkerの起動を確認しています。モデル一覧機能追加後の再起動ログでもBackendのhealthy、FrontendのUp、4つのWorkerのRunningを確認しました。反映後の画面表示・実キーでのモデル取得・音声認識は未確認です。
 
 Migration `20260927_0023` が必要です。追加環境変数はありません。録音・録画と保存、実行中Jobの終了を確認してから[要約再生成の反映手順](docs/operations.md#summary-regeneration)を実行してください。操作・動作確認は[操作ガイド](docs/usage.md#summary-regeneration)、実装と検証は[開発ガイド](docs/development.md#summary-regeneration)に記載しています。

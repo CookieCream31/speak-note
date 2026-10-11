@@ -112,6 +112,8 @@ sudo docker compose ps backend frontend
 
 ブラウザを再読み込みし、API Key入力 →「モデル一覧を取得」→ モデル選択 →「設定を保存」の順で確認します。保存済みキーでの取得もできます。モデル一覧でHTTP 403になる場合はModel listingのAccess権限を確認してください。[用途別の権限](soniox-transcription.md#モデル一覧とapiキーの権限)。エージェントはこの追加変更による稼働中サービスの再起動を行っていません。
 
+追加変更の利用者の提示ログでは、Backend／Frontendの再起動後、BackendのHealthyと、`docker compose ps backend frontend`によるBackendの`Up 26 seconds (healthy)`・Frontendの`Up 36 seconds`を確認しました。4つのWorkerもRunningです。実キーによるモデル一覧取得や画面での選択・保存、音声認識は未確認です。[追加変更の反映記録](soniox-transcription.md#モデル一覧選択の追加変更2026-10-12)を参照してください。
+
 <a id="record-video-toggle"></a>
 ### 会議作成の3つの取り込み方法・画面共有内の録画スイッチへの表示変更
 

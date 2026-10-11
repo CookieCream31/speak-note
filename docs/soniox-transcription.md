@@ -126,3 +126,5 @@ Ubuntu上の一時検証環境で実行しました。Frontendの専用formatter
 - Playwright Chromium: light／dark × 320、393、560、844、1280pxの10条件で、一覧取得・選択したモデルの送信・横overflowなし・ページエラーなし。
 
 モデル取得もmock APIで検証しています。実Sonioxアカウントによるキーの権限・取得モデル一覧、実端末は未検証です。稼働中Dockerの再起動は行っていません。反映は[運用ガイド](operations.md#sonioxモデル一覧の追加を反映する場合)を参照してください。
+
+追加変更の運用反映も、利用者の提示ログで確認しました（記録日: 2026-10-12、日本時間）。`docker compose restart backend frontend`後、`docker compose up -d --wait --no-deps backend`でBackendがHealthy、4つのWorkerがRunningです。`docker compose ps backend frontend`ではBackendが`Up 26 seconds (healthy)`、Frontendが`Up 36 seconds`で、ホスト側8001／3001からコンテナ側8001／3000への公開を確認しました。エージェントはDockerを操作していません。反映後のブラウザ表示・実キーでの一覧取得・選択・保存・音声認識は未確認のままです。
