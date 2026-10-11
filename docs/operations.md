@@ -140,6 +140,21 @@ Backend起動時にMigrationを適用します。失敗した場合はWorkerを�
 
 利用者の提示ログで運用DBの`20261012_0027 (head)`、BackendのHealthy、4つのWorkerのStartedを確認しました。Frontendの再起動後の状態、画面表示、実音声認識は未確認です。今回反映済みの環境では再度のMigration適用や再起動は不要で、まず`sudo docker compose ps frontend`で状態を確認します。[0027の反映記録](meeting-transcription-languages.md#deployment-confirmation)を参照してください。
 
+<a id="language-picker-ui"></a>
+### 言語の検索一覧・タグ・詳細設定への表示改善
+
+Migration 0027適用済みなら追加のDB変更・Backend／Worker再起動はありません。現行の開発ComposeはFrontendのソースを共有しています。録音・録画と保存を終えてからソースを取り込み、ブラウザを再読み込みします。Frontendの再起動が必要な場合だけ実行します。
+
+```bash
+cd /home/llm/speak-note
+git pull --ff-only
+# 必要な場合だけ、録音・録画と保存の終了後に実行
+sudo docker compose restart frontend
+sudo docker compose ps frontend
+```
+
+「新しい会議」と会議ページの「文字起こし設定」で、言語タグ・検索一覧・自動判定の制限理由・折りたたんだ詳細設定のStrict状態を確認します。詳しくは[言語選択の操作](meeting-transcription-languages.md#操作)を参照してください。
+
 <a id="record-video-toggle"></a>
 ### 会議作成の3つの取り込み方法・画面共有内の録画スイッチへの表示変更
 

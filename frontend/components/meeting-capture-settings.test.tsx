@@ -91,8 +91,10 @@ afterEach(() => {
 describe("screen sharing recording setting", () => {
   it("persists the meeting language and strict choice for microphone capture", async () => {
     await selectMethod("audio_recording");
-    const language = host.querySelector<HTMLSelectElement>('select[aria-label="文字起こし言語"]')!;
-    await act(async () => { language.value = "en"; language.dispatchEvent(new Event("change", { bubbles: true })); });
+    await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="言語を選ぶ"]')!.click());
+    await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="英語を選択"]')!.click());
+    await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="日本語を外す"]')!.click());
+    await act(async () => host.querySelector<HTMLElement>("fieldset details summary")!.click());
     await act(async () => host.querySelector<HTMLInputElement>('[role="switch"][aria-label="選択した言語に限定する"]')!.click());
     await submit();
     expect(meetingsApi.create).toHaveBeenCalledWith(expect.any(String), "audio_recording", expect.objectContaining({ transcription_language_hints: ["en"], transcription_language_hints_strict: true }));

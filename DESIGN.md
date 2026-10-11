@@ -435,7 +435,11 @@ Live開始時にMeetingをrow lockし、モデル・言語をTranscriptVersion�
 
 言語PATCHはMeetingをrow lockし、録音／finalizing Session、保存／全体処理／未処理ChunkのJob、録音・保存・処理中のMeeting状態、完成済みFinalがあれば409にする。Finalがある要約再生成は従来どおり解析だけ予約する。共通の接続先・モデル・キー、会議AI／テンプレート、Evidence・編集済み情報・質問処理の境界は維持する。
 
-Migration `20261012_0027`は0026に続き、Meetingの2項目とLive Sessionのsnapshotを追加する。既存会議のhintsはnull、Strictはfalse、既存Sessionはnullとし、履歴と処理中のJobを変更しない。UIは日本語／英語／自動／その他・複数と右側Strictスイッチを共通Componentで表示し、現在のエンジンの対応条件を読取専用APIで取得する。詳細は[会議言語ガイド](docs/meeting-transcription-languages.md)。
+Migration `20261012_0027`は0026に続き、Meetingの2項目とLive Sessionのsnapshotを追加する。既存会議のhintsはnull、Strictはfalse、既存Sessionはnullとし、履歴と処理中のJobを変更しない。現在のエンジンの対応条件を読取専用APIで取得する。
+
+会議作成・詳細の共通Componentは、選択済み言語のタグと「言語を選ぶ」を表示する。「その他・複数」へのモード切替を挟まず、検索できる1つの一覧から選択する。日本語・英語を先頭に置き、日本語名・英語名・ISOコードで検索し、選択済み行はチェック表示する。単一言語の構成では置換して閉じ、複数対応の構成では追加・解除する。最後の1言語を外して暗黙に自動判定へ切り替えない。nullの既存設定は明示選択するまで保持する。
+
+自動判定が使えない場合は、使用中のWhisperX／Azure等と用途に応じた対応条件を表示する。Strictの右側スイッチは「詳細設定」へまとめ、折りたたんでもON／OFFを表示する。検索中のEnterは親フォームを送信せず、矢印・Home／Endで一覧移動、Escape／外側の操作で閉じられる。選択UIはスマホ幅で折り返し、ライト／ダークで共通配色を使う。この表示改善ではDB／外部API／Jobの仕様を変更しない。詳細は[会議言語ガイド](docs/meeting-transcription-languages.md)。
 
 ---
 
