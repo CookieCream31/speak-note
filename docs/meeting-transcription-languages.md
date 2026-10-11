@@ -2,6 +2,8 @@
 
 最終照合: 2026-10-12。[README](../README.md) · [Soniox](soniox-transcription.md) · [反映手順](operations.md#meeting-languages)
 
+現行ソースはリアルタイム翻訳のMigration `20261012_0028`まで含みます。翻訳はこの言語ヒントと独立した設定です。[翻訳の操作・反映](realtime-translation.md)を参照してください。下記の0027の検証・反映ログは当時の記録です。
+
 ## 操作
 
 1. AI設定ではリアルタイム／非同期のエンジン・モデル・API Keyを保存します。言語の入力欄はありません。
@@ -81,7 +83,7 @@ Migration `20261012_0027`は0026に続きMeetingの2カラムとRealtimeSession�
 
 ### 言語選択UIの改善（2026-10-12）
 
-`frontend/components/meeting-language-fields.tsx`とCSS、`meeting-language-fields.test.tsx`、会議作成の`meeting-capture-settings.test.tsx`を更新しました。文書はREADME・DESIGN・このガイド・usage・development・operationsを更新しています。Backend・API・DB・Jobに変更はなく、headは0027のままです。[UIの反映手順](operations.md#language-picker-ui)。
+`frontend/components/meeting-language-fields.tsx`とCSS、`meeting-language-fields.test.tsx`、会議作成の`meeting-capture-settings.test.tsx`を更新しました。文書はREADME・DESIGN・このガイド・usage・development・operationsを更新しています。この表示改善時点のheadは0027でした。現在のソースはリアルタイム翻訳の0028も含みます。[最新の反映手順](operations.md#realtime-translation)。
 
 | コマンド | 結果 |
 | --- | --- |

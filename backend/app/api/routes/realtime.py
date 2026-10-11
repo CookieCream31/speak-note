@@ -11,6 +11,7 @@ from fastapi import (
     status,
 )
 from fastapi.concurrency import run_in_threadpool
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -21,6 +22,7 @@ from app.models.meeting import Meeting
 from app.models.realtime import RealtimeSession, RealtimeSessionStatus, RealtimeVideoPart
 from app.models.realtime_analysis import RealtimeAnalysisState
 from app.models.transcript import TranscriptSegment, TranscriptVersion
+from app.models.translation import RealtimeTranslation
 from app.schemas.realtime import RealtimeSessionRead
 from app.schemas.realtime_analysis import (
     RealtimeAnalysisOutput,
@@ -32,6 +34,7 @@ from app.schemas.transcription_settings import (
     RealtimeTranscriptionTokenRead,
     SonioxRealtimeTokenRead,
 )
+from app.schemas.translation import RealtimeTranslationRead, StreamingTranslation
 from app.services.media import MediaStorage
 from app.services.realtime import (
     RealtimeCaptureError,
@@ -45,6 +48,7 @@ from app.services.realtime import (
     start_realtime_session,
     start_realtime_video_part,
 )
+from app.services.realtime.translation import append_translation, validate_meeting_translation
 from app.services.transcription.azure import AzureSpeechClient, AzureSpeechError
 from app.services.transcription.languages import provider_language
 from app.services.transcription.settings import (
@@ -84,6 +88,7 @@ def issue_soniox_token(
                 model=transcript.model,
                 language_hints=hints,
                 language_hints_strict=strict,
+                translation=options.get("translation"),
             ).validate_language_options(realtime=True)
         token = SonioxClient(key).temporary_key(realtime_session.id)
         result = SonioxRealtimeTokenRead(
@@ -92,6 +97,7 @@ def issue_soniox_token(
             language=transcript.language,
             language_hints=hints,
             language_hints_strict=strict,
+            translation=options.get("translation"),
         )
     except RealtimeTranscriptionConfigurationError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -171,6 +177,15 @@ def _serialize_session(db: Session, realtime_session: RealtimeSession) -> Realti
         ended_at=realtime_session.ended_at,
         transcript_status=transcript.status.value,
         segments=[TranscriptSegmentRead.model_validate(segment) for segment in transcript.segments],
+        translation=(realtime_session.transcription_request or {}).get("translation"),
+        translations=[
+            RealtimeTranslationRead.model_validate(item)
+            for item in db.scalars(
+                select(RealtimeTranslation)
+                .where(RealtimeTranslation.session_id == realtime_session.id)
+                .order_by(RealtimeTranslation.sequence)
+            )
+        ],
     )
 
 
@@ -325,10 +340,11 @@ async def _open_session(
         if meeting is None:
             raise RealtimeCaptureError("会議が見つかりません")
         try:
+            validate_meeting_translation(db, meeting, meeting.realtime_translation)
             provider, model, language, region = resolve_realtime_transcription(
                 db, settings, meeting
             )
-        except RealtimeTranscriptionConfigurationError as exc:
+        except (RealtimeTranscriptionConfigurationError, ValueError) as exc:
             raise RealtimeCaptureError(str(exc)) from exc
         started = start_realtime_session(
             db,
@@ -346,8 +362,14 @@ async def _open_session(
                     "model": model,
                     "language": language,
                     **provider_language(meeting, provider.value, language)[1],
+                    **(
+                        {"translation": meeting.realtime_translation}
+                        if meeting.realtime_translation
+                        else {}
+                    ),
                 }
                 if meeting.transcription_language_hints is not None
+                or meeting.realtime_translation is not None
                 else None
             ),
             split_capture=split_capture,
@@ -393,6 +415,32 @@ async def realtime_websocket(
             message_type = message.get("type")
             if message_type == "ping":
                 await websocket.send_json({"type": "pong"})
+                continue
+            if message_type == "soniox_translation":
+                try:
+                    result = StreamingTranslation.model_validate(
+                        {key: value for key, value in message.items() if key != "type"}
+                    )
+                    stored = await run_in_threadpool(
+                        append_translation, db, realtime_session.id, result
+                    )
+                except (ValidationError, RealtimeCaptureError):
+                    await run_in_threadpool(db.rollback)
+                    await websocket.send_json(
+                        {
+                            "type": "soniox_translation_error",
+                            "result_id": message.get("result_id"),
+                            "message": "翻訳を保存できませんでした。録音と原文の保存は継続します。",
+                        }
+                    )
+                    continue
+                await websocket.send_json(
+                    {
+                        "type": "soniox_translation_saved",
+                        "result_id": result.result_id,
+                        "translation_id": str(stored.id),
+                    }
+                )
                 continue
             if message_type in {"azure_result", "soniox_result"}:
                 expected_provider = "soniox" if message_type == "soniox_result" else "azure_speech"

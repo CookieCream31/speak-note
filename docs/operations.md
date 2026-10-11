@@ -15,7 +15,7 @@ Composeはソースをbind mountしますが、プロセスの再起動・依存
 | README、docs | なし | アプリは変わらない |
 | FrontendのTSX/CSS/JS | 通常はHMR。必要ならブラウザ再読み込み | ソースを直接マウント |
 | Frontendのpackage.json / lockfile / 起動処理 | `sudo docker compose restart frontend` | 起動時に依存チェックと必要な `npm ci` |
-| BackendのPython | APIはreload。Workerは `sudo docker compose restart worker live-worker realtime-ai-worker` | Workerには自動reloadがない |
+| BackendのPython | APIはreload。Workerは `sudo docker compose restart worker live-worker realtime-ai-worker answer-worker` | Workerには自動reloadがない |
 | Alembic Migration | `sudo docker compose restart backend`、完了後にWorkerを再起動 | APIのreloadだけでは起動時Migrationを再実行しない |
 | FrontendのDockerfile | `sudo docker compose up --build -d --no-deps frontend` | イメージを再ビルド・反映 |
 | BackendのDockerfile / pyproject.toml | `sudo docker compose up --build -d backend worker live-worker realtime-ai-worker answer-worker` | 5サービスでBackendイメージを使用 |
@@ -80,7 +80,7 @@ sudo docker compose restart frontend
 <a id="soniox"></a>
 ## Sonioxリアルタイム・非同期の反映（Migration 0026）
 
-Migration 0026は0025の後にLive設定・非同期設定・Job checkpointを追加しました。現行headは、会議言語設定も追加した`20261012_0027`です。最新コードの反映は[会議言語の反映](#meeting-languages)を参照してください。新しい環境変数や依存追加はありません。録音・録画・保存・実行中Jobがすべて完了してから実行してください。
+Migration 0026は0025の後にLive設定・非同期設定・Job checkpointを追加しました。現行headは、会議言語とリアルタイム翻訳も追加した`20261012_0028`です。最新コードの反映は[リアルタイム翻訳の反映](#realtime-translation)を参照してください。新しい環境変数や依存追加はありません。録音・録画・保存・実行中Jobがすべて完了してから実行してください。
 
 ```bash
 cd /home/llm/speak-note
@@ -89,7 +89,7 @@ sudo docker compose stop worker live-worker realtime-ai-worker answer-worker
 sudo docker compose restart backend
 sudo docker compose up -d --wait --no-deps backend
 sudo docker compose exec -T backend alembic current
-# 現行ソースは20261012_0027 (head)を確認してからWorkerを再開
+# 現行ソースは20261012_0028 (head)を確認してからWorkerを再開
 sudo docker compose up -d --no-deps worker live-worker realtime-ai-worker answer-worker
 sudo docker compose restart frontend
 sudo docker compose ps backend frontend worker live-worker realtime-ai-worker answer-worker
@@ -130,7 +130,7 @@ sudo docker compose stop worker live-worker realtime-ai-worker answer-worker
 sudo docker compose restart backend
 sudo docker compose up -d --wait --no-deps backend
 sudo docker compose exec -T backend alembic current
-# 20261012_0027 (head)を確認してからWorkerを再開
+# 現行ソースは20261012_0028 (head)を確認してからWorkerを再開
 sudo docker compose up -d --no-deps worker live-worker realtime-ai-worker answer-worker
 sudo docker compose restart frontend
 sudo docker compose ps backend frontend worker live-worker realtime-ai-worker answer-worker
@@ -138,12 +138,34 @@ sudo docker compose ps backend frontend worker live-worker realtime-ai-worker an
 
 Backend起動時にMigrationを適用します。失敗した場合はWorkerを止めたまま`sudo docker compose logs --tail=100 backend`で確認します。Volumeを削除しません。ブラウザ再読み込み後、「新しい会議」の「会議で話す言語」、AI設定の言語欄がなくなったこと、会議ページの「文字起こし設定」を確認し、[短い録音と再生成の確認](meeting-transcription-languages.md#動作確認)を行います。
 
-利用者の提示ログで運用DBの`20261012_0027 (head)`、BackendのHealthy、4つのWorkerのStartedを確認しました。後続の言語UI変更後のログではFrontendの再起動後のUpも確認しました。新UIの画面表示と実音声認識は未確認です。今回反映済みの環境では再度のMigration適用や再起動は不要です。[0027とFrontendの反映記録](meeting-transcription-languages.md#deployment-confirmation)を参照してください。
+当時の利用者の提示ログで運用DBの`20261012_0027 (head)`、BackendのHealthy、4つのWorkerのStartedを確認しました。後続の言語UI変更後のログではFrontendの再起動後のUpも確認しました。[0027とFrontendの反映記録](meeting-transcription-languages.md#deployment-confirmation)。現在のソースには未反映のリアルタイム翻訳の0028も含むため、最新変更は次の手順で反映します。
+
+<a id="realtime-translation"></a>
+## リアルタイム翻訳の反映（Migration 0028）
+
+Meetingへ翻訳設定、原文とは別の翻訳履歴を追加します。既存の会議・文字起こし・要約・Job・認証情報を保持し、新しい設定はOFFです。追加環境変数・依存追加はありません。運用DBへの0028適用とDocker反映は未実施です。
+
+録音・録画・保存・実行中Jobをすべて終えてから実行します。同じ環境でソースが更新済みなら`git pull`は省略できます。
+
+```bash
+cd /home/llm/speak-note
+sudo docker compose stop worker live-worker realtime-ai-worker answer-worker
+git pull --ff-only
+sudo docker compose restart backend
+sudo docker compose up -d --wait --no-deps backend
+sudo docker compose exec -T backend alembic current
+# 20261012_0028 (head)とBackendのHealthyを確認してから再開
+sudo docker compose up -d --no-deps worker live-worker realtime-ai-worker answer-worker
+sudo docker compose restart frontend
+sudo docker compose ps backend frontend worker live-worker realtime-ai-worker answer-worker
+```
+
+Migrationで失敗した場合はWorkerを停止したままBackendログを確認します。Volumeを削除しません。反映後にブラウザを再読み込みし、タグと「言語を選ぶ」の枠の高さ、翻訳のON／OFF・翻訳先、短い英語音声→日本語、双方向、停止・再読み込み後の翻訳履歴を確認してください。[操作と検証](realtime-translation.md)。
 
 <a id="language-picker-ui"></a>
 ### 言語の検索一覧・タグ・詳細設定への表示改善
 
-Migration 0027適用済みなら追加のDB変更・Backend／Worker再起動はありません。現行の開発ComposeはFrontendのソースを共有しています。録音・録画と保存を終えてからソースを取り込み、ブラウザを再読み込みします。Frontendの再起動が必要な場合だけ実行します。
+この表示改善自体は追加のDB変更がありません。当時は0027適用済みの環境へFrontendだけを反映しました。現行ソースはリアルタイム翻訳の0028も含むため、最新変更には[0028の反映手順](#realtime-translation)を使います。以下は当時のFrontendだけの反映例です。録音・録画と保存を終えてから実行します。
 
 ```bash
 cd /home/llm/speak-note

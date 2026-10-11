@@ -19,3 +19,5 @@ class TranscriptionLanguageOptionsRead(BaseModel):
     supports_multiple: bool
     supports_strict: bool
     providers: list[str]
+    supports_translation: bool = False
+    translation_languages: list[str] = Field(default_factory=list)

@@ -1,0 +1,17 @@
+.fields { display: grid; min-width: 0; gap: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.fields p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.toggle { display: flex; align-items: center; justify-content: space-between; gap: 14px; cursor: pointer; }
+.toggle > span { display: grid; min-width: 0; gap: 5px; }
+.toggle strong { color: var(--ink); font-size: 13px; }
+.toggle small { color: var(--muted); font-size: 12px; line-height: 1.6; }
+.toggle input { position: relative; appearance: none; flex-shrink: 0; width: 40px; height: 24px; margin: 0; padding: 0; border: 0; border-radius: 999px; background: var(--control-border); cursor: pointer; }
+.toggle input::after { position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; content: ""; border-radius: 50%; background: var(--surface); transition: transform .15s ease; }
+.toggle input:checked { background: var(--blue); }
+.toggle input:checked::after { transform: translateX(16px); }
+.toggle input:focus-visible, .select select:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
+.select { display: grid; min-width: 0; gap: 6px; color: var(--muted); font-size: 13px; }
+.select select { width: 100%; min-width: 0; min-height: 44px; padding: 8px 10px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; font: inherit; }
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.fields input:disabled, .fields select:disabled { cursor: not-allowed; opacity: .55; }
+@media (max-width: 520px) { .select select { font-size: 16px; } }
+@media (prefers-reduced-motion: reduce) { .toggle input::after { transition: none; } }

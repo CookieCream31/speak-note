@@ -574,6 +574,7 @@ export function MeetingsManager({
         const meeting = await meetingsApi.create(title, sourceType, {
           transcription_language_hints: meetingLanguage.hints ?? ["ja"],
           transcription_language_hints_strict: meetingLanguage.strict,
+          realtime_translation: createSource === "media_upload" ? null : meetingLanguage.translation ?? null,
           min_speakers: minSpeakers,
           max_speakers: maxSpeakers,
           summary_format: summaryFormatValue as MeetingSummaryFormat,

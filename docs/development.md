@@ -316,6 +316,15 @@ npm run typecheck
 
 formatter／lint／型チェックは変更範囲で成功を確認し、全体に残る既存エラーは区別して記録します。APIテストはSQLite、Sonioxはmockで、実PostgreSQLの同時要求・実音声認識を代替するものではありません。変更ファイルと検証結果、未検証事項は[会議言語ガイド](meeting-transcription-languages.md#実装検証)を参照してください。
 
+<a id="realtime-translation"></a>
+## リアルタイム翻訳
+
+`schemas/translation.py`が一方向／双方向の設定と保存payloadを検証します。Meetingの設定は開始時にSessionへ固定し、Soniox Clientが公式モデルの翻訳対応をキー発行前に確認します。`services/realtime/translation.py`は原文とは別テーブルに確定翻訳を保存し、Sessionのrow lockと一意IDで重複を防ぎます。保存応答を返す前にlockを解放し、同じIDの異なる本文は拒否します。翻訳だけの検証失敗は終了応答として再送を止め、録音・原文の接続を継続します。
+
+Frontendは`soniox-translation.ts`で時刻のない翻訳tokenを組み立て、`live-translation-store.ts`で仮説と確定履歴を分離します。`RecordingConnection`が翻訳の未確認結果を再送し、保存／拒否の応答でqueueから外します。`LiveTranslationPanel`は録音中と停止後の履歴・保存状態を表示し、翻訳をTranscript StoreやAI Evidenceへ渡しません。共通言語欄は取り込み方法が変わった際に前の対応情報を使わず、再取得まで操作を止めます。
+
+`pytest tests/test_realtime_translation.py -q`、Frontend全体テスト・ESLint・型チェック、Alembic headsと0027→0028のoffline SQL、ブラウザの表示・保存を検証します。[変更ファイルと検証](realtime-translation.md#変更したファイル)。
+
 <a id="display-theme"></a>
 ## 表示テーマの実装と変更時の確認
 

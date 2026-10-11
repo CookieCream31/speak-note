@@ -95,3 +95,4 @@ class SonioxRealtimeTokenRead(BaseModel):
     language: str
     language_hints: list[str]
     language_hints_strict: bool = False
+    translation: dict[str, str] | None = None

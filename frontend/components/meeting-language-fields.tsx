@@ -3,22 +3,28 @@
 import { Check, ChevronDown, Plus, Search, X } from "lucide-react";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import styles from "./meeting-language-fields.module.css";
+import type { RealtimeTranslationConfig } from "@/lib/api";
+import { MeetingTranslationFields } from "./meeting-translation-fields";
 
-export interface MeetingLanguageSelection { hints: string[] | null; strict: boolean; }
+export interface MeetingLanguageSelection { hints: string[] | null; strict: boolean; translation?: RealtimeTranslationConfig | null; }
 interface LanguageOptions {
   languages: string[]; supports_auto: boolean; supports_multiple: boolean;
   supports_strict: boolean; providers: string[];
+  supports_translation?: boolean; translation_languages?: string[];
 }
 const names = new Intl.DisplayNames(["ja"], { type: "language" });
 const englishNames = new Intl.DisplayNames(["en"], { type: "language" });
 const providerNames: Record<string, string> = { whisperx: "WhisperX", azure_speech: "Azure AI Speech" };
-export function MeetingLanguageFields({ value, onChange, includeRealtime, disabled = false }: {
+export function MeetingLanguageFields({ value, onChange, includeRealtime, disabled = false, translationLocked = false }: {
   value: MeetingLanguageSelection; onChange: (value: MeetingLanguageSelection) => void;
   includeRealtime: boolean; disabled?: boolean;
+  translationLocked?: boolean;
 }) {
   const id = useId();
-  const [options, setOptions] = useState<LanguageOptions | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [capabilities, setCapabilities] = useState<{ includeRealtime: boolean; options: LanguageOptions } | null>(null);
+  const [reading, setLoading] = useState(true);
+  const options = capabilities?.includeRealtime === includeRealtime ? capabilities.options : null;
+  const loading = reading || Boolean(capabilities && capabilities.includeRealtime !== includeRealtime);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
   const [open, setOpen] = useState(false);
@@ -39,9 +45,12 @@ export function MeetingLanguageFields({ value, onChange, includeRealtime, disabl
         if (!Array.isArray(result.languages) || result.languages.some((code) => typeof code !== "string" || !/^[a-z]{2,3}$/.test(code))
           || !Array.isArray(result.providers) || result.providers.some((provider) => typeof provider !== "string")
           || [result.supports_auto, result.supports_multiple, result.supports_strict].some((flag) => typeof flag !== "boolean")) throw new Error();
-        if (active) setOptions(result);
+        if ((result.supports_translation !== undefined && typeof result.supports_translation !== "boolean")
+          || (result.translation_languages !== undefined && (!Array.isArray(result.translation_languages)
+            || result.translation_languages.some((code) => typeof code !== "string" || !/^[a-z]{2,3}$/.test(code))))) throw new Error();
+        if (active) setCapabilities({ includeRealtime, options: result });
       } catch {
-        if (active) { setOptions(null); setError("対応言語を取得できませんでした。再取得してください。"); }
+        if (active) { setCapabilities(null); setError("対応言語を取得できませんでした。再取得してください。"); }
       } finally { if (active) setLoading(false); }
     }
     void load();
@@ -70,7 +79,7 @@ export function MeetingLanguageFields({ value, onChange, includeRealtime, disabl
   const blockedProviders = options?.providers.filter((provider) => provider !== "soniox")
     .map((provider) => providerNames[provider] ?? "現在のエンジン").join("・");
   const autoReason = `${blockedProviders || "現在のエンジン"}を使用しているため、自動判定は利用できません。`;
-  function changeHints(next: string[]) { onChange({ hints: next, strict: next.length > 0 && value.strict }); }
+  function changeHints(next: string[]) { onChange({ ...value, hints: next, strict: next.length > 0 && value.strict }); }
   function removeLanguage(code: string) {
     if (controlsDisabled || !hints || hints.length < 2) return;
     changeHints(hints.filter((item) => item !== code));
@@ -162,6 +171,9 @@ export function MeetingLanguageFields({ value, onChange, includeRealtime, disabl
         {value.strict && (hints?.length ?? 0) > 1 && <p>Strictは1つの言語で最も安定します。複数言語では認識が不安定になる場合があります。</p>}
       </div>
     </details>
+    {includeRealtime && <MeetingTranslationFields value={value.translation ?? null} onChange={(translation) => onChange({ ...value, translation })} languages={options?.translation_languages ?? options?.languages ?? []} supported={options?.supports_translation === true} disabled={controlsDisabled || translationLocked} />}
+    {includeRealtime && translationLocked && <p>録音開始後は翻訳設定を変更できません。録音開始時の設定を使用します。</p>}
+    {value.translation?.type === "two_way" && value.strict && <p>双方向で話す場合は、言語ヒントに両方の言語を選ぶか、StrictをOFFにしてください。</p>}
     {unavailable && <p role="alert">選択中の言語設定は現在のエンジンで使用できません。言語設定を選び直してください。</p>}
     {loading && <p role="status">対応言語を確認中…</p>}
     {error && <div className={styles.error}><p role="alert">{error}</p><button type="button" disabled={disabled} onClick={() => setRevision((previous) => previous + 1)}>再取得</button></div>}

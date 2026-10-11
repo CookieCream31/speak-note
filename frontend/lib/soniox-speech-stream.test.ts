@@ -63,13 +63,30 @@ describe("Soniox streaming lifecycle", () => {
   });
   afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
   async function start() {
-    const onResult = vi.fn(), onInterim = vi.fn(), onError = vi.fn(), onInterimCleared = vi.fn();
-    const promise = startSonioxSpeechStream({ tokenUrl: "/soniox-token", audioStream: {} as MediaStream, getTimelinePositionMs: () => 3000, onResult, onInterim, onError, onInterimCleared });
+    const onResult = vi.fn(), onInterim = vi.fn(), onError = vi.fn(), onInterimCleared = vi.fn(), onTranslation = vi.fn();
+    const promise = startSonioxSpeechStream({ tokenUrl: "/soniox-token", audioStream: {} as MediaStream, getTimelinePositionMs: () => 3000, onResult, onInterim, onError, onInterimCleared, onTranslation });
     await tick();
     const socket = FakeSocket.instances[0]; socket.open(); await tick();
     const controller = await promise;
-    return { socket, controller, onResult, onInterim, onError, onInterimCleared };
+    return { socket, controller, onResult, onInterim, onError, onInterimCleared, onTranslation };
   }
+  it("streams originals and translations independently and retains the saved translation config after reconnect", async () => {
+    const translation = { type: "one_way", target_language: "ja" };
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ api_key: "temporary", model: "stt-rt-v5", language: "en", translation }) })));
+    const { socket, controller, onResult, onTranslation } = await start();
+    expect(JSON.parse(socket.sent[0] as string).translation).toEqual(translation);
+    socket.receive({ tokens: [token("Hello"), { text: "こんにちは", is_final: true, translation_status: "translation", language: "ja", source_language: "en", speaker: "1" }] });
+    socket.close();
+    expect(onResult.mock.calls[0][0].text).toBe("Hello");
+    expect(onTranslation.mock.calls[0][0]).toMatchObject({ text: "こんにちは", speakerLabel: "話者 1" });
+    expect(onTranslation.mock.calls[0][0]).not.toHaveProperty("startMs");
+    await vi.advanceTimersByTimeAsync(1000); await tick();
+    const next = FakeSocket.instances[1]; next.open(); await tick();
+    expect(JSON.parse(next.sent[0] as string).translation).toEqual(translation);
+    await controller.stop();
+    expect(onTranslation).toHaveBeenCalledTimes(2);
+    expect(onTranslation.mock.calls.map((call) => call[1])).toEqual([false, true]);
+  });
   it("authenticates with a temporary protocol key, streams PCM, and drains with empty TEXT", async () => {
     const { socket, controller, onResult } = await start();
     expect(socket.url).toBe("wss://stt-rt.soniox.com/transcribe-websocket");

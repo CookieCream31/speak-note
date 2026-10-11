@@ -62,7 +62,7 @@ function submitButton() { return host.querySelector<HTMLButtonElement>('button[t
 beforeEach(async () => {
   vi.clearAllMocks();
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-  vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ languages: ["ja", "en"], supports_auto: true, supports_multiple: true, supports_strict: true, providers: ["soniox"] }) })));
+  vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ languages: ["ja", "en"], supports_auto: true, supports_multiple: true, supports_strict: true, supports_translation: true, providers: ["soniox"] }) })));
   vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
     queueMicrotask(() => callback(0)); return 1;
   });
@@ -89,6 +89,12 @@ afterEach(() => {
 });
 
 describe("screen sharing recording setting", () => {
+  it("persists the optional live translation on a microphone meeting", async () => {
+    await selectMethod("audio_recording");
+    await act(async () => host.querySelector<HTMLInputElement>('[aria-label="リアルタイム翻訳を使う"]')!.click());
+    await submit();
+    expect(meetingsApi.create).toHaveBeenCalledWith(expect.any(String), "audio_recording", expect.objectContaining({ realtime_translation: { type: "one_way", target_language: "ja" } }));
+  });
   it("persists the meeting language and strict choice for microphone capture", async () => {
     await selectMethod("audio_recording");
     await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="言語を選ぶ"]')!.click());

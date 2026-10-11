@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from app.models.meeting import MeetingSourceType, MeetingStatus
 from app.schemas.tag import MeetingTagRead
 from app.schemas.transcription_language import LanguageHints, validate_language_hints
+from app.schemas.translation import TranslationConfig
 
 MeetingSummaryFormat = Literal["standard", "concise", "detailed", "bullet"]
 
@@ -33,6 +34,7 @@ class MeetingCreate(MeetingBase):
     meeting_context: str | None = Field(default=None, max_length=4000)
     transcription_language_hints: LanguageHints = Field(default_factory=lambda: ["ja"])
     transcription_language_hints_strict: bool = False
+    realtime_translation: TranslationConfig | None = None
 
     _validate_languages = field_validator("transcription_language_hints")(validate_language_hints)
 
@@ -72,6 +74,7 @@ class MeetingUpdate(BaseModel):
     meeting_context: str | None = Field(default=None, max_length=4000)
     transcription_language_hints: LanguageHints | None = None
     transcription_language_hints_strict: bool | None = None
+    realtime_translation: TranslationConfig | None = None
 
     _validate_languages = field_validator("transcription_language_hints")(validate_language_hints)
 
@@ -144,6 +147,7 @@ class MeetingRead(MeetingBase):
     meeting_context: str | None
     transcription_language_hints: list[str] | None
     transcription_language_hints_strict: bool
+    realtime_translation: TranslationConfig | None = None
     tags: list[MeetingTagRead] = Field(default_factory=list)
 
 

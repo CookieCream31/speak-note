@@ -207,6 +207,7 @@ class TranscriptionLanguageError(ValueError):
 def language_options(db: Session, *, include_realtime: bool) -> TranscriptionLanguageOptionsRead:
     asynchronous = db.get(AsyncTranscriptionSettings, 1)
     providers = [asynchronous.provider if asynchronous else "whisperx"]
+    realtime = None
     if include_realtime:
         realtime = db.get(RealtimeTranscriptionSettings, 1)
         providers.append(realtime.provider if realtime else "whisperx")
@@ -219,6 +220,8 @@ def language_options(db: Session, *, include_realtime: bool) -> TranscriptionLan
         supports_multiple=all(provider == "soniox" for provider in providers),
         supports_strict="soniox" in providers,
         providers=providers,
+        supports_translation=bool(include_realtime and realtime and realtime.provider == "soniox"),
+        translation_languages=LANGUAGES if include_realtime else [],
     )
 
 

@@ -23,6 +23,7 @@ import {
   screenRecordingBitrate,
 } from "@/lib/live-capture";
 import { publishLiveTranscriptEvent } from "@/lib/live-transcript-events";
+import { getLiveTranslationStore } from "@/lib/live-translation-store";
 import { takePendingLiveCapture } from "@/lib/pending-live-capture";
 import { RecordingConnection } from "@/lib/recording-connection";
 import { startSonioxSpeechStream } from "@/lib/soniox-speech-stream";
@@ -462,6 +463,12 @@ export function LiveMeetingRecorder({
       const connection = new RecordingConnection({
         url: websocketUrl(meetingId),
         onMessage: (payload) => {
+          if (payload.type === "soniox_translation_saved" && typeof payload.result_id === "string") getLiveTranslationStore(meetingId).markSaved(payload.result_id);
+          if (payload.type === "soniox_translation_error" && typeof payload.result_id === "string") {
+            const message = "翻訳を保存できませんでした。録音と原文の保存は継続します。";
+            getLiveTranslationStore(meetingId).markFailed(payload.result_id, message);
+            setMessage(message);
+          }
           if (
             (payload.type === "azure_result_saved" || payload.type === "soniox_result_saved")
             && typeof payload.result_id === "string"
@@ -531,6 +538,7 @@ export function LiveMeetingRecorder({
       speechDiagnosticsRef.current = [];
       setHasSpeechDiagnostics(false);
       publishLiveTranscriptEvent({ type: "reset", meetingId });
+      getLiveTranslationStore(meetingId).reset();
       startedAtRef.current = performance.now();
       setElapsedMs(0);
       audioChunkStartRef.current = 0;
@@ -546,6 +554,22 @@ export function LiveMeetingRecorder({
         speechStreamRef.current = await startStream({
           tokenUrl: `/api/v1/meetings/${meetingId}/live/${isSoniox ? "soniox" : "azure"}-token`,
           audioStream: audioCaptureStream,
+          ...(isSoniox ? {
+            onTranslation: (result: import("@/lib/soniox-translation").LiveTranslationResult, isFinal: boolean) => {
+              getLiveTranslationStore(meetingId).accept(result, isFinal);
+              if (isFinal) {
+                try { queuePayload({ type: "soniox_translation", result_id: result.resultId,
+                  text: result.text, source_language: result.sourceLanguage, target_language: result.targetLanguage,
+                  speaker_label: result.speakerLabel }); }
+                catch (error) {
+                  const message = error instanceof Error ? error.message : "翻訳結果を保存できませんでした";
+                  getLiveTranslationStore(meetingId).markFailed(result.resultId, message);
+                  setMessage(message);
+                }
+              }
+            },
+            onTranslationCleared: (resultId: string) => getLiveTranslationStore(meetingId).clearInterim(resultId),
+          } : {}),
           getTimelinePositionMs: currentElapsedMs,
           onInterimCleared: (resultId: string) => {
             publishLiveTranscriptEvent({ type: "clear-interim", meetingId, resultId });

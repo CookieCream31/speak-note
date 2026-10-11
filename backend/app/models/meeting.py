@@ -124,6 +124,9 @@ class Meeting(Base):
         JSON().with_variant(JSONB, "postgresql"), nullable=True
     )
     transcription_language_hints_strict: Mapped[bool] = mapped_column(Boolean, default=False)
+    realtime_translation: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON().with_variant(JSONB, "postgresql"), nullable=True
+    )
 
     ai_profile: Mapped["AIProfile | None"] = relationship(back_populates="meetings")
     jobs: Mapped[list["Job"]] = relationship(

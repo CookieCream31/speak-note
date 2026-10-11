@@ -1,10 +1,11 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models.realtime import RealtimeSessionStatus
 from app.schemas.transcript import TranscriptSegmentRead
+from app.schemas.translation import RealtimeTranslationRead, TranslationConfig
 
 
 class RealtimeSessionRead(BaseModel):
@@ -20,3 +21,5 @@ class RealtimeSessionRead(BaseModel):
     ended_at: datetime | None
     transcript_status: str
     segments: list[TranscriptSegmentRead]
+    translation: TranslationConfig | None = None
+    translations: list[RealtimeTranslationRead] = Field(default_factory=list)

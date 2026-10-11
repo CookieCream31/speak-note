@@ -64,6 +64,7 @@ function pendingKey(payload: Record<string, unknown>): string {
       return `video_chunk:${String(payload.part_sequence)}:${String(payload.chunk_sequence)}`;
     case "azure_result":
     case "soniox_result":
+    case "soniox_translation":
       return `${payload.type}:${String(payload.result_id)}`;
     default:
       throw new Error(`再送できないメッセージです: ${String(payload.type)}`);
@@ -86,6 +87,9 @@ function acknowledgedKey(message: ServerMessage): string | null {
       return `azure_result:${String(message.result_id)}`;
     case "soniox_result_saved":
       return `soniox_result:${String(message.result_id)}`;
+    case "soniox_translation_saved":
+    case "soniox_translation_error":
+      return `soniox_translation:${String(message.result_id)}`;
     default:
       return null;
   }

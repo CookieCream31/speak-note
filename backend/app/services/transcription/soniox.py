@@ -96,6 +96,7 @@ class SonioxClient:
         *,
         language_hints: list[str] | None = None,
         language_hints_strict: bool = False,
+        translation: dict[str, str] | None = None,
         transport: httpx.BaseTransport | None = None,
         timeout_seconds: float = 7200,
         poll_interval_seconds: float = 5,
@@ -107,6 +108,7 @@ class SonioxClient:
         self.language = language
         self.language_hints = list(language_hints) if language_hints is not None else [language]
         self.language_hints_strict = language_hints_strict
+        self.translation = dict(translation) if translation else None
         self.explicit_language_options = language_hints is not None
         if language_hints_strict and not self.language_hints:
             raise SonioxError("Strictには言語の選択が必要です")
@@ -235,6 +237,14 @@ class SonioxClient:
         }
         if any(code not in codes for code in self.language_hints):
             raise SonioxError("選択した言語はこのSonioxモデルに対応していません")
+        if self.translation:
+            kind = self.translation.get("type")
+            if not realtime or kind not in {"one_way", "two_way"}:
+                raise SonioxError("リアルタイム翻訳の設定が不正です")
+            if model.get(f"{kind}_translation") != "all_languages":
+                raise SonioxError("選択したSonioxモデルの翻訳対応を確認できません")
+            if any(code not in codes for key, code in self.translation.items() if key != "type"):
+                raise SonioxError("選択した翻訳言語はこのSonioxモデルに対応していません")
 
     def temporary_key(self, session_id: uuid.UUID) -> dict[str, Any]:
         return self._request(

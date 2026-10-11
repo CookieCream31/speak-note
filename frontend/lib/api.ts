@@ -35,6 +35,14 @@ export type MeetingStatus =
   | "failed";
 
 export type RealtimeTranscriptionProvider = "whisperx" | "azure_speech" | "soniox";
+export type RealtimeTranslationConfig =
+  | { type: "one_way"; target_language: string }
+  | { type: "two_way"; language_a: string; language_b: string };
+export interface LiveTranslation {
+  id: string; result_id: string; sequence: number; text: string;
+  source_language: string; target_language: string; speaker_label: string | null;
+  created_at?: string; isFinal?: boolean; saved?: boolean; error?: string;
+}
 
 export interface RealtimeTranscriptionSettings {
   provider: RealtimeTranscriptionProvider;
@@ -91,6 +99,7 @@ export interface Meeting {
   max_speakers: number | null;
   transcription_language_hints?: string[] | null;
   transcription_language_hints_strict?: boolean;
+  realtime_translation?: RealtimeTranslationConfig | null;
   summary_format: MeetingSummaryFormat;
   meeting_context: string | null;
   template_id: string | null;
@@ -395,6 +404,7 @@ export const meetingsApi = {
     options?: {
       transcription_language_hints?: string[];
       transcription_language_hints_strict?: boolean;
+      realtime_translation?: RealtimeTranslationConfig | null;
       min_speakers?: number | null;
       max_speakers?: number | null;
       summary_format?: MeetingSummaryFormat;
@@ -412,6 +422,7 @@ export const meetingsApi = {
     fields: {
       transcription_language_hints?: string[];
       transcription_language_hints_strict?: boolean;
+      realtime_translation?: RealtimeTranslationConfig | null;
       title?: string;
       status?: MeetingStatus;
       is_favorite?: boolean;
@@ -517,6 +528,8 @@ export interface LiveSession {
   ended_at: string | null;
   transcript_status: "processing" | "completed" | "failed";
   segments: TranscriptSegment[];
+  translation?: RealtimeTranslationConfig | null;
+  translations?: LiveTranslation[];
 }
 
 

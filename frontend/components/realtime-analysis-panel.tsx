@@ -13,6 +13,7 @@ import {
 } from "react";
 
 import { getLiveTranscriptStore, type StreamingTranscriptSegment } from "@/lib/live-transcript-store";
+import { LiveTranslationPanel } from "./live-translation-panel";
 
 export type { StreamingTranscriptSegment } from "@/lib/live-transcript-store";
 import type {
@@ -666,13 +667,13 @@ export function RealtimeAnalysisPanel({
     </>
   );
   const transcriptViewport = (
-    <LiveTranscriptViewport>
+    <><LiveTranscriptViewport>
       <LiveTranscriptStream
         meetingId={meetingId}
         recording={liveSession?.status === "recording"}
         persistedSegments={liveSession?.segments ?? EMPTY_PERSISTED_SEGMENTS}
       />
-    </LiveTranscriptViewport>
+    </LiveTranscriptViewport><LiveTranslationPanel meetingId={meetingId} translation={liveSession?.translation} persisted={liveSession?.translations} /></>
   );
   const statusIndicator = (
     <div className={styles.status} data-status={viewStatus.key} aria-live="polite">

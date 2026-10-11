@@ -4,7 +4,7 @@
 確定版の文字起こし・話者分離にはWhisperXまたはSoniox非同期API、要約・質問回答にはOllama / Geminiを使用します。
 録音中の文字起こしはWhisperX / Azure AI Speech / SonioxリアルタイムAPIから、確定版とは独立して選べます。
 
-最終照合: **2026-10-12**（会議ごとの文字起こし言語・検索とタグによる選択UI・自動判定の制限理由・詳細設定のStrict表示、Language hints、設定の固定と互換性、Migration 0027、Sonioxのモデル一覧・用途別APIキー権限、利用者のMigration 0026・0027反映ログと言語UI変更後のFrontend起動ログ、従来の会議・要約再生成・録音・表示・Git運用・新規環境の起動手順を照合）。この文書は現在のソースコードとCompose設定を説明します。機能ごとの検証と過去の反映ログは関連ガイドへ記録しています。
+最終照合: **2026-10-12**（Sonioxの会議ごとのリアルタイム翻訳・原文と別の履歴・再接続と保存失敗、言語タグの枠の高さ、会議言語・検索UI・Strict、設定の固定と互換性、Migration 0027・0028、Sonioxのモデル一覧・用途別APIキー権限、利用者のMigration 0026・0027反映ログと言語UI変更後のFrontend起動ログ、従来の会議・要約再生成・録音・表示・Git運用・新規環境の起動手順を照合）。この文書は現在のソースコードとCompose設定を説明します。機能ごとの検証と過去の反映ログは関連ガイドへ記録しています。
 外部APIの実接続、認識精度、すべての端末での動作を保証するものではありません。
 
 今後の機能追加・修正では毎回、実装とこのREADMEを照合し、操作・構成・設定・制約などの説明に影響する変更を同じ作業で反映します。詳しい作業ルールは[AGENTS.md](AGENTS.md)と[開発ガイド](docs/development.md)を参照してください。
@@ -25,6 +25,7 @@
 | [共有音声録音の実装・検証記録](docs/shared-audio.md) | 映像を保存しない録音、テスト、Migration 0025 |
 | [Soniox文字起こし](docs/soniox-transcription.md) | リアルタイム／非同期の設定、公式仕様、再試行 |
 | [会議ごとの文字起こし言語](docs/meeting-transcription-languages.md) | 自動判定・言語ヒント・Strict、互換性、Migration 0027 |
+| [リアルタイム翻訳](docs/realtime-translation.md) | Sonioxの一方向・双方向翻訳、原文との分離、保存とMigration 0028 |
 | [表示テーマガイド](docs/dark-mode.md) | ダークモード、設定の保存、全画面の対応範囲と検証 |
 | [リデザイン実装ガイド](docs/redesign.md) | 画面デザイン変更の段階・配色・レイアウト（未実装の計画。モックアップは `docs/redesign/mockups/`） |
 
@@ -184,7 +185,7 @@ curl --fail http://localhost:8001/api/v1/health
 sudo docker compose exec -T backend alembic current
 ```
 
-`config --quiet` は構文確認のみです。値を展開する `docker compose config` の出力にはSecretが含まれ得るため、共有しないでください。Backendは起動時にAlembic Migrationを実行します。現行ソースのheadは `20261012_0027` です。Frontendは起動時にlockfileを確認し、必要なら `npm ci` を実行します。初回ビルド中はヘルスチェックが通るまで待ってから確認してください。エラー時は[障害調査](docs/operations.md#troubleshooting)を参照してください。
+`config --quiet` は構文確認のみです。値を展開する `docker compose config` の出力にはSecretが含まれ得るため、共有しないでください。Backendは起動時にAlembic Migrationを実行します。現行ソースのheadは `20261012_0028` です。Frontendは起動時にlockfileを確認し、必要なら `npm ci` を実行します。初回ビルド中はヘルスチェックが通るまで待ってから確認してください。エラー時は[障害調査](docs/operations.md#troubleshooting)を参照してください。
 
 - 画面（Compose既定）: [http://localhost:3000](http://localhost:3000)。`FRONTEND_PORT` を変えた場合はそのホスト側ポートを使用します。2026-09-28のユーザー提供ログでは3001→コンテナ3000です。
 - APIドキュメント: [http://localhost:8001/docs](http://localhost:8001/docs)
@@ -272,6 +273,12 @@ Language hintsは認識のヒントで、Sonioxでは他の言語も認識しま
 
 この追加にはMigration `20261012_0027`が必要です。利用者の提示ログで運用DBの`20261012_0027 (head)`、BackendのHealthy、4つのWorkerの起動を確認しました。言語UI変更後のログでは、再起動後のFrontendの`Up 5 seconds`も確認しています。新UIの画面表示・実APIでの音声認識は未確認です。[反映記録](docs/meeting-transcription-languages.md#deployment-confirmation)、[反映手順](docs/operations.md#meeting-languages)、[操作・検証・制約](docs/meeting-transcription-languages.md)を参照してください。
 
-0027適用済みの環境で検索一覧・タグの表示改善を取り込む場合、追加Migration・Backend／Worker再起動はありません。[UIの反映手順](docs/operations.md#language-picker-ui)を参照してください。
+検索一覧・タグの表示改善自体にはDB変更はありません。最新コードは下記のリアルタイム翻訳も含むため、今回は[Migration 0028の反映手順](docs/operations.md#realtime-translation)を使用してください。
+
+### Sonioxのリアルタイム翻訳
+
+画面共有・マイク会議の言語欄で「リアルタイム翻訳」をONにし、一方向の翻訳先、または双方向の異なる2言語を選びます。既定はOFFです。リアルタイムがSonioxなら、確定版がWhisperXでも利用できます。原文と翻訳を別々に表示・保存し、翻訳は音声の時刻や議事録のEvidenceとして扱いません。録音開始時の設定を固定し、再接続でも引き継ぎます。停止後も翻訳履歴を閲覧できます。[公式仕様と操作・検証](docs/realtime-translation.md)。
+
+Migration `20261012_0028`が必要です。追加環境変数・依存追加はありません。運用DBへの0028適用と実Soniox音声による翻訳は未確認です。録音・録画・保存・実行中Jobを終了してから[反映手順](docs/operations.md#realtime-translation)を実行してください。
 
 Migration `20260927_0023` が必要です。追加環境変数はありません。録音・録画と保存、実行中Jobの終了を確認してから[要約再生成の反映手順](docs/operations.md#summary-regeneration)を実行してください。操作・動作確認は[操作ガイド](docs/usage.md#summary-regeneration)、実装と検証は[開発ガイド](docs/development.md#summary-regeneration)に記載しています。

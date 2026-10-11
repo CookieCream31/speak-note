@@ -2,7 +2,7 @@
 
 import { useRef, useState, type FormEvent } from "react";
 
-import type { Meeting } from "@/lib/api";
+import type { Meeting, RealtimeTranslationConfig } from "@/lib/api";
 import { MeetingLanguageFields, type MeetingLanguageSelection } from "./meeting-language-fields";
 
 import styles from "./meeting-transcription-settings.module.css";
@@ -16,6 +16,8 @@ interface MeetingTranscriptionSettingsProps {
   languageHintsStrict?: boolean;
   includeRealtime?: boolean;
   languageLocked?: boolean;
+  realtimeTranslation?: RealtimeTranslationConfig | null;
+  translationLocked?: boolean;
 }
 
 function parseCount(value: string): number | null {
@@ -37,8 +39,10 @@ export function MeetingTranscriptionSettings({
   languageHintsStrict = false,
   includeRealtime = true,
   languageLocked = false,
+  realtimeTranslation = null,
+  translationLocked = false,
 }: MeetingTranscriptionSettingsProps) {
-  const [language, setLanguage] = useState<MeetingLanguageSelection>({ hints: languageHints, strict: languageHintsStrict });
+  const [language, setLanguage] = useState<MeetingLanguageSelection>({ hints: languageHints, strict: languageHintsStrict, translation: realtimeTranslation });
   const [minimum, setMinimum] = useState(minSpeakers?.toString() ?? "");
   const [maximum, setMaximum] = useState(maxSpeakers?.toString() ?? "");
   const [saving, setSaving] = useState(false);
@@ -73,6 +77,7 @@ export function MeetingTranscriptionSettings({
             transcription_language_hints: language.hints,
             transcription_language_hints_strict: language.strict,
           } : {}),
+          ...(!translationLocked && JSON.stringify(language.translation ?? null) !== JSON.stringify(realtimeTranslation) ? { realtime_translation: language.translation ?? null } : {}),
         }),
       });
       if (!response.ok) {
@@ -88,7 +93,7 @@ export function MeetingTranscriptionSettings({
       const meeting = await response.json() as Meeting;
       setMinimum(meeting.min_speakers?.toString() ?? "");
       setMaximum(meeting.max_speakers?.toString() ?? "");
-      setLanguage({ hints: meeting.transcription_language_hints ?? null, strict: meeting.transcription_language_hints_strict ?? false });
+      setLanguage({ hints: meeting.transcription_language_hints ?? null, strict: meeting.transcription_language_hints_strict ?? false, translation: meeting.realtime_translation ?? null });
       setMessage("保存済み。次の文字起こしから適用します");
     } catch (error) {
       setMessageIsError(true);
@@ -101,7 +106,7 @@ export function MeetingTranscriptionSettings({
 
   return (
     <form className={styles.settings} onSubmit={(event) => void save(event)}>
-      <MeetingLanguageFields value={language} onChange={setLanguage} includeRealtime={includeRealtime} disabled={disabled || saving || languageLocked} />
+      <MeetingLanguageFields value={language} onChange={setLanguage} includeRealtime={includeRealtime} disabled={disabled || saving || languageLocked} translationLocked={translationLocked} />
       <p>{languageLocked ? "確定文字起こしの作成後は言語を変更できません。要約再生成は保存済みFinalを再利用します。" : "言語は録音開始前、または初回の確定文字起こしを予約する前に保存してください。"}</p>
       <div className={styles.heading}>
         <span>文字起こしの話者数</span>

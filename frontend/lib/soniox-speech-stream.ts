@@ -1,7 +1,9 @@
 import type { AzureSpeechResult, AzureSpeechStreamController } from "./azure-speech-stream";
 import { createPcmAudioInput } from "./pcm-audio-input";
+import { SonioxTranslationAccumulator, type LiveTranslationResult } from "./soniox-translation";
+import type { RealtimeTranslationConfig } from "./api";
 
-interface SonioxToken {
+export interface SonioxToken {
   text: string;
   start_ms?: number;
   end_ms?: number;
@@ -9,9 +11,11 @@ interface SonioxToken {
   confidence?: number;
   speaker?: string;
   translation_status?: string;
+  language?: string;
+  source_language?: string;
 }
 
-interface SonioxResponse {
+export interface SonioxResponse {
   tokens?: SonioxToken[];
   finished?: boolean;
   error_code?: number;
@@ -25,6 +29,8 @@ interface StreamOptions {
   onInterimCleared?: (resultId: string) => void;
   onResult: (result: AzureSpeechResult) => void;
   onError: (message: string) => void;
+  onTranslation?: (result: LiveTranslationResult, isFinal: boolean) => void;
+  onTranslationCleared?: (resultId: string) => void;
 }
 
 export class SonioxTranscriptAccumulator {
@@ -56,11 +62,11 @@ export class SonioxTranscriptAccumulator {
       this.pending = [];
     };
     for (const token of response.tokens ?? []) {
-      if (token.translation_status === "translation") continue;
       if (token.text === "<end>" || token.text === "<fin>") {
         if (token.is_final) flush();
         continue;
       }
+      if (token.translation_status === "translation") continue;
       if (!token.is_final) { drafts.push(token); continue; }
       const previous = this.pending.at(-1);
       if (previous && (previous.speaker !== token.speaker
@@ -81,7 +87,13 @@ export function parseSonioxResponse(value: unknown): SonioxResponse {
   if (response.tokens !== undefined && !Array.isArray(response.tokens)) throw new Error("Sonioxの応答形式が不正です");
   for (const token of response.tokens ?? []) {
     if (!token || typeof token.text !== "string" || typeof token.is_final !== "boolean") throw new Error("Sonioxの認識結果が不正です");
-    if (token.text === "<end>" || token.text === "<fin>" || token.translation_status === "translation") continue;
+    if (token.speaker !== undefined && (typeof token.speaker !== "string" || token.speaker.length > 80)) throw new Error("Sonioxの話者情報が不正です");
+    if (token.text === "<end>" || token.text === "<fin>") continue;
+    if (token.translation_status === "translation") {
+      if (typeof token.language !== "string" || !/^[a-z]{2,3}$/.test(token.language)
+          || typeof token.source_language !== "string" || !/^[a-z]{2,3}$/.test(token.source_language)) throw new Error("Sonioxの翻訳言語が不正です");
+      continue;
+    }
     if (typeof token.start_ms !== "number" || !Number.isFinite(token.start_ms) || token.start_ms < 0
         || typeof token.end_ms !== "number" || !Number.isFinite(token.end_ms) || token.end_ms < token.start_ms
         || (token.speaker !== undefined && typeof token.speaker !== "string")
@@ -99,6 +111,7 @@ export async function startSonioxSpeechStream(options: StreamOptions): Promise<A
   let generation = 0;
   let generationPrefix = "";
   let accumulator: SonioxTranscriptAccumulator | null = null;
+  let translations: SonioxTranslationAccumulator | null = null;
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
   let finishStop: (() => void) | null = null;
   let permanentError = false;
@@ -106,15 +119,17 @@ export async function startSonioxSpeechStream(options: StreamOptions): Promise<A
   let audioStarted = false;
   let acceptingAudio = true;
   const speakerLabels = new Map<string, string>();
-  const present = (result: AzureSpeechResult): AzureSpeechResult => {
-    if (result.speakerLabel === "SPEAKER_UNKNOWN") return result;
-    let label = speakerLabels.get(result.speakerLabel);
+  const presentSpeaker = (speakerLabel: string): string => {
+    if (speakerLabel === "SPEAKER_UNKNOWN") return speakerLabel;
+    let label = speakerLabels.get(speakerLabel);
     if (!label) {
       label = `話者 ${speakerLabels.size + 1}`;
-      speakerLabels.set(result.speakerLabel, label);
+      speakerLabels.set(speakerLabel, label);
     }
-    return { ...result, speakerLabel: label };
+    return label;
   };
+  const present = (result: AzureSpeechResult): AzureSpeechResult => ({ ...result, speakerLabel: presentSpeaker(result.speakerLabel) });
+  const publishTranslation = (result: LiveTranslationResult, isFinal = true) => options.onTranslation?.({ ...result, speakerLabel: presentSpeaker(result.speakerLabel) }, isFinal);
   const publishFinal = (result: AzureSpeechResult) => options.onResult(present(result));
   const publish = (response: SonioxResponse) => {
     const previousId = accumulator?.resultId;
@@ -122,6 +137,11 @@ export async function startSonioxSpeechStream(options: StreamOptions): Promise<A
     results?.finals.forEach(publishFinal);
     if (results?.interim) options.onInterim?.(present(results.interim));
     else if (previousId) options.onInterimCleared?.(previousId);
+    const previousTranslationId = translations?.resultId;
+    const translated = translations?.accept(response);
+    translated?.finals.forEach((result) => publishTranslation(result));
+    if (translated?.interim) publishTranslation(translated.interim, false);
+    else if (previousTranslationId) options.onTranslationCleared?.(previousTranslationId);
   };
   const connect = async () => {
     const response = await fetch(options.tokenUrl, { method: "POST", cache: "no-store" });
@@ -132,6 +152,7 @@ export async function startSonioxSpeechStream(options: StreamOptions): Promise<A
     const token = await response.json() as {
       api_key: string; model: string; language: string;
       language_hints?: string[]; language_hints_strict?: boolean;
+      translation?: RealtimeTranslationConfig | null;
     };
     if (stopping) return;
     const next = new WebSocket("wss://stt-rt.soniox.com/transcribe-websocket", ["soniox-api-key", token.api_key]);
@@ -140,6 +161,7 @@ export async function startSonioxSpeechStream(options: StreamOptions): Promise<A
     generationPrefix = prefix;
     audioStarted = false;
     accumulator = new SonioxTranscriptAccumulator(prefix, Math.round(options.getTimelinePositionMs?.() ?? 0));
+    translations = token.translation ? new SonioxTranslationAccumulator(prefix) : null;
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => { next.close(); reject(new Error("Sonioxへの接続がタイムアウトしました")); }, 10_000);
       next.onopen = () => {
@@ -148,6 +170,7 @@ export async function startSonioxSpeechStream(options: StreamOptions): Promise<A
           sample_rate: 16_000, num_channels: 1,
           ...((token.language_hints ?? [token.language]).length ? { language_hints: token.language_hints ?? [token.language] } : {}),
           language_hints_strict: token.language_hints_strict ?? false,
+          ...(token.translation ? { translation: token.translation } : {}),
           enable_speaker_diarization: true, enable_language_identification: true,
           enable_endpoint_detection: true }));
         resolve();
@@ -172,6 +195,8 @@ export async function startSonioxSpeechStream(options: StreamOptions): Promise<A
       if (socket !== next) return;
       const draftId = accumulator?.resultId;
       accumulator?.flush().forEach(publishFinal);
+      translations?.flush().forEach((result) => publishTranslation(result));
+      if (translations) options.onTranslationCleared?.(translations.resultId);
       if (draftId) options.onInterimCleared?.(draftId);
       socket = null;
       if (stopping) { finishStop?.(); return; }
@@ -230,6 +255,8 @@ export async function startSonioxSpeechStream(options: StreamOptions): Promise<A
         });
       }
       accumulator?.flush().forEach(publishFinal);
+      translations?.flush().forEach((result) => publishTranslation(result));
+      if (translations) options.onTranslationCleared?.(translations.resultId);
       socket?.close();
       socket = null;
     })();

@@ -38,6 +38,7 @@ from app.services.media import (
     InvalidVideoError,
     UploadTooLargeError,
 )
+from app.services.realtime.translation import validate_meeting_translation
 from app.services.transcription.languages import (
     TranscriptionLanguageError,
     validate_meeting_languages,
@@ -102,6 +103,9 @@ def create_meeting(payload: MeetingCreate, session: DbSession) -> Meeting:
         project_id=payload.project_id,
         transcription_language_hints=payload.transcription_language_hints,
         transcription_language_hints_strict=payload.transcription_language_hints_strict,
+        realtime_translation=(
+            payload.realtime_translation.model_dump() if payload.realtime_translation else None
+        ),
     )
     try:
         validate_meeting_languages(
@@ -111,6 +115,10 @@ def create_meeting(payload: MeetingCreate, session: DbSession) -> Meeting:
             payload.transcription_language_hints_strict,
         )
     except TranscriptionLanguageError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    try:
+        validate_meeting_translation(session, meeting, meeting.realtime_translation)
+    except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     session.add(meeting)
     session.commit()
@@ -172,6 +180,21 @@ def update_meeting(
     session: DbSession,
 ) -> Meeting:
     updates = payload.model_dump(exclude_unset=True)
+    if "realtime_translation" in updates:
+        meeting = lock_meeting(session, meeting)
+        config = updates["realtime_translation"]
+        if config != meeting.realtime_translation:
+            recorded = session.scalar(
+                select(RealtimeSession.id).where(RealtimeSession.meeting_id == meeting.id).limit(1)
+            )
+            if recorded is not None or meeting.status != MeetingStatus.CREATED:
+                raise HTTPException(
+                    status_code=409, detail="録音開始後はリアルタイム翻訳の設定を変更できません"
+                )
+            try:
+                validate_meeting_translation(session, meeting, config)
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
     if {"transcription_language_hints", "transcription_language_hints_strict"} & updates.keys():
         meeting = lock_meeting(session, meeting)
         hints = updates.get("transcription_language_hints", meeting.transcription_language_hints)

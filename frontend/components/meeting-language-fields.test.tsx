@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MeetingLanguageFields, type MeetingLanguageSelection } from "./meeting-language-fields";
 import { MeetingTranscriptionSettings } from "./meeting-transcription-settings";
 
-const soniox = { languages: ["ja", "en", "fr", "de"], supports_auto: true, supports_multiple: true, supports_strict: true, providers: ["soniox"] };
+const soniox = { languages: ["ja", "en", "fr", "de"], supports_auto: true, supports_multiple: true, supports_strict: true, supports_translation: true, providers: ["soniox"] };
 let host: HTMLDivElement, root: Root;
 const fetchMock = vi.fn();
 function Harness({ includeRealtime = true, disabled = false, initial = { hints: ["ja"], strict: false } }: {
@@ -109,6 +109,17 @@ describe("meeting language selection", () => {
     expect(host.querySelector('[role="alert"]')?.textContent).toContain("選び直してください");
     expect(host.querySelector("output")?.textContent).toContain('["ja","en"]');
   });
+  it("cannot use the previous capture method's capabilities while a new request is pending", async () => {
+    await act(async () => root.render(<Harness includeRealtime={false} />));
+    let finish: (response: unknown) => void = () => undefined;
+    fetchMock.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    await act(async () => root.render(<Harness includeRealtime />));
+    expect(pickerTrigger().disabled).toBe(true);
+    expect(host.querySelector('[aria-label="リアルタイム翻訳を使う"]')).toHaveProperty("disabled", true);
+    await act(async () => finish({ ok: true, json: async () => soniox }));
+    expect(pickerTrigger().disabled).toBe(false);
+    expect(host.querySelector('[aria-label="リアルタイム翻訳を使う"]')).toHaveProperty("disabled", false);
+  });
   it("allows switching strict OFF after changing to an engine without strict support", async () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ ...soniox, supports_auto: false, supports_multiple: false, supports_strict: false, providers: ["whisperx"] }) });
     await act(async () => root.render(<Harness initial={{ hints: ["en"], strict: true }} />));
@@ -194,9 +205,37 @@ describe("meeting language selection", () => {
     expect(host.textContent).toContain("確定版をSoniox");
     expect(host.textContent).not.toContain("両方をSoniox");
   });
+  it("enables translation independently from mixed-engine language limits and keeps it while languages change", async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ ...soniox, supports_auto: false, supports_multiple: false, providers: ["soniox", "whisperx"] }) });
+    await act(async () => root.render(<Harness />));
+    const translate = host.querySelector<HTMLInputElement>('[aria-label="リアルタイム翻訳を使う"]')!;
+    expect(translate.disabled).toBe(false);
+    await act(async () => translate.click());
+    await choose("en");
+    expect(JSON.parse(host.querySelector("output")!.textContent!)).toEqual({ hints: ["en"], strict: false, translation: { type: "one_way", target_language: "ja" } });
+    const mode = host.querySelector<HTMLSelectElement>('[aria-label="翻訳方法"]')!;
+    await act(async () => { mode.value = "two_way"; mode.dispatchEvent(new Event("change", { bubbles: true })); });
+    expect(host.querySelector<HTMLSelectElement>('[aria-label="翻訳の言語B"]')?.querySelector('option[value="en"]')).toBeNull();
+    await act(async () => translate.click());
+    expect(JSON.parse(host.querySelector("output")!.textContent!).translation).toBeNull();
+  });
+  it("omits translation for uploads and keeps all translation edits disabled while recording", async () => {
+    await act(async () => root.render(<Harness includeRealtime={false} />));
+    expect(host.querySelector('[aria-label="リアルタイム翻訳を使う"]')).toBeNull();
+    await act(async () => root.render(<Harness disabled initial={{ hints: ["ja"], strict: false }} />));
+    expect(host.querySelector('[aria-label="リアルタイム翻訳を使う"]')).toHaveProperty("disabled", true);
+  });
 });
 
 describe("saving meeting transcription settings", () => {
+  it("saves an explicit translation choice together with the language without changing global settings", async () => {
+    await act(async () => root.render(<MeetingTranscriptionSettings meetingId="m" minSpeakers={null} maxSpeakers={null} languageHints={["ja"]} disabled={false} />));
+    await act(async () => host.querySelector<HTMLInputElement>('[aria-label="リアルタイム翻訳を使う"]')!.click());
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ min_speakers: null, max_speakers: null, transcription_language_hints: ["ja"], realtime_translation: { type: "one_way", target_language: "ja" } }) });
+    await submit();
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ min_speakers: null, max_speakers: null, transcription_language_hints: ["ja"], transcription_language_hints_strict: false, realtime_translation: { type: "one_way", target_language: "ja" } });
+    expect(host.querySelector('[aria-label="リアルタイム翻訳を使う"]')).toHaveProperty("checked", true);
+  });
   it("sends languages and strict with speaker bounds and blocks rapid duplicate submissions", async () => {
     await act(async () => root.render(<MeetingTranscriptionSettings meetingId="m" minSpeakers={2} maxSpeakers={4} languageHints={["ja"]} disabled={false} />));
     await choose("en"); await openAdvanced(); await act(async () => toggle().click());

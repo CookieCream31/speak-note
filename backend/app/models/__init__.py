@@ -41,6 +41,7 @@ from app.models.transcription import (
     RealtimeTranscriptionProvider,
     RealtimeTranscriptionSettings,
 )
+from app.models.translation import RealtimeTranslation
 from app.models.upload import MediaUploadSession, MediaUploadStatus
 
 __all__ = [
@@ -79,6 +80,7 @@ __all__ = [
     "RealtimeSession",
     "RealtimeSessionStatus",
     "RealtimeVideoPart",
+    "RealtimeTranslation",
     "RealtimeAnalysisState",
     "RealtimeAnalysisStatus",
     "Speaker",

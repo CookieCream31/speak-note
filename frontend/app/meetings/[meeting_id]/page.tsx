@@ -14,6 +14,7 @@ import { MeetingQuestionPanel } from "@/components/meeting-question-panel";
 import { MeetingReviewPanel } from "@/components/meeting-review-panel";
 import { MeetingTranscriptionSettings } from "@/components/meeting-transcription-settings";
 import { RealtimeAnalysisPanel } from "@/components/realtime-analysis-panel";
+import { LiveTranslationPanel } from "@/components/live-translation-panel";
 import { MeetingToolsPanel } from "@/components/meeting-tools-panel";
 import { MeetingWorkspace } from "@/components/meeting-workspace";
 import { ThemeSelector } from "@/components/theme-selector";
@@ -387,6 +388,8 @@ export default async function MeetingDetailPage({
                   maxSpeakers={meeting.max_speakers}
                   languageHints={meeting.transcription_language_hints ?? null}
                   languageHintsStrict={meeting.transcription_language_hints_strict ?? false}
+                  realtimeTranslation={meeting.realtime_translation ?? null}
+                  translationLocked={Boolean(liveSession)}
                   includeRealtime={isRealtimeCapture}
                   languageLocked={Boolean(finalTranscript)}
                   disabled={[
@@ -484,6 +487,7 @@ export default async function MeetingDetailPage({
       )}
 
       <section className={styles.transcriptSection}>
+        {archivedLiveMeeting && <LiveTranslationPanel meetingId={meeting.id} translation={liveSession?.translation} persisted={liveSession?.translations} />}
         <MeetingWorkspace
           meetingId={meeting.id}
           playback={{
