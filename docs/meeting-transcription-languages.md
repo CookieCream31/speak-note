@@ -37,7 +37,7 @@ Sonioxではリアルタイム／非同期の両APIへ同じ形式の設定を�
 - 更新・録音開始・全体処理予約はMeetingのrow lockを使います。録音／finalizing Session、保存／処理中状態、queued／runningの関連Job、完成済みFinalを確認して言語変更を拒否します。
 - 過去のLive／Final／要約、ユーザーの編集・確認済み情報を変更・削除しません。Finalがなければ保存音声を全体処理し、リアルタイム文字起こしをFinalの入力へ置き換えません。外部障害時のJob失敗・同じ処理IDでの再試行・Evidence検証は従来どおりです。
 
-Migration `20261012_0027`は0026に続きMeetingの2カラムとRealtimeSessionのnullable JSONBを追加します。既存Meetingの配列とSession snapshotはnull、Strictはfalseとし、既存TranscriptとJobを変更しません。downgradeは今回の設定・Live snapshotを失うため、処理を止めてバックアップした上で行います。運用DBへは未適用です。
+Migration `20261012_0027`は0026に続きMeetingの2カラムとRealtimeSessionのnullable JSONBを追加します。既存Meetingの配列とSession snapshotはnull、Strictはfalseとし、既存TranscriptとJobを変更しません。downgradeは今回の設定・Live snapshotを失うため、処理を止めてバックアップした上で行います。運用DBへの適用は[利用者の提示ログ](#deployment-confirmation)で確認しました。
 
 ## 動作確認
 
@@ -75,4 +75,17 @@ Migration `20261012_0027`は0026に続きMeetingの2カラムとRealtimeSession�
 
 テストは会議別設定・既定値・不正指定の拒否・処理中変更禁止・一時キー更新時の固定設定・単一言語エンジン・初回Finalへの選択AI／テンプレート引継ぎ・Final再利用・障害時履歴保持・再試行・自動時hints省略・モデル能力の検証・UIの選択／保存／連打／処理中／エラーを確認します。
 
-実Soniox API・実音声・Safari／実スマートフォン・運用PostgreSQLへの0027適用・PostgreSQLでの同時要求は未検証です。Dockerや既存サービスを操作していません。最初の通常shell実行はサンドボックス起動エラーでしたが、承認付き実行で検証しています。
+実Soniox API・実音声・Safari／実スマートフォン・PostgreSQLでの同時要求は未検証です。エージェントはDockerや既存サービスを操作していません。運用PostgreSQLへの0027適用は、下記の利用者の提示ログで確認しました。最初の通常shell実行はサンドボックス起動エラーでしたが、承認付き実行で検証しています。
+
+<a id="deployment-confirmation"></a>
+## 利用者の運用反映ログ
+
+記録日: 2026-10-12（日本時間）。利用者が実行したコマンドの提示ログに基づく記録です。
+
+- `docker compose stop worker live-worker realtime-ai-worker answer-worker`で4つのWorkerがすべてStopped。
+- Backendの再起動後、`docker compose up -d --wait --no-deps backend`でHealthy（7.5秒）。
+- `docker compose exec -T backend alembic current`が`20261012_0027 (head)`。
+- `docker compose up -d --no-deps worker live-worker realtime-ai-worker answer-worker`で4つのWorkerがすべてStarted。
+- `docker compose restart frontend`の実行が報告されています。提示ログはRestarting表示までで、再起動後のUpは未確認です。
+
+Frontendの状態は`sudo docker compose ps frontend`で確認します。録音・録画中でなければブラウザを再読み込みし、「新しい会議」の言語選択、AI設定の言語欄の廃止、会議ページの文字起こし設定を確認してください。画面表示・Soniox接続・実音声認識はこのログだけでは確認できないため、[動作確認](#動作確認)の短い録音と再生成で確認します。

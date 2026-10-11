@@ -138,6 +138,8 @@ sudo docker compose ps backend frontend worker live-worker realtime-ai-worker an
 
 Backend起動時にMigrationを適用します。失敗した場合はWorkerを止めたまま`sudo docker compose logs --tail=100 backend`で確認します。Volumeを削除しません。ブラウザ再読み込み後、「新しい会議」の「会議で話す言語」、AI設定の言語欄がなくなったこと、会議ページの「文字起こし設定」を確認し、[短い録音と再生成の確認](meeting-transcription-languages.md#動作確認)を行います。
 
+利用者の提示ログで運用DBの`20261012_0027 (head)`、BackendのHealthy、4つのWorkerのStartedを確認しました。Frontendの再起動後の状態、画面表示、実音声認識は未確認です。今回反映済みの環境では再度のMigration適用や再起動は不要で、まず`sudo docker compose ps frontend`で状態を確認します。[0027の反映記録](meeting-transcription-languages.md#deployment-confirmation)を参照してください。
+
 <a id="record-video-toggle"></a>
 ### 会議作成の3つの取り込み方法・画面共有内の録画スイッチへの表示変更
 
