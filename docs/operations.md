@@ -77,6 +77,26 @@ sudo docker compose restart frontend
 
 このMigrationのdowngradeはenum値を保持します。データを失うenum書き換えは行いません。`shared_audio`の会議を作成した後に古いアプリへ戻すと、その会議の読込に対応しないため、コードだけの巻き戻しはしないでください。
 
+<a id="soniox"></a>
+## Sonioxリアルタイム・非同期の反映（Migration 0026）
+
+コードのheadは`20261012_0026`で、確認済み0025の後にLive設定・非同期設定・Job checkpointを追加します。新しい環境変数や依存追加はありません。録音・録画・保存・実行中Jobがすべて完了してから実行してください。
+
+```bash
+cd /home/llm/speak-note
+git pull --ff-only
+sudo docker compose stop worker live-worker realtime-ai-worker answer-worker
+sudo docker compose restart backend
+sudo docker compose up -d --wait --no-deps backend
+sudo docker compose exec -T backend alembic current
+# 20261012_0026 (head)を確認してからWorkerを再開
+sudo docker compose up -d --no-deps worker live-worker realtime-ai-worker answer-worker
+sudo docker compose restart frontend
+sudo docker compose ps backend frontend worker live-worker realtime-ai-worker answer-worker
+```
+
+Migrationに失敗した場合はWorkerを止めたままBackendログを確認します。Volumeを削除しません。反映後にブラウザを再読み込みし、[Soniox設定と動作確認](soniox-transcription.md#設定と操作)を行います。エージェントは稼働中Dockerの再起動・運用DBへのMigration適用・実Sonioxへの音声送信を行っていません。録音中の設定保存は次のSessionから適用されます。
+
 <a id="record-video-toggle"></a>
 ### 会議作成の3つの取り込み方法・画面共有内の録画スイッチへの表示変更
 
@@ -96,7 +116,7 @@ sudo docker compose ps frontend
 - [docker-compose.yml](../docker-compose.yml): コンテナへ渡す変数、volume、port、起動コマンド。
 - [.env.example](../.env.example): 設定テンプレート。実値はローカル `.env` のみ。
 - [config.py](../backend/app/core/config.py): Backendの既定値と検証。
-- AI設定画面: Provider接続情報、Profile、用途、Live文字起こしエンジン、Azure認証情報。
+- AI設定画面: Provider接続情報、Profile、用途、独立したLive／非同期文字起こしエンジン、Azure／Soniox認証情報。
 
 ルートの `.env` はComposeの展開元です。変数を追記するだけで全コンテナへ渡るわけではありません。
 新しい設定を追加するときは、必要な各サービスの `environment` も確認します。

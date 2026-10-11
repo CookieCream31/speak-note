@@ -1,6 +1,6 @@
 # 要約再生成の実装・検証記録
 
-最終照合: 2026-09-28。[README](../README.md) · [操作手順](usage.md#summary-regeneration) · [Docker反映](operations.md#summary-regeneration)
+最終照合: 2026-10-12。[README](../README.md) · [操作手順](usage.md#summary-regeneration) · [Docker反映](operations.md#summary-regeneration)
 
 この文書のテスト件数は要約再生成の実装完了時点の記録です。その後に追加した表示テーマと最新のFrontend検証は[表示テーマガイド](dark-mode.md)を参照してください。
 
@@ -8,9 +8,9 @@
 
 共通の「要約を再生成」に入口を統合しました（リデザイン後は会議画面右上のタイトル横に配置）。AIプロファイルと議事録テンプレートを設定ダイアログで選び、今回の生成だけに適用します。初期値は会議のAI設定と保存済みテンプレートsnapshotです。テンプレートの「確定後」のカード・項目・AIへの指示を使い、従来のsummary_formatの指示を重ねません。テンプレート未使用の旧会議は従来形式を維持します。録音停止直後のRecorderに残っていた旧全体再処理ボタンも除きました。
 
-保存済みcompleted Finalがあれば解析だけを予約します。なければ初回だけWhisperXの全体文字起こしをJob + Workerで実行し、Final保存後に選択AIで解析します。Liveは入力にしません。Jobへ固定した接続先・プロファイル・モデル・Temperature・テンプレート内容と版を、初回の待ち時間と再試行でも引き継ぎます。生成履歴のsnapshotを指示・検証・表示に使用します。
+保存済みcompleted Finalがあれば解析だけを予約します。なければ初回だけ非同期・確定版の設定（WhisperX / Soniox）で全体文字起こしをJob + Workerで実行し、Final保存後に選択AIで解析します。Liveは入力にしません。Jobへ固定した接続先・プロファイル・モデル・Temperature・テンプレート内容と版を、初回の待ち時間と再試行でも引き継ぎます。生成履歴のsnapshotを指示・検証・表示に使用します。Sonioxの設定・処理IDの再利用・制約は[Sonioxガイド](soniox-transcription.md)を参照してください。
 
-会議行ロック、処理中Jobの確認、unique request_idで重複を防ぎます。Final保存後の再開ではWhisperXを再実行せず、後続解析も重複予約しません。録音・保存中の開始と再試行を拒否し、不正な設定・存在しないEvidence・外部API失敗時に既存結果を維持します。編集・確認済み項目を保護します。過去の要約とLive版を保持し、要約完成前の既定表示はRealtime版を維持します。明示したFinalへの切替は尊重し、処理中の履歴を選んでいた場合も完成後に表示を更新します。
+会議行ロック、処理中Jobの確認、unique request_idで重複を防ぎます。Final保存後の再開では全体文字起こしを再実行せず、後続解析も重複予約しません。録音・保存中の開始と再試行を拒否し、不正な設定・存在しないEvidence・外部API失敗時に既存結果を維持します。編集・確認済み項目を保護します。過去の要約とLive版を保持し、要約完成前の既定表示はRealtime版を維持します。明示したFinalへの切替は尊重し、処理中の履歴を選んでいた場合も完成後に表示を更新します。
 
 Migration `20260927_0023` は確認したコード上の最新0022に続き、jobsへnullable JSONBのanalysis_requestとunique nullable UUIDのrequest_idを追加します。退避されていた/tmpのmigration案は使用していません。2026-09-27のユーザー提供ログで、運用DBが `20260927_0023 (head)` であることを確認しました。追加環境変数・依存変更はありません。
 

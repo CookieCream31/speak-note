@@ -159,7 +159,7 @@ def start_realtime_session(
         status=TranscriptStatus.PROCESSING,
         language=language,
         model=model,
-        diarization_enabled=transcription_provider in {"whisperx", "azure_speech"},
+        diarization_enabled=transcription_provider in {"whisperx", "azure_speech", "soniox"},
     )
     db.add_all([media, transcript])
     db.flush()
@@ -319,7 +319,10 @@ def append_realtime_chunk(
             output.truncate(previous_size)
         raise
     db.refresh(chunk)
-    if realtime_session.transcription_provider == RealtimeTranscriptionProvider.AZURE_SPEECH:
+    if realtime_session.transcription_provider in {
+        RealtimeTranscriptionProvider.AZURE_SPEECH,
+        RealtimeTranscriptionProvider.SONIOX,
+    }:
         has_segments = db.scalar(
             select(TranscriptSegment.id)
             .where(
@@ -345,23 +348,27 @@ def append_streaming_transcript_segment(
 ) -> TranscriptSegment:
     if realtime_session.status != RealtimeSessionStatus.RECORDING:
         raise RealtimeCaptureError("録画セッションは終了しています")
-    if realtime_session.transcription_provider != RealtimeTranscriptionProvider.AZURE_SPEECH:
-        raise RealtimeCaptureError("この録画セッションはAzure連続認識を使用していません")
+    if realtime_session.transcription_provider not in {
+        RealtimeTranscriptionProvider.AZURE_SPEECH,
+        RealtimeTranscriptionProvider.SONIOX,
+    }:
+        raise RealtimeCaptureError("この録音セッションはストリーミング認識を使用していません")
     normalized_result_id = result_id.strip()
     normalized_text = " ".join(text.split())
     normalized_speaker_label = (speaker_label or "SPEAKER_UNKNOWN").strip()
     if not normalized_result_id or len(normalized_result_id) > 200:
-        raise RealtimeCaptureError("Azure認識結果IDの形式が不正です")
+        raise RealtimeCaptureError("認識結果IDの形式が不正です")
     if not normalized_text or len(normalized_text) > 20_000:
-        raise RealtimeCaptureError("Azure認識結果の本文が不正です")
+        raise RealtimeCaptureError("認識結果の本文が不正です")
     if not normalized_speaker_label or len(normalized_speaker_label) > 100:
-        raise RealtimeCaptureError("Azure認識結果の話者ラベルが不正です")
+        raise RealtimeCaptureError("認識結果の話者ラベルが不正です")
     if start_ms < 0 or end_ms <= start_ms:
-        raise RealtimeCaptureError("Azure認識結果の時刻が不正です")
+        raise RealtimeCaptureError("認識結果の時刻が不正です")
     if confidence is not None and not 0 <= confidence <= 1:
-        raise RealtimeCaptureError("Azure認識結果の信頼度が不正です")
+        raise RealtimeCaptureError("認識結果の信頼度が不正です")
 
-    segment_id = uuid.uuid5(realtime_session.id, f"azure:{normalized_result_id}")
+    namespace = "soniox" if realtime_session.transcription_provider == "soniox" else "azure"
+    segment_id = uuid.uuid5(realtime_session.id, f"{namespace}:{normalized_result_id}")
     existing = db.get(TranscriptSegment, segment_id)
     if existing is not None:
         return existing

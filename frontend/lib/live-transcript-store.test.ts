@@ -129,4 +129,16 @@ describe("live transcript snapshots", () => {
     );
     expect(store.getInterim()).toBeNull();
   });
+
+  it("clears a withdrawn Soniox draft without removing a newer draft or saved history", () => {
+    const store = createLiveTranscriptStore();
+    store.accept(result({ resultId: "saved", isFinal: true }));
+    store.accept(result({ resultId: "old" }));
+    store.accept({ type: "clear-interim", meetingId: "meeting", resultId: "old" });
+    expect(store.getInterim()).toBeNull();
+    store.accept(result({ resultId: "new" }));
+    store.accept({ type: "clear-interim", meetingId: "meeting", resultId: "old" });
+    expect(store.getInterim()?.id).toBe("new");
+    expect(store.getHistory()).toHaveLength(1);
+  });
 });

@@ -34,7 +34,7 @@ export type MeetingStatus =
   | "completed"
   | "failed";
 
-export type RealtimeTranscriptionProvider = "whisperx" | "azure_speech";
+export type RealtimeTranscriptionProvider = "whisperx" | "azure_speech" | "soniox";
 
 export interface RealtimeTranscriptionSettings {
   provider: RealtimeTranscriptionProvider;
@@ -42,6 +42,19 @@ export interface RealtimeTranscriptionSettings {
   azure_language: string;
   has_api_key: boolean;
   api_key_masked: string | null;
+  soniox_model?: string;
+  soniox_language?: string;
+  has_soniox_api_key?: boolean;
+  soniox_api_key_masked?: string | null;
+  updated_at: string;
+}
+
+export interface AsyncTranscriptionSettings {
+  provider: "whisperx" | "soniox";
+  soniox_model: string;
+  soniox_language: string;
+  has_soniox_api_key: boolean;
+  soniox_api_key_masked: string | null;
   updated_at: string;
 }
 

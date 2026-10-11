@@ -24,6 +24,7 @@ export interface LiveTranscriptPersistedDetail {
 export type LiveTranscriptEventDetail =
   | LiveTranscriptUpsertDetail
   | LiveTranscriptPersistedDetail
+  | { type: "clear-interim"; meetingId: string; resultId: string }
   | { type: "reset"; meetingId: string };
 
 export function publishLiveTranscriptEvent(detail: LiveTranscriptEventDetail): void {

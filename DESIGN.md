@@ -2,7 +2,7 @@
 
 ## 1. 概要
 
-`speak-note` は、会議の録音・録画・画面共有を取り込み、既存の WhisperX API Server で日本語文字起こしと話者分離を行い、Ollama または Gemini API を利用して議事録を生成する Web アプリケーションである。
+`speak-note` は、会議の録音・録画・画面共有を取り込み、WhisperXまたはSoniox非同期APIで全体文字起こしと話者分離を行い、OllamaまたはGemini APIを利用して議事録を生成するWebアプリケーションである。LiveはWhisperX・Azure・SonioxリアルタイムAPIを独立選択できる。
 
 中心コンセプト:
 
@@ -229,7 +229,7 @@ speak-note/
 
 `shared_audio`はMeetingに保存し、再読み込みや録音接続の復旧後も録画方式へ切り替えない。共有音声が取得できない場合は開始前に案内し、Backendも共有音声なし・動画MIME・分離録画を拒否する。共有先の変更時は同じAudio DestinationとRecorderを維持し、音声なし・選択キャンセルの場合は以前の共有を維持する。共有または共有音声Trackが終了した場合、マイク・Timeline・録音は継続し、共有音声停止の案内と共有再選択を表示する。マイクの初期ミュート・途中追加・回り込み防止は従来方式と共通。Browser・OS・共有元による音声共有の制約を説明し、非対応端末では既存のマイク録音やUploadを使用する。
 
-停止後はマイク録音と同様にリアルタイム版を共通会議ノートへ表示し、「要約を再生成」の初回だけWhisperX全体処理とFinal保存を行う。保存済みFinalを再利用する既存の再生成、Evidence検証、編集保護を維持する。DB変更はAlembic `20261010_0025`（0024の後）で`meeting_source_type`へ値を追加する。downgradeで既存会議や音声を失わないようenum値は保持する。
+停止後はマイク録音と同様にリアルタイム版を共通会議ノートへ表示し、「要約を再生成」の初回だけ選択した非同期エンジンで全体処理とFinal保存を行う。保存済みFinalを再利用する既存の再生成、Evidence検証、編集保護を維持する。DB変更はAlembic `20261010_0025`（0024の後）で`meeting_source_type`へ値を追加する。downgradeで既存会議や音声を失わないようenum値は保持する。
 
 ```text
 保存: getDisplayMedia -> MediaRecorder -> Media Chunk -> WebSocket -> Backend
@@ -237,6 +237,8 @@ speak-note/
 WhisperX: Media Chunk -> Worker -> WhisperX -> Live Transcript
 
 Azure: MediaStream -> AudioWorklet状態保持変換 -> 16kHz・16bit・mono Raw PCM -> PushAudioInputStream -> Azure Speech SDK ConversationTranscriber（リアルタイム話者分離） -> WebSocket -> Live Transcript
+
+Soniox: MediaStream -> 同じPCM Worklet -> Raw PCM -> Soniox WebSocket -> 確定発話をアプリWebSocketで保存 -> Live Transcript
 ```
 
 WhisperX選択時は数十秒程度遅れる準リアルタイムとする。ブラウザ負荷やBackground化によって
@@ -279,7 +281,7 @@ Live Transcript処理を使用する。マイクをミュートしても録音Se
 
 赤い停止ボタンを押した時点で音声とLive Transcriptを確定して保存し、共通会議ノートで表示する。
 停止時に全体文字起こしJobを自動作成しない。「要約を再生成」からAIとテンプレートを選び、
-保存済みFinalがない初回だけWhisperX全体処理を行う。保存済み音声は通常のAudio Playerで再生・Downloadできる。
+保存済みFinalがない初回だけ選択した非同期エンジンで全体処理を行う。保存済み音声は通常のAudio Playerで再生・Downloadできる。
 
 ### 6.3 ファイルアップロード
 
@@ -358,7 +360,9 @@ Mediaと`transcribe` Jobを作成する。途中失敗時に不完全なMediaや
 
 ---
 
-## 7. WhisperX連携
+## 7. 文字起こしエンジン連携
+
+### 7.1 WhisperX
 
 既存 WhisperX API Server を利用する。
 
@@ -400,6 +404,22 @@ max_speakers
 Live Transcriptの両方へ適用し、文字起こし処理中はUIから変更できないようにする。
 
 WhisperX固有処理は `transcription` Service層へ隔離する。
+
+### 7.2 Soniox（2026-10-12）
+
+ユーザー指定によりSoniox公式仕様に基づくリアルタイム／非同期APIを追加する。既定のWhisperXと既存Azure設定を保持し、Live用singleton設定と非同期用singleton設定を分離する。Sonioxのモデル・ISO言語ヒント・暗号化API Keyを各用途で保存する。新しい会議Session／Jobにだけ設定を適用する。Sonioxでは最小／最大話者数のAPIフィールドが提供されていないため、話者分離を有効にし、WhisperX専用の話者数指定は送らない。
+
+- Live: `stt-rt-v5`、`wss://stt-rt.soniox.com/transcribe-websocket`。Backendが公式RESTで60秒・single_use・最大18,000秒の一時キーを発行し、ブラウザは`["soniox-api-key", key]`のprotocolで接続する。恒久キーをブラウザへ返さず、キーをconfig messageへ含める旧認証方式は使用しない。音声は`pcm_s16le`／16,000Hz／mono。通常の録音・映像保存を並行継続し、Soniox用のChunk文字起こしJobを作らない。
+- 確定tokenは一度だけ追加し、非確定tokenは毎応答で置換する。話者変更、endpointの`<end>`、`<fin>`、長い発話の10秒区間、finishedで発話を区切る。途中仮説を確定結果として保存しない。停止時にWorklet末尾をflushし、空の**text** frameを送って最終応答を最大8秒待つ。既知の確定tokenだけを保存する。話者は接続単位の暫定IDとし、再接続前後を同一人物と断定しない。
+- 通信断・送信遅延では最大3回、新しい一時キーで再接続する。認証・残高・権限エラーで再接続を繰り返さない。保存用録音は継続し、切断区間は非同期Finalで処理する。無音だけを再接続の理由にしない。keepaliveは20秒間隔。タイムラインは実際の最初のPCM送信位置を基準に整数msへ補正する。
+- 非同期: `stt-async-v5`、`https://api.soniox.com/v1`。通常の`transcribe` Job／Workerがローカル保存音声をFiles APIへuploadし、`file_id`でTranscriptions APIへ予約、queued／processingをpollし、completed後に時刻・話者付きtokenを取得する。HTTP Requestで完了まで待たない。予約時点のエンジン・モデル・言語をJobの`transcription_request`に固定する。動画アップロードは変換前のJobから設定を引き継ぐ。既存Jobのnull設定はWhisperXとして扱う。
+- Soniox側file／transcriptionのUUIDと送信状態をDBへcheckpointする。POSTを無条件に再試行しない。送信応答を失った場合はJob UUIDを`client_reference_id`として一覧を照合し、一致が一つの場合だけ再開する（Soniox側ではunique／idempotency keyではない）。不明・重複の場合はJobをfailedにし、再送を止める。GET／DELETEは最大3回、全体処理待機は最大2時間。再試行は保存した同一処理IDから再開する。
+- tokenの時刻・信頼度を検証し、subwordと空白を保持して既存TranscriptのSegment／Wordへ保存する。DBは整数ms。Final commit後にSoniox側TranscriptionとFileだけを削除する。削除失敗はcleanup_pendingを残し、既存Final・元音声を失敗扱いで削除しない。失敗時や未完了のリモートデータは再試行／調査用に残るため、Consoleで管理する。
+- Sonioxのモデル取得で接続テストし、Liveは一時キー発行権限も確認する。RESTの生エラー本文や認証情報を応答・ログへ出さない。初回Final後は保存済みFinalを要約再生成に再利用し、リアルタイム結果をFinalへ昇格させない。既存のAI・Evidence・ユーザー編集保護・会議後質問の境界を維持する。
+
+Migration `20261012_0026`は0025に続き、Live設定のSoniox項目・provider制約、独立非同期設定テーブル、Jobのnullable JSONB checkpointを追加する。既存会議・Transcript・Azureキーを変更しない。downgradeはSoniox設定／checkpointを除くため、処理を停止しバックアップを取得してから行う。
+
+公式根拠と操作手順は[Sonioxガイド](docs/soniox-transcription.md)に記載する。
 
 ---
 
@@ -644,7 +664,7 @@ final-v1
 final-v2
 ```
 
-会議終了後に保存済み全メディアをWhisperXで再処理し、`final` Versionを生成する。
+会議終了後、Finalがない初回に保存済み全音声を選択した非同期エンジン（WhisperX / Soniox）で処理し、`final` Versionを生成する。保存済みFinalがある要約再生成では文字起こしを繰り返さない。
 
 Realtime結果を正式版としてそのまま確定しない。
 
@@ -1471,7 +1491,7 @@ Playback MP4・文字起こし用WAV生成
 ↓ ユーザーが「要約を再生成」でAIプロファイル・議事録テンプレートを選択
 選択した接続先・モデル・Temperature・テンプレート定義と版をJobへ固定
 ↓ 保存済みFinalがない初回だけ
-Final Transcription Job → WhisperX全体処理 → final TranscriptVersionを保存
+Final Transcription Job → 選択した非同期エンジンで全体処理 → final TranscriptVersionを保存
 ↓ 保存済みFinalがあれば直接ここへ
 Final AI Analysis Job（固定した選択設定を使用）
 ↓
@@ -1521,7 +1541,7 @@ Final AI Analysis Job（固定した選択設定を使用）
 - 外部AI取り込みは狭いペイン内へ展開せず、4段階のModalでプロンプト作成、回答貼り付け、検証、保存を行う。
 - Desktop、Tablet、Mobileのすべてで同じTab順序と初期表示を使用する。
 - 配色、Card、Header、ButtonはHome Dashboardと同じ表示テーマ（ライト・ダーク）へ統一する。43節を参照する。
-- 画面共有・マイク録音のSessionが停止済みなら、Final TranscriptやAI議事録の有無によらず録画操作CardとRealtime専用Panelを表示しない。保存したLive TranscriptとRealtime Snapshotを通常の会議ノートへ表示する。暫定版と明示し、編集・会議後質問は高精度版に限定する。「要約を再生成」に入口を統合し、Finalがない初回だけ全体WhisperX処理を開始する。完成後もLive版を保持し、版切替で文字起こしと要約を対応させる。マイク録音停止時は全体処理Jobを自動予約しない。
+- 画面共有・マイク録音のSessionが停止済みなら、Final TranscriptやAI議事録の有無によらず録画操作CardとRealtime専用Panelを表示しない。保存したLive TranscriptとRealtime Snapshotを通常の会議ノートへ表示する。暫定版と明示し、編集・会議後質問は高精度版に限定する。「要約を再生成」に入口を統合し、Finalがない初回だけ選択した非同期エンジンで全体処理を開始する。完成後もLive版を保持し、版切替で文字起こしと要約を対応させる。マイク録音停止時は全体処理Jobを自動予約しない。
 - 完了後のAI議事録の「履歴」では「リアルタイム解析」と各確定版Versionを選択できる。Realtime SnapshotもAI議事録と同じCard一覧UIへ変換して表示するが、暫定結果の履歴なので編集・確認済み操作は提供しない。
 - Realtime履歴の「これまでの要約」には時刻を表示しない。決定事項、Action Item、確認ポイント、重要情報はEvidence全体の開始〜終了時刻を1つの範囲として表示する。
 

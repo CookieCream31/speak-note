@@ -5,6 +5,8 @@ from app.services.transcription.schemas import WhisperXResult
 
 
 class TranscriptionClient(Protocol):
+    model: str
+    language: str
     supports_overlap_context: bool
 
     def transcribe(

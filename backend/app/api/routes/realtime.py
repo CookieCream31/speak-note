@@ -1,7 +1,15 @@
 import uuid
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Response,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -20,7 +28,10 @@ from app.schemas.realtime_analysis import (
     RealtimeEvidenceRead,
 )
 from app.schemas.transcript import TranscriptSegmentRead
-from app.schemas.transcription_settings import RealtimeTranscriptionTokenRead
+from app.schemas.transcription_settings import (
+    RealtimeTranscriptionTokenRead,
+    SonioxRealtimeTokenRead,
+)
 from app.services.media import MediaStorage
 from app.services.realtime import (
     RealtimeCaptureError,
@@ -38,10 +49,44 @@ from app.services.transcription.azure import AzureSpeechClient, AzureSpeechError
 from app.services.transcription.settings import (
     RealtimeTranscriptionConfigurationError,
     build_realtime_transcription_client,
+    decrypt_soniox_key,
+    get_realtime_transcription_settings,
     resolve_realtime_transcription,
 )
+from app.services.transcription.soniox import SonioxClient, SonioxError
 
 router = APIRouter(prefix="/meetings/{meeting_id}/live", tags=["realtime"])
+
+
+@router.post("/soniox-token", response_model=SonioxRealtimeTokenRead)
+def issue_soniox_token(
+    meeting_id: uuid.UUID, db: DbSession, response: Response
+) -> SonioxRealtimeTokenRead:
+    realtime_session = _load_latest_session(db, meeting_id)
+    if (
+        realtime_session is None
+        or realtime_session.status != RealtimeSessionStatus.RECORDING
+        or realtime_session.transcription_provider != "soniox"
+    ):
+        raise HTTPException(status_code=409, detail="Sonioxを使用中の録音セッションがありません")
+    transcript = db.get(TranscriptVersion, realtime_session.transcript_version_id)
+    if transcript is None:
+        raise HTTPException(status_code=409, detail="Live Transcriptが見つかりません")
+    try:
+        key = decrypt_soniox_key(get_realtime_transcription_settings(db), get_settings())
+        token = SonioxClient(key).temporary_key(realtime_session.id)
+        result = SonioxRealtimeTokenRead(
+            **token, model=transcript.model, language=transcript.language
+        )
+    except RealtimeTranscriptionConfigurationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except (SonioxError, ValueError, TypeError) as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Sonioxの一時キーを発行できません。キー・権限・接続を確認してください",
+        ) from exc
+    response.headers["Cache-Control"] = "no-store"
+    return result
 
 
 def _load_latest_session(db: Session, meeting_id: uuid.UUID) -> RealtimeSession | None:
@@ -314,14 +359,17 @@ async def realtime_websocket(
             if message_type == "ping":
                 await websocket.send_json({"type": "pong"})
                 continue
-            if message_type == "azure_result":
+            if message_type in {"azure_result", "soniox_result"}:
+                expected_provider = "soniox" if message_type == "soniox_result" else "azure_speech"
+                if realtime_session.transcription_provider != expected_provider:
+                    raise RealtimeCaptureError("文字起こしプロバイダーが一致しません")
                 result_id = message.get("result_id")
                 text = message.get("text")
                 speaker_label = message.get("speaker_label")
                 if not isinstance(result_id, str) or not isinstance(text, str):
-                    raise RealtimeCaptureError("Azure認識結果の形式が不正です")
+                    raise RealtimeCaptureError("認識結果の形式が不正です")
                 if speaker_label is not None and not isinstance(speaker_label, str):
-                    raise RealtimeCaptureError("Azure認識結果の話者ラベル形式が不正です")
+                    raise RealtimeCaptureError("認識結果の話者ラベル形式が不正です")
                 segment = await run_in_threadpool(
                     append_streaming_transcript_segment,
                     db,
@@ -335,7 +383,7 @@ async def realtime_websocket(
                 )
                 await websocket.send_json(
                     {
-                        "type": "azure_result_saved",
+                        "type": f"{message_type}_saved",
                         "result_id": result_id,
                         "segment_id": str(segment.id),
                     }

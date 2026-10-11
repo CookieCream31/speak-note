@@ -10,7 +10,7 @@ describe("summary regeneration", () => {
   it("offers manual creation once recording is saved", () => {
     const html = renderToStaticMarkup(<SummaryRegenerationButton {...settings} meetingId="m" ready processing={false} />);
     expect(html).toContain("要約を再生成");
-    expect(html).toContain("初回はWhisperX");
+    expect(html).toContain("初回は非同期・確定版の設定");
     expect(html).not.toContain("disabled");
   });
   it("waits for video conversion", () => {

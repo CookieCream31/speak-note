@@ -36,12 +36,16 @@ from app.models.transcript import (
     TranscriptWord,
 )
 from app.models.transcription import (
+    AsyncTranscriptionProvider,
+    AsyncTranscriptionSettings,
     RealtimeTranscriptionProvider,
     RealtimeTranscriptionSettings,
 )
 from app.models.upload import MediaUploadSession, MediaUploadStatus
 
 __all__ = [
+    "AsyncTranscriptionProvider",
+    "AsyncTranscriptionSettings",
     "AIProfile",
     "AIProviderConfig",
     "AIProviderType",

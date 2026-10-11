@@ -12,6 +12,17 @@ class AzureSpeechPcmProcessor extends AudioWorkletProcessor {
     this.pcm = new Int16Array(this.chunkSamples);
     this.pcmLength = 0;
     this.sumSquares = 0;
+    this.port.onmessage = (event) => {
+      if (event.data?.type !== "flush") return;
+      if (this.pcmLength) {
+        const buffer = this.pcm.slice(0, this.pcmLength).buffer;
+        const level = Math.sqrt(this.sumSquares / this.pcmLength);
+        this.port.postMessage({ type: "pcm", buffer, level }, [buffer]);
+        this.pcmLength = 0;
+        this.sumSquares = 0;
+      }
+      this.port.postMessage({ type: "flushed" });
+    };
   }
 
   appendSample(sample) {

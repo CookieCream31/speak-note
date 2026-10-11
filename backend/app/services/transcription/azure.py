@@ -56,6 +56,7 @@ def _word_text(word: str, language: str, index: int) -> str:
 
 
 class AzureSpeechClient:
+    model = "azure-speech"
     supports_overlap_context = False
 
     def __init__(

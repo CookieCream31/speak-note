@@ -50,7 +50,11 @@ def list_meetings(
     total = session.scalar(select(func.count()).select_from(Meeting).where(criteria)) or 0
     meeting_models = list(
         session.scalars(
-            select(Meeting).where(criteria).order_by(Meeting.created_at.desc()).limit(limit).offset(offset)
+            select(Meeting)
+            .where(criteria)
+            .order_by(Meeting.created_at.desc())
+            .limit(limit)
+            .offset(offset)
         )
     )
     meetings = [MeetingRead.model_validate(meeting) for meeting in meeting_models]
@@ -67,7 +71,9 @@ def create_meeting(payload: MeetingCreate, session: DbSession) -> Meeting:
         else session.scalar(select(MeetingTemplate).where(MeetingTemplate.is_default.is_(True)))
     )
     if payload.template_id is not None and template is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="テンプレートが見つかりません")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="テンプレートが見つかりません"
+        )
     meeting = Meeting(
         title=payload.title,
         source_type=payload.source_type,
@@ -76,9 +82,14 @@ def create_meeting(payload: MeetingCreate, session: DbSession) -> Meeting:
         summary_format=payload.summary_format,
         template_id=template.id if template else None,
         template_snapshot=(
-            {"template_id": str(template.id), "revision": template.revision,
-             "name": template.name, "definition": template.definition}
-            if template else None
+            {
+                "template_id": str(template.id),
+                "revision": template.revision,
+                "name": template.name,
+                "definition": template.definition,
+            }
+            if template
+            else None
         ),
         meeting_context=payload.meeting_context,
         project_id=payload.project_id,
@@ -96,9 +107,7 @@ def bulk_manage_meetings(
     storage: StorageDep,
 ) -> MeetingBulkActionRead:
     meeting_ids = list(dict.fromkeys(payload.meeting_ids))
-    meeting_models = list(
-        session.scalars(select(Meeting).where(Meeting.id.in_(meeting_ids)))
-    )
+    meeting_models = list(session.scalars(select(Meeting).where(Meeting.id.in_(meeting_ids))))
     found_ids = {meeting.id for meeting in meeting_models}
     missing_ids = [meeting_id for meeting_id in meeting_ids if meeting_id not in found_ids]
     if missing_ids:
@@ -145,7 +154,10 @@ def update_meeting(
     session: DbSession,
 ) -> Meeting:
     updates = payload.model_dump(exclude_unset=True)
-    if updates.get("project_id") is not None and session.get(Project, updates["project_id"]) is None:
+    if (
+        updates.get("project_id") is not None
+        and session.get(Project, updates["project_id"]) is None
+    ):
         raise HTTPException(status_code=404, detail="プロジェクトが見つかりません")
     next_min_speakers = updates.get("min_speakers", meeting.min_speakers)
     next_max_speakers = updates.get("max_speakers", meeting.max_speakers)
@@ -378,9 +390,7 @@ def complete_media_upload(
                 f"upload{upload.filename_suffix}", upload.mime_type, upload.size_bytes
             )
         except (InvalidAudioError, InvalidVideoError, UploadTooLargeError) as exc:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT, detail=str(exc)
-            ) from exc
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
         meeting.source_type = (
             MeetingSourceType.VIDEO_UPLOAD
             if detected_kind == "video"
@@ -562,7 +572,15 @@ def _save_upload_and_job(
         mime_type=mime_type,
         size_bytes=size_bytes,
     )
-    job = Job(id=job_id or uuid.uuid4(), meeting_id=meeting.id, type=job_type, progress=0)
+    from app.services.transcription.settings import snapshot_async_transcription
+
+    job = Job(
+        id=job_id or uuid.uuid4(),
+        meeting_id=meeting.id,
+        type=job_type,
+        progress=0,
+        transcription_request=snapshot_async_transcription(session),
+    )
     meeting.status = MeetingStatus.QUEUED
     if upload_session is not None:
         upload_session.status = MediaUploadStatus.COMPLETED
@@ -610,9 +628,7 @@ def _get_upload_or_404(
     return upload
 
 
-def _upload_session_read(
-    upload: MediaUploadSession, storage: StorageDep
-) -> MediaUploadSessionRead:
+def _upload_session_read(upload: MediaUploadSession, storage: StorageDep) -> MediaUploadSessionRead:
     result = MediaUploadSessionRead.model_validate(upload)
     return result.model_copy(
         update={

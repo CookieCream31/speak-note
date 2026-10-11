@@ -4,6 +4,7 @@ import type {
   AIProvider,
   AIUsageSetting,
   RealtimeTranscriptionSettings,
+  AsyncTranscriptionSettings,
   MeetingTemplate,
 } from "@/lib/api";
 
@@ -23,12 +24,13 @@ export default async function AISettingsPage({
   searchParams: Promise<{ message?: string; error?: string }>;
 }) {
   const { message = "", error = "" } = await searchParams;
-  const [providers, profiles, usage, transcriptionSettings, templates] = await Promise.all([
+  const [providers, profiles, usage, transcriptionSettings, templates, asyncSettings] = await Promise.all([
     load<AIProvider[]>("/ai/providers"),
     load<AIProfile[]>("/ai/profiles"),
     load<AIUsageSetting[]>("/ai/usage"),
     load<RealtimeTranscriptionSettings>("/transcription/realtime-settings"),
     load<MeetingTemplate[]>("/meeting-templates"),
+    load<AsyncTranscriptionSettings>("/transcription/async-settings"),
   ]);
   return (
     <AISettingsManager
@@ -36,10 +38,10 @@ export default async function AISettingsPage({
       initialProfiles={profiles}
       initialUsage={usage}
       initialTranscriptionSettings={transcriptionSettings}
+      initialAsyncTranscriptionSettings={asyncSettings}
       initialTemplates={templates}
       initialMessage={message}
       initialError={error}
     />
   );
 }
-

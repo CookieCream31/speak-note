@@ -28,7 +28,7 @@ describe("AISettingsManager", () => {
 
     expect(html).toContain("リアルタイム文字起こし");
     expect(html).toContain("リアルタイムSpeech-to-Text");
-    // The provider is a two-way radio group; the saved Azure choice starts selected.
+    // The saved Azure choice stays selected when Soniox is added.
     expect(html).toContain('<input type="radio" name="transcription_provider" value="whisperx"/>WhisperX');
     expect(html).toContain(
       '<input type="radio" name="transcription_provider" checked="" value="azure_speech"/>Azure AI Speech',
@@ -43,6 +43,8 @@ describe("AISettingsManager", () => {
     expect(html).toContain('placeholder="****-key"');
     expect(html).not.toContain("azure-speech-secret-key");
     expect(html).toContain("接続テスト");
-    expect(html).toContain("確定版はWhisperX");
+    expect(html).toContain('name="transcription_provider" value="soniox"');
+    expect(html).toContain("非同期・確定版の文字起こし");
+    expect(html).toContain("確定版のエンジン");
   });
 });

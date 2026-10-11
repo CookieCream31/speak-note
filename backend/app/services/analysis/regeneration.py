@@ -23,6 +23,10 @@ from app.services.analysis.processor import (
     find_completed_final,
     resolve_analysis_profile,
 )
+from app.services.transcription.settings import (
+    RealtimeTranscriptionConfigurationError,
+    snapshot_async_transcription,
+)
 
 FINAL_JOB_TYPES = (JobType.PREPROCESS_MEDIA, JobType.TRANSCRIBE, JobType.ANALYZE)
 
@@ -145,8 +149,16 @@ def regenerate_summary(
         )
         if audio is None:
             raise AnalysisProcessingError("録音の保存または動画変換の完了を待ってください")
+        try:
+            transcription_request = snapshot_async_transcription(session)
+        except RealtimeTranscriptionConfigurationError as exc:
+            raise AnalysisProcessingError(str(exc)) from exc
         job = Job(
-            meeting_id=meeting.id, type=JobType.TRANSCRIBE, progress=0, analysis_request=request
+            meeting_id=meeting.id,
+            type=JobType.TRANSCRIBE,
+            progress=0,
+            analysis_request=request,
+            transcription_request=transcription_request,
         )
         session.add(job)
         meeting.status = MeetingStatus.QUEUED

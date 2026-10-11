@@ -13,6 +13,7 @@ import type {
   AIProviderType,
   AIUsage,
   AIUsageSetting,
+  AsyncTranscriptionSettings,
   RealtimeTranscriptionProvider,
   RealtimeTranscriptionSettings,
 } from "@/lib/api";
@@ -21,12 +22,14 @@ import { AIProfileList } from "./ai-profile-list";
 import { AppSidebar } from "./app-sidebar";
 import styles from "./ai-settings-manager.module.css";
 import { ThemeSelector } from "./theme-selector";
+import { AsyncTranscriptionSettingsForm, SonioxFields } from "./async-transcription-settings";
 
 interface AISettingsManagerProps {
   initialProviders: AIProvider[];
   initialProfiles: AIProfile[];
   initialUsage: AIUsageSetting[];
   initialTranscriptionSettings: RealtimeTranscriptionSettings;
+  initialAsyncTranscriptionSettings?: AsyncTranscriptionSettings;
   initialTemplates: MeetingTemplate[];
   initialMessage?: string;
   initialError?: string;
@@ -38,6 +41,7 @@ const sections = [
   { id: "templates", label: "議事録テンプレート" },
   { id: "usage", label: "用途別の割り当て" },
   { id: "stt", label: "リアルタイム文字起こし" },
+  { id: "async-stt", label: "非同期・確定版の文字起こし" },
 ] as const;
 
 const usageHints: Partial<Record<AIUsage, string>> = {
@@ -80,6 +84,7 @@ export function AISettingsManager({
   initialProfiles,
   initialUsage,
   initialTranscriptionSettings,
+  initialAsyncTranscriptionSettings = { provider: "whisperx", soniox_model: "stt-async-v5", soniox_language: "ja", has_soniox_api_key: false, soniox_api_key_masked: null, updated_at: "" },
   initialTemplates,
   initialMessage = "",
   initialError = "",
@@ -90,6 +95,7 @@ export function AISettingsManager({
     useState<RealtimeTranscriptionProvider>(initialTranscriptionSettings.provider);
   const [hasAzureApiKey, setHasAzureApiKey] =
     useState(initialTranscriptionSettings.has_api_key);
+  const [hasSonioxApiKey, setHasSonioxApiKey] = useState(initialTranscriptionSettings.has_soniox_api_key ?? false);
   const [message, setMessage] = useState<string>(initialMessage);
   const [error, setError] = useState<string>(initialError);
   const [busy, setBusy] = useState(false);
@@ -173,11 +179,18 @@ export function AISettingsManager({
   }
   function updateRealtimeTranscription(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
+    if (busy) return;
+    const form = event.currentTarget;
+    const data = new FormData(form);
     const region = formString(data, "azure_region");
     const language = formString(data, "azure_language")
       || initialTranscriptionSettings.azure_language;
     const apiKey = formString(data, "api_key");
+    const sonioxKey = formString(data, "soniox_api_key");
+    if (transcriptionProvider === "soniox" && !sonioxKey && !hasSonioxApiKey) {
+      setError("Soniox API Keyを入力してください");
+      return;
+    }
     if (transcriptionProvider === "azure_speech" && !region) {
       setError("Azure AI Speechのリージョンを入力してください");
       return;
@@ -198,16 +211,26 @@ export function AISettingsManager({
           azure_region: region || initialTranscriptionSettings.azure_region,
           azure_language: language,
           ...(apiKey ? { api_key: apiKey } : {}),
+          ...(transcriptionProvider === "soniox" ? {
+            soniox_model: formString(data, "soniox_model"),
+            soniox_language: formString(data, "soniox_language"),
+            ...(sonioxKey ? { soniox_api_key: sonioxKey } : {}),
+          } : {}),
         }),
       });
       if (apiKey) setHasAzureApiKey(true);
+      if (sonioxKey) setHasSonioxApiKey(true);
+      for (const name of ["api_key", "soniox_api_key"]) {
+        const input = form.elements.namedItem(name) as HTMLInputElement | null;
+        if (input) input.value = "";
+      }
     }, "リアルタイム文字起こしの設定を保存しました");
   }
 
   function testAzureSpeech() {
     void run(async () => {
       await request("/transcription/realtime-settings/test", { method: "POST" });
-    }, "Azure AI Speechへの接続に成功しました");
+    }, `${transcriptionProvider === "soniox" ? "Soniox" : "Azure AI Speech"}への接続に成功しました`);
   }
   return (
     <div className={styles.shell}>
@@ -407,11 +430,11 @@ export function AISettingsManager({
               <div className={styles.sectionHeading}>
                 <h2>リアルタイム文字起こし</h2>
               </div>
-              <p className={styles.sectionNote}>録音・画面共有中のLive文字起こしに使います（リアルタイムSpeech-to-Text）。確定版はWhisperXで作成します。</p>
+              <p className={styles.sectionNote}>録音・画面共有中のLive文字起こしに使います（リアルタイムSpeech-to-Text）。確定版のエンジンは下の「非同期・確定版」で選びます。</p>
               <form className={styles.speechForm} onSubmit={updateRealtimeTranscription}>
-                <fieldset className={styles.segmented}>
+                <fieldset className={styles.segmented} disabled={busy}>
                   <legend className={styles.visuallyHidden}>プロバイダー</legend>
-                  {([["whisperx", "WhisperX"], ["azure_speech", "Azure AI Speech"]] as const).map(([value, label]) => (
+                  {([["whisperx", "WhisperX"], ["azure_speech", "Azure AI Speech"], ["soniox", "Soniox"]] as const).map(([value, label]) => (
                     <label key={value} data-selected={transcriptionProvider === value}>
                       <input
                         type="radio"
@@ -424,14 +447,14 @@ export function AISettingsManager({
                     </label>
                   ))}
                 </fieldset>
-                <div className={styles.speechFields}>
+                <div className={styles.speechFields} hidden={transcriptionProvider !== "azure_speech"}>
                   <label>
                     <span>Azureリージョン</span>
                     <input
                       name="azure_region"
                       defaultValue={initialTranscriptionSettings.azure_region ?? ""}
                       placeholder="例: japaneast"
-                      disabled={transcriptionProvider !== "azure_speech"}
+                      disabled={transcriptionProvider !== "azure_speech" || busy}
                     />
                   </label>
                   <label>
@@ -440,7 +463,7 @@ export function AISettingsManager({
                       name="azure_language"
                       defaultValue={initialTranscriptionSettings.azure_language}
                       placeholder="ja-JP"
-                      disabled={transcriptionProvider !== "azure_speech"}
+                      disabled={transcriptionProvider !== "azure_speech" || busy}
                     />
                   </label>
                   <label>
@@ -450,23 +473,29 @@ export function AISettingsManager({
                       type="password"
                       autoComplete="new-password"
                       placeholder={initialTranscriptionSettings.api_key_masked ?? "API Keyを入力"}
-                      disabled={transcriptionProvider !== "azure_speech"}
+                      disabled={transcriptionProvider !== "azure_speech" || busy}
                     />
                   </label>
                 </div>
+                <SonioxFields model={initialTranscriptionSettings.soniox_model ?? "stt-rt-v5"} language={initialTranscriptionSettings.soniox_language ?? "ja"} masked={initialTranscriptionSettings.soniox_api_key_masked} disabled={transcriptionProvider !== "soniox" || busy} hidden={transcriptionProvider !== "soniox"} />
                 <div className={styles.speechActions}>
                   <button
                     className={styles.secondaryButton}
-                    disabled={busy || !hasAzureApiKey}
+                    disabled={busy || (transcriptionProvider === "soniox" ? !hasSonioxApiKey : transcriptionProvider !== "azure_speech" || !hasAzureApiKey)}
                     type="button"
                     onClick={testAzureSpeech}
                   >接続テスト</button>
                   <button disabled={busy} type="submit">設定を保存</button>
                 </div>
                 <p className={styles.settingNote}>
-                  Azure AI SpeechはLive文字起こしに使用します。リアルタイム話者分離はStandard (S0) が必要です。確定版はWhisperXで再処理し、話者分離を行います。
+                  Azureのリアルタイム話者分離はStandard (S0) が必要です。Sonioxは録音中の音声をSonioxへ送信し、短期キーでWebSocketへ接続します。言語ヒントは日本語ならjaです。どちらもリアルタイム版は暫定扱いです。
                 </p>
               </form>
+            </section>
+            <section className={styles.section} id="async-stt">
+              <div className={styles.sectionHeading}><h2>非同期・確定版の文字起こし</h2></div>
+              <p className={styles.sectionNote}>アップロードと、録音停止後に初めて確定版を作る際の全体処理に使います。WhisperXまたはSonioxを選択できます。</p>
+              <AsyncTranscriptionSettingsForm initialSettings={initialAsyncTranscriptionSettings} />
             </section>
           </div>
         </div>

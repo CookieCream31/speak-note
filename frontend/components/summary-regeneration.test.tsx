@@ -106,7 +106,7 @@ describe("summary regeneration dialog", () => {
   it("explains first transcription and requires an explicit AI when the meeting had AI off", async () => {
     await act(async () => root.render(<SummaryRegenerationButton {...props} currentProfileId={null} hasFinal={false} aiDisabled />));
     await click(button("要約を再生成"));
-    expect(container.textContent).toContain("初回はWhisperX");
+    expect(container.textContent).toContain("初回は非同期・確定版の設定");
     expect(button("再生成を開始").disabled).toBe(true);
     await select("AIプロファイル", other.id);
     expect(button("再生成を開始").disabled).toBe(false);

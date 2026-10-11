@@ -106,7 +106,7 @@ export function SummaryRegenerationButton({
             </select>
           </label>
           <p className={styles.hint}>テンプレートの「確定後」の構成と指示を使用します。会議やリアルタイム解析の設定は変更しません。</p>
-          <p className={styles.notice}><Info size={16} aria-hidden="true" />{hasFinal ? "保存済みの全体文字起こしを使い、要約だけを生成します。" : "初回はWhisperXで全体文字起こしを保存してから生成します。次回から文字起こしを再利用します。"}</p>
+          <p className={styles.notice}><Info size={16} aria-hidden="true" />{hasFinal ? "保存済みの全体文字起こしを使い、要約だけを生成します。" : "初回は非同期・確定版の設定で全体文字起こしを保存してから生成します。次回から文字起こしを再利用します。"}</p>
           {error && <p role="alert" className={styles.error}>{error}</p>}
         </div>
         <footer>

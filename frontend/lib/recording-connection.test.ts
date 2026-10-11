@@ -245,4 +245,22 @@ describe("RecordingConnection", () => {
 
     await expect(started).rejects.toThrow("録音または画面共有はすでに開始されています");
   });
+
+  it("retains Soniox finals until ACK and replays them after reconnect", async () => {
+    const { connection, socket } = await startedConnection();
+    connection.send({ type: "soniox_result", result_id: "soniox-phrase-1", text: "発言", start_ms: 10, end_ms: 100 });
+    await flush();
+    socket.drop();
+    await vi.advanceTimersByTimeAsync(1000);
+    const resumed = latestSocket(); resumed.open();
+    resumed.receive({ type: "resumed", session_id: "session", chunk_ms: 15000, duration_ms: 0 });
+    await flush();
+    expect(resumed.messages().filter((message) => message.type === "soniox_result")).toHaveLength(1);
+    resumed.receive({ type: "soniox_result_saved", result_id: "soniox-phrase-1", segment_id: "persisted-id" });
+    resumed.drop(); await vi.advanceTimersByTimeAsync(1000);
+    const next = latestSocket(); next.open(); next.receive({ type: "resumed", session_id: "session", chunk_ms: 15000, duration_ms: 0 });
+    await flush();
+    expect(next.messages().filter((message) => message.type === "soniox_result")).toHaveLength(0);
+    connection.close();
+  });
 });

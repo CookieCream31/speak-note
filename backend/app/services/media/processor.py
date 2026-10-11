@@ -13,6 +13,7 @@ from app.services.media.live_recording import (
     LiveVideoPartInput,
 )
 from app.services.media.storage import MediaStorage
+from app.services.transcription.settings import snapshot_async_transcription
 
 
 def process_video_job(
@@ -140,7 +141,15 @@ def process_video_job(
             )
         )
         if existing_transcription_job is None:
-            session.add(Job(meeting_id=meeting.id, type=JobType.TRANSCRIBE, progress=0))
+            session.add(
+                Job(
+                    meeting_id=meeting.id,
+                    type=JobType.TRANSCRIBE,
+                    progress=0,
+                    transcription_request=job.transcription_request
+                    or snapshot_async_transcription(session),
+                )
+            )
         meeting.status = MeetingStatus.QUEUED
     job.progress = 95
     session.commit()

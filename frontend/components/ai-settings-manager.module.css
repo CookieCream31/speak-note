@@ -72,12 +72,13 @@
 
 /* Realtime speech-to-text */
 .speechForm { display: grid; gap: 14px; padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
-.segmented { width: fit-content; display: flex; margin: 0; padding: 3px; background: var(--surface-hover); border: 0; border-radius: 8px; }
+.segmented { max-width: 100%; width: fit-content; display: flex; flex-wrap: wrap; margin: 0; padding: 3px; background: var(--surface-hover); border: 0; border-radius: 8px; }
 .segmented label { position: relative; min-height: 30px; display: inline-flex; align-items: center; padding: 0 14px; color: var(--text-secondary); border-radius: 6px; cursor: pointer; font-size: 13px; }
 .segmented label[data-selected="true"] { color: var(--ink); background: var(--surface); box-shadow: 0 1px 2px var(--shadow-soft); font-weight: 500; }
 .segmented label:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 1px; }
 .segmented input { position: absolute; opacity: 0; pointer-events: none; }
 .speechFields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.speechFields[hidden] { display: none; }
 .speechFields label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; }
 .speechActions { display: flex; justify-content: flex-end; gap: 8px; }
 .settingNote { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }

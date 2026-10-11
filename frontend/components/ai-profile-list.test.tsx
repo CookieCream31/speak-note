@@ -39,7 +39,7 @@ async function click(element: HTMLElement) {
 function radio(id: string) {
   return container.querySelector<HTMLInputElement>(`input[type="radio"][value="${id}"]`)!;
 }
-function form() { return container.querySelector<HTMLFormElement>('form[aria-label]')!; }
+function form() { return container.querySelector<HTMLFormElement>('#profiles form[aria-label]')!; }
 function change(name: string, value: string) {
   const input = form().querySelector<HTMLInputElement>(`input[name="${name}"]`)!;
   act(() => {

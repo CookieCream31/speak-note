@@ -29,6 +29,10 @@ from app.schemas.transcript import (
 )
 from app.services.transcription import create_final_transcript_from_result
 from app.services.transcription.schemas import WhisperXResult
+from app.services.transcription.settings import (
+    RealtimeTranscriptionConfigurationError,
+    snapshot_async_transcription,
+)
 
 router = APIRouter(prefix="/meetings", tags=["transcripts"])
 
@@ -174,7 +178,13 @@ def start_final_transcription(meeting: MeetingDep, session: DbSession) -> Job:
             detail="確定版の文字起こしまたはAI解析はすでに処理中です",
         )
 
-    job = Job(meeting_id=meeting.id, type=JobType.TRANSCRIBE, progress=0)
+    try:
+        request = snapshot_async_transcription(session)
+    except RealtimeTranscriptionConfigurationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    job = Job(
+        meeting_id=meeting.id, type=JobType.TRANSCRIBE, progress=0, transcription_request=request
+    )
     meeting.status = MeetingStatus.QUEUED
     session.add(job)
     session.commit()

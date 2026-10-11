@@ -43,6 +43,8 @@ export function createLiveTranscriptStore() {
         interim = null;
         finalizedIds.clear();
         persistedIds.clear();
+      } else if (detail.type === "clear-interim") {
+        if (interim?.id === detail.resultId) interim = null;
       } else if (detail.type === "persisted") {
         persistedIds.set(detail.resultId, detail.segmentId);
         const index = history.findIndex((segment) => segment.id === detail.resultId);

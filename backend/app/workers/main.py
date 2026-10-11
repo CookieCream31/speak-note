@@ -31,7 +31,10 @@ from app.services.transcription import (
     WhisperXClient,
     process_transcription_job,
 )
-from app.services.transcription.settings import build_realtime_transcription_client
+from app.services.transcription.settings import (
+    build_final_transcription_client,
+    build_realtime_transcription_client,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -83,7 +86,9 @@ def process_job(session: Session, job: Job) -> None:
         process_video_job(session, job, FFmpegMediaService(), storage)
         return
     if job.type == JobType.TRANSCRIBE:
-        process_transcription_job(session, job, _whisper_client(), storage)
+        process_transcription_job(
+            session, job, lambda: build_final_transcription_client(session, job, settings), storage
+        )
         return
     if job.type == JobType.TRANSCRIBE_LIVE:
         process_live_transcription_job(

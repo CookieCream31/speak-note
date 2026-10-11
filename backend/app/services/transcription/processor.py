@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy import func, select
@@ -17,9 +18,11 @@ from app.models.transcript import (
 from app.services.analysis import AnalysisProcessingError, create_analysis_job
 from app.services.analysis.processor import find_completed_final
 from app.services.analysis.regeneration import ensure_capture_stopped, lock_meeting
-from app.services.media import MediaStorage
-from app.services.transcription.client import WhisperXClient, WhisperXError
+from app.services.media.storage import MediaStorage
+from app.services.transcription.base import TranscriptionClient
+from app.services.transcription.client import WhisperXError
 from app.services.transcription.schemas import WhisperXResult
+from app.services.transcription.soniox import SonioxClient, SonioxError
 from app.services.transcription.speaker_turns import build_speaker_turns
 
 
@@ -67,7 +70,15 @@ def create_final_transcript_from_result(
         if turn.speaker:
             speaker = speaker_by_name.get(turn.speaker)
             if speaker is None:
-                speaker = Speaker(meeting_id=meeting.id, internal_name=turn.speaker)
+                speaker = Speaker(
+                    meeting_id=meeting.id,
+                    internal_name=turn.speaker,
+                    display_name=(
+                        f"話者 {turn.speaker.removeprefix('SONIOX_SPEAKER_')}"
+                        if turn.speaker.startswith("SONIOX_SPEAKER_")
+                        else None
+                    ),
+                )
                 session.add(speaker)
                 speaker_by_name[turn.speaker] = speaker
 
@@ -106,7 +117,7 @@ def create_final_transcript_from_result(
 def process_transcription_job(
     session: Session,
     job: Job,
-    client: WhisperXClient,
+    client: TranscriptionClient | Callable[[], TranscriptionClient],
     storage: MediaStorage,
 ) -> None:
     meeting = session.get(Meeting, job.meeting_id)
@@ -114,6 +125,8 @@ def process_transcription_job(
         raise RuntimeError("Meeting no longer exists")
     ensure_capture_stopped(session, meeting)
     if job.analysis_request is not None and find_completed_final(session, meeting) is not None:
+        if isinstance(client, SonioxClient) and client.state.get("cleanup_pending"):
+            _cleanup_soniox(client)
         _continue_regeneration(session, job, meeting)
         return
     media = session.scalar(
@@ -136,21 +149,37 @@ def process_transcription_job(
     job.progress = 10
     session.commit()
 
-    result = client.transcribe(
-        storage.absolute_path(media.storage_path),
-        media.mime_type,
-        min_speakers=meeting.min_speakers,
-        max_speakers=meeting.max_speakers,
-    )
-    create_final_transcript_from_result(
-        session,
-        meeting,
-        result,
-        model=client.model,
-        language=client.language,
-    )
+    saved_final_id = (job.transcription_request or {}).get("final_transcript_id")
+    if not saved_final_id:
+        if callable(client):
+            client = client()
+        result = client.transcribe(
+            storage.absolute_path(media.storage_path),
+            media.mime_type,
+            min_speakers=meeting.min_speakers,
+            max_speakers=meeting.max_speakers,
+        )
+        final = create_final_transcript_from_result(
+            session,
+            meeting,
+            result,
+            model=client.model,
+            language=client.language,
+        )
+        session.flush()
+        if isinstance(client, SonioxClient):
+            job.transcription_request = {
+                **client.state,
+                "final_transcript_id": str(final.id),
+                "cleanup_pending": True,
+            }
+    else:
+        meeting.status = MeetingStatus.COMPLETED
     job.progress = 95
     session.commit()
+    if isinstance(client, SonioxClient):
+        client.state = dict(job.transcription_request or {})
+        _cleanup_soniox(client)
 
     if job.analysis_request is not None:
         _continue_regeneration(session, job, meeting)
@@ -159,6 +188,14 @@ def process_transcription_job(
             create_analysis_job(session, meeting)
         except AnalysisProcessingError:
             session.rollback()
+
+
+def _cleanup_soniox(client: SonioxClient) -> None:
+    try:
+        client.cleanup()
+    except SonioxError:
+        # A remote cleanup failure must not discard the committed Final.
+        client.mark_cleanup_pending()
 
 
 def _continue_regeneration(session: Session, job: Job, meeting: Meeting) -> None:
