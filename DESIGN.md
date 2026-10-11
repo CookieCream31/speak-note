@@ -416,6 +416,8 @@ WhisperX固有処理は `transcription` Service層へ隔離する。
 - Soniox側file／transcriptionのUUIDと送信状態をDBへcheckpointする。POSTを無条件に再試行しない。送信応答を失った場合はJob UUIDを`client_reference_id`として一覧を照合し、一致が一つの場合だけ再開する（Soniox側ではunique／idempotency keyではない）。不明・重複の場合はJobをfailedにし、再送を止める。GET／DELETEは最大3回、全体処理待機は最大2時間。再試行は保存した同一処理IDから再開する。
 - tokenの時刻・信頼度を検証し、subwordと空白を保持して既存TranscriptのSegment／Wordへ保存する。DBは整数ms。Final commit後にSoniox側TranscriptionとFileだけを削除する。削除失敗はcleanup_pendingを残し、既存Final・元音声を失敗扱いで削除しない。失敗時や未完了のリモートデータは再試行／調査用に残るため、Consoleで管理する。
 - Sonioxのモデル取得で接続テストし、Liveは一時キー発行権限も確認する。RESTの生エラー本文や認証情報を応答・ログへ出さない。初回Final後は保存済みFinalを要約再生成に再利用し、リアルタイム結果をFinalへ昇格させない。既存のAI・Evidence・ユーザー編集保護・会議後質問の境界を維持する。
+- 設定画面の「モデル一覧を取得」は、保存前の入力キーまたは用途別の保存済みキーをBackendへPOSTし、公式`GET /v1/models`の`transcription_mode`でLive／非同期を分ける。対応するモデルIDと名前だけを返す。一覧取得では設定・キー・会議・Jobを変更せず、選択後の明示的な保存で反映する。失敗時は現在の選択を保持し、取得中の重複要求や保存を防ぐ。
+- キーにはModel listingをAccessにする。LiveにはSpeech-to-text, real-timeとTemporary API keysのAccess、非同期にはSpeech-to-text, asyncとFilesのWrite（Readを含む）が必要。Full accessや音声合成・利用状況・Legacy APIの権限は必要としない。用途別の権限を設定画面とガイドに表示する。
 
 Migration `20261012_0026`は0025に続き、Live設定のSoniox項目・provider制約、独立非同期設定テーブル、Jobのnullable JSONB checkpointを追加する。既存会議・Transcript・Azureキーを変更しない。downgradeはSoniox設定／checkpointを除くため、処理を停止しバックアップを取得してから行う。
 

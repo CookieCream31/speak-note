@@ -82,7 +82,7 @@ AI設定の「リアルタイム文字起こし」でWhisperX / Azure AI Speech 
 | Soniox | ブラウザWebSocketがPCM音声を連続送信 | 一時キーで接続し、途中認識を表示、確定した発話だけを保存 |
 
 Azureはリージョン（例: japaneast）、認識言語（例: ja-JP）、API Keyを保存して接続テストします。
-Sonioxはモデル（既定`stt-rt-v5`）、言語ヒント（`ja`）、API Keyを保存して接続テストします。音声はSonioxへ送信されます。確定版もSonioxにしたい場合は、下の「非同期・確定版の文字起こし」で別途Soniox・`stt-async-v5`・API Keyを保存します。[詳しい手順と制約](soniox-transcription.md)。
+SonioxはAPI Keyを入力して「モデル一覧を取得」を押し、モデル（既定`stt-rt-v5`）を選択します。保存済みキーでの取得もできます。言語ヒント（`ja`）を確認し、設定を保存して接続テストします。音声はSonioxへ送信されます。確定版もSonioxにしたい場合は、下の「非同期・確定版の文字起こし」で同様に一覧を取得してモデル（既定`stt-async-v5`）を選び、別途キーと設定を保存します。[必要なキー権限・詳しい手順と制約](soniox-transcription.md)。
 API KeyはBackendで暗号化保存し、ブラウザには有効期限のある認識用Tokenを渡します。
 本プロジェクトの話者分離はStandard (S0) Resourceを使う設計です。
 

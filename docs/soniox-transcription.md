@@ -17,13 +17,36 @@ Soniox公式ドキュメントを読み、リアルタイムと非同期を独�
 
 1. Migration 0026を反映します。録音・録画・処理中Jobが終わってから[反映手順](operations.md#soniox)を実行します。
 2. `MASTER_ENCRYPTION_KEY`を設定済みであることを確認します。SonioxのAPI Keyは`.env`へ追加せず、画面からDBへ暗号化保存します。既存のGemini／Azureと同じ暗号化基盤です。
-3. AI設定 →「リアルタイム文字起こし」でSonioxを選び、`stt-rt-v5`、言語ヒント`ja`、API Keyを保存します。「接続テスト」はモデル取得と一時キー発行を確認し、音声を送信しません。キーにSpeech-to-TextとTemporary API keysの権限が必要です。
-4. 確定版もSonioxにする場合は「非同期・確定版の文字起こし」でSoniox、`stt-async-v5`、`ja`、API Keyを別途保存し、接続テストします。ファイル・非同期文字起こしの作成／取得／一覧／削除に必要な権限を付けます。同じキーを両方へ入力しても構いません。片方の保存はもう片方の選択やAzureキーを変更しません。
+3. AI設定 →「リアルタイム文字起こし」でSonioxを選び、API Keyを入力します。「モデル一覧を取得」を押してモデル（既定`stt-rt-v5`）を選び、言語ヒント`ja`を確認し、「設定を保存」を押します。「接続テスト」はモデル取得と一時キー発行を確認し、音声を送信しません。必要な権限は下の表を参照してください。
+4. 確定版もSonioxにする場合は「非同期・確定版の文字起こし」でSonioxを選び、API Keyを入力してモデル一覧を取得します。モデル（既定`stt-async-v5`）と`ja`、API Keyを別途保存し、接続テストします。同じキーを両方へ入力しても構いません。片方の保存はもう片方の選択やAzureキーを変更しません。
 5. 新しい会議から録音・画面共有を開始します。途中認識の表示と発話確定後の保存を確認します。共有音声とマイクは従来どおり混合され、映像の保存ON/OFFは文字起こし設定と独立です。
 6. 停止・保存完了後、「要約を再生成」でAIとテンプレートを選びます。Finalがなければ初回だけ非同期処理を行います。既存Finalがある場合はその版を再利用し、Sonioxへ音声を再送しません。エンジン設定変更でも既存Final・生成履歴を自動更新しません。
 7. 音声・動画アップロードでも、アップロード時に選んだ非同期設定でFinalが自動生成されることを確認します。AIを使う会議では、その後の解析Jobと根拠・会議後質問も確認します。
 
 設定をWhisperXへ戻すと新しいSession／JobからWhisperXを使用します。Soniox恒久キーの削除はPUTの`clear_soniox_api_key`（WhisperXへ切り替える同じ要求で指定）に対応します。画面にはキーの全文を表示せず、マスクだけ返します。リアルタイム用と非同期用のキーは別々に管理します。
+
+## モデル一覧とAPIキーの権限
+
+モデル一覧は保存前の入力キーで取得できます。キーの入力欄が空なら、その用途の保存済みキーを使用します。取得APIは`POST /api/v1/transcription/soniox-models`で、Backendが公式`GET /v1/models`へ問い合わせ、`transcription_mode`でリアルタイム／非同期を分けます。入力キーをURLへ含めず、モデルIDと名前だけを返し、設定やキーをDBへ保存しません。[公式モデル一覧API](https://soniox.com/docs/api-reference/stt/get_models)。
+
+取得中は再取得と保存を無効にします。失敗・空一覧の場合は現在の選択を保持してエラーを表示します。取得した一覧に現在のモデルがなければ、自動的に別のモデルへ変更せず、モデルの選び直しを求めます。「設定を保存」を押すまで会議・録音・予約済みJobへ影響しません。
+
+Full accessをOFFにし、用途別に以下を指定します。WriteはReadの一覧・取得に加えて作成・削除も許可します。短期キーの発行には、そのサービスの権限とTemporary API keysの両方が必要です。[公式のAPIキー権限](https://soniox.com/docs/guides/api-key-permissions)。
+
+| Consoleの権限 | リアルタイム用キー | 非同期用キー |
+| --- | --- | --- |
+| Full access | OFF | OFF |
+| Speech-to-text, real-time | Access | No Access |
+| Speech-to-text, async | No Access | Write |
+| Files | No Access | Write |
+| Model listing | Access | Access |
+| Temporary API keys | Access | No Access |
+| Text-to-speech, real-time | No Access | No Access |
+| Cloned voices | No Access | No Access |
+| Usage and limits | No Access | No Access |
+| Legacy API | No Access | No Access |
+
+同じキーを両用途で使う場合は、上表の必要な権限を合わせ、Speech-to-text, real-time／Model listing／Temporary API keysをAccess、Speech-to-text, async／FilesをWriteにします。その他はNo Accessです。HTTP 401はキーの不正・削除、403は権限不足を確認します。権限変更の反映には数分かかる場合があり、開始済みストリーム・発行済み短期キーには反映されません。
 
 ## 保存・障害・再試行
 
@@ -90,3 +113,16 @@ Ubuntu上の一時検証環境で実行しました。Frontendの専用formatter
 初回の`npm run typecheck`は一時Node環境の`node-gyp/bin/node-gyp.js`不足で実行できず、npm scriptと同じTypeScript／ESLint／VitestをNodeから直接実行しました。mypyの既存cacheではinternal errorが出たため、`--cache-dir=/tmp/speak-note-soniox-mypy-cache`で再検証しました。いずれも環境問題として扱い、ソースやテストを無効化していません。
 
 全体lintの残件はテンプレートRoute・Analysisモデル／手動取り込み／Realtime解析・Meeting schema・Azureの既存行長です。全体mypyの残件はMeeting／Analysisのdict型、Azureの数値変換、Realtimeテンプレート／解析、会議一覧SQL型、テンプレートRouteです。今回はSonioxの変更に範囲を限定しています。
+
+### モデル一覧選択の追加変更（2026-10-12）
+
+変更ファイルはBackendの`app/schemas/transcription_settings.py`、`app/api/routes/transcription_settings.py`、`app/services/transcription/soniox.py`、新規`tests/test_soniox_models.py`、Frontendの`components/{async-transcription-settings,ai-settings-manager,transcription-settings-dom.test}.tsx`、`components/ai-settings-manager.module.css`、文書の`README.md`、`DESIGN.md`、`docs/{soniox-transcription,usage,operations,development}.md`です。追加Migrationはなく、headは0026のままです。
+
+- `pytest -q`: 全体244件成功。新規14件で用途による絞込・保存前キー・用途別保存済みキー・設定非更新・キー非返却・401／403／503・不正応答を確認。
+- `node node_modules/vitest/vitest.mjs run`: 全体229件成功。設定画面で取得・モデル選択・保存、処理中の重複防止、失敗復旧、空一覧、用途の独立を確認。
+- `ruff format --check`、`ruff check`（変更した4つのPythonファイル）: 成功。
+- `mypy --cache-dir=/tmp/speak-note-soniox-models-mypy-cache --follow-imports=silent app/schemas/transcription_settings.py app/services/transcription/soniox.py app/api/routes/transcription_settings.py`: 3ファイル成功。
+- `node node_modules/typescript/bin/tsc --noEmit`、`node node_modules/eslint/bin/eslint.js .`: 成功。
+- Playwright Chromium: light／dark × 320、393、560、844、1280pxの10条件で、一覧取得・選択したモデルの送信・横overflowなし・ページエラーなし。
+
+モデル取得もmock APIで検証しています。実Sonioxアカウントによるキーの権限・取得モデル一覧、実端末は未検証です。稼働中Dockerの再起動は行っていません。反映は[運用ガイド](operations.md#sonioxモデル一覧の追加を反映する場合)を参照してください。

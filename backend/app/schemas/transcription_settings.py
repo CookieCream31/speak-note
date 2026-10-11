@@ -1,6 +1,7 @@
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
 from app.models.transcription import AsyncTranscriptionProvider, RealtimeTranscriptionProvider
 
@@ -10,6 +11,20 @@ class SonioxSettingsUpdate(BaseModel):
     soniox_language: str | None = Field(default=None, pattern=r"^[a-z]{2,3}$")
     soniox_api_key: str | None = Field(default=None, min_length=1, max_length=1000)
     clear_soniox_api_key: bool = False
+
+
+class SonioxModelListRequest(BaseModel):
+    purpose: Literal["realtime", "async"]
+    soniox_api_key: SecretStr | None = Field(default=None, min_length=1, max_length=1000)
+
+
+class SonioxModelRead(BaseModel):
+    id: str
+    name: str
+
+
+class SonioxModelListRead(BaseModel):
+    models: list[SonioxModelRead]
 
 
 class AsyncTranscriptionSettingsUpdate(SonioxSettingsUpdate):

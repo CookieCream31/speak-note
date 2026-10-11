@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Response, status
 
 from app.api.dependencies import DbSession
 from app.core.config import get_settings as get_app_settings
@@ -13,6 +13,9 @@ from app.schemas.transcription_settings import (
     RealtimeTranscriptionConnectionRead,
     RealtimeTranscriptionSettingsRead,
     RealtimeTranscriptionSettingsUpdate,
+    SonioxModelListRead,
+    SonioxModelListRequest,
+    SonioxModelRead,
     SonioxSettingsUpdate,
 )
 from app.services.llm import (
@@ -190,6 +193,37 @@ def _async_read(settings: AsyncTranscriptionSettings) -> AsyncTranscriptionSetti
         soniox_api_key_masked=settings.soniox_api_key_hint,
         updated_at=settings.updated_at,
     )
+
+
+@router.post("/soniox-models", response_model=SonioxModelListRead)
+def list_soniox_models(
+    payload: SonioxModelListRequest, session: DbSession, response: Response
+) -> SonioxModelListRead:
+    # A draft key can discover models before saving, without changing either setting.
+    if payload.soniox_api_key is not None:
+        key = payload.soniox_api_key.get_secret_value().strip()
+        if not key:
+            raise HTTPException(status_code=422, detail="Soniox API Keyを入力してください")
+    else:
+        stored = (
+            session.get(RealtimeTranscriptionSettings, 1)
+            if payload.purpose == "realtime"
+            else session.get(AsyncTranscriptionSettings, 1)
+        )
+        if stored is None or not stored.soniox_encrypted_api_key:
+            raise HTTPException(
+                status_code=422, detail="Soniox API Keyを入力または保存してください"
+            )
+        try:
+            key = _cipher().decrypt(stored.soniox_encrypted_api_key)
+        except SecretDecryptionError as exc:
+            raise HTTPException(status_code=422, detail="Soniox API Keyを復号できません") from exc
+    try:
+        models = SonioxClient(key).list_models(realtime=payload.purpose == "realtime")
+    except SonioxError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    response.headers["Cache-Control"] = "no-store"
+    return SonioxModelListRead(models=[SonioxModelRead(**model) for model in models])
 
 
 @router.get("/async-settings", response_model=AsyncTranscriptionSettingsRead)

@@ -173,6 +173,32 @@ class SonioxClient:
         if not any(isinstance(model, dict) and model.get("id") == self.model for model in models):
             raise SonioxError("指定したSonioxモデルが利用できません")
 
+    def list_models(self, *, realtime: bool) -> list[dict[str, str]]:
+        models = self._request("GET", "/models").get("models")
+        if not isinstance(models, list):
+            raise SonioxError("Sonioxモデル一覧の形式が不正です")
+        mode = "real_time" if realtime else "async"
+        prefix = "stt-rt-" if realtime else "stt-async-"
+        available: dict[str, dict[str, str]] = {}
+        for model in models:
+            if not isinstance(model, dict):
+                raise SonioxError("Sonioxモデル一覧の形式が不正です")
+            if model.get("transcription_mode") != mode:
+                continue
+            identifier = model.get("id")
+            if (
+                not isinstance(identifier, str)
+                or not identifier.startswith(prefix)
+                or not identifier.isascii()
+                or len(identifier) > 32
+            ):
+                raise SonioxError("Sonioxモデル一覧の形式が不正です")
+            name = model.get("name", identifier)
+            if not isinstance(name, str) or not name.strip() or len(name) > 200:
+                raise SonioxError("Sonioxモデル一覧の形式が不正です")
+            available[identifier] = {"id": identifier, "name": name}
+        return list(available.values())
+
     def temporary_key(self, session_id: uuid.UUID) -> dict[str, Any]:
         return self._request(
             "POST",

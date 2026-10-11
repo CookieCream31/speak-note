@@ -99,6 +99,19 @@ Migrationに失敗した場合はWorkerを止めたままBackendログを確認�
 
 利用者の提示ログでは、運用DBが`20261012_0026 (head)`、BackendがHealthy、4つのWorkerがStartedであることを確認しています。Frontendの再起動操作も報告されています。反映後の画面・Soniox実接続は未確認です。[運用反映の記録](soniox-transcription.md#利用者の運用反映ログ)を参照してください。同じ環境で直接実装した変更を反映する場合、上記の`git pull --ff-only`は省略できます。別環境などで更新されたコードをGitHubから取得する場合に実行します。
 
+### Sonioxモデル一覧の追加を反映する場合
+
+Migration 0026適用済みの環境では追加のMigration・環境変数・依存追加はありません。モデル一覧の取得APIと設定画面の変更なので、録音・録画・保存・処理中Jobが完了してからBackendとFrontendを再起動します。Workerの処理内容は変更していません。
+
+```bash
+cd /home/llm/speak-note
+sudo docker compose restart backend frontend
+sudo docker compose up -d --wait --no-deps backend
+sudo docker compose ps backend frontend
+```
+
+ブラウザを再読み込みし、API Key入力 →「モデル一覧を取得」→ モデル選択 →「設定を保存」の順で確認します。保存済みキーでの取得もできます。モデル一覧でHTTP 403になる場合はModel listingのAccess権限を確認してください。[用途別の権限](soniox-transcription.md#モデル一覧とapiキーの権限)。エージェントはこの追加変更による稼働中サービスの再起動を行っていません。
+
 <a id="record-video-toggle"></a>
 ### 会議作成の3つの取り込み方法・画面共有内の録画スイッチへの表示変更
 

@@ -96,6 +96,7 @@ export function AISettingsManager({
   const [hasAzureApiKey, setHasAzureApiKey] =
     useState(initialTranscriptionSettings.has_api_key);
   const [hasSonioxApiKey, setHasSonioxApiKey] = useState(initialTranscriptionSettings.has_soniox_api_key ?? false);
+  const [sonioxModelsLoading, setSonioxModelsLoading] = useState(false);
   const [message, setMessage] = useState<string>(initialMessage);
   const [error, setError] = useState<string>(initialError);
   const [busy, setBusy] = useState(false);
@@ -179,7 +180,7 @@ export function AISettingsManager({
   }
   function updateRealtimeTranscription(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || sonioxModelsLoading) return;
     const form = event.currentTarget;
     const data = new FormData(form);
     const region = formString(data, "azure_region");
@@ -432,7 +433,7 @@ export function AISettingsManager({
               </div>
               <p className={styles.sectionNote}>録音・画面共有中のLive文字起こしに使います（リアルタイムSpeech-to-Text）。確定版のエンジンは下の「非同期・確定版」で選びます。</p>
               <form className={styles.speechForm} onSubmit={updateRealtimeTranscription}>
-                <fieldset className={styles.segmented} disabled={busy}>
+                <fieldset className={styles.segmented} disabled={busy || sonioxModelsLoading}>
                   <legend className={styles.visuallyHidden}>プロバイダー</legend>
                   {([["whisperx", "WhisperX"], ["azure_speech", "Azure AI Speech"], ["soniox", "Soniox"]] as const).map(([value, label]) => (
                     <label key={value} data-selected={transcriptionProvider === value}>
@@ -477,15 +478,15 @@ export function AISettingsManager({
                     />
                   </label>
                 </div>
-                <SonioxFields model={initialTranscriptionSettings.soniox_model ?? "stt-rt-v5"} language={initialTranscriptionSettings.soniox_language ?? "ja"} masked={initialTranscriptionSettings.soniox_api_key_masked} disabled={transcriptionProvider !== "soniox" || busy} hidden={transcriptionProvider !== "soniox"} />
+                <SonioxFields model={initialTranscriptionSettings.soniox_model ?? "stt-rt-v5"} language={initialTranscriptionSettings.soniox_language ?? "ja"} masked={initialTranscriptionSettings.soniox_api_key_masked} purpose="realtime" hasSavedKey={hasSonioxApiKey} onLoadingChange={setSonioxModelsLoading} disabled={transcriptionProvider !== "soniox" || busy || sonioxModelsLoading} hidden={transcriptionProvider !== "soniox"} />
                 <div className={styles.speechActions}>
                   <button
                     className={styles.secondaryButton}
-                    disabled={busy || (transcriptionProvider === "soniox" ? !hasSonioxApiKey : transcriptionProvider !== "azure_speech" || !hasAzureApiKey)}
+                    disabled={busy || sonioxModelsLoading || (transcriptionProvider === "soniox" ? !hasSonioxApiKey : transcriptionProvider !== "azure_speech" || !hasAzureApiKey)}
                     type="button"
                     onClick={testAzureSpeech}
                   >接続テスト</button>
-                  <button disabled={busy} type="submit">設定を保存</button>
+                  <button disabled={busy || sonioxModelsLoading} type="submit">設定を保存</button>
                 </div>
                 <p className={styles.settingNote}>
                   Azureのリアルタイム話者分離はStandard (S0) が必要です。Sonioxは録音中の音声をSonioxへ送信し、短期キーでWebSocketへ接続します。言語ヒントは日本語ならjaです。どちらもリアルタイム版は暫定扱いです。

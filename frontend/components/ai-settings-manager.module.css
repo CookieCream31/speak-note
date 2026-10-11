@@ -24,11 +24,11 @@
 .secondaryButton:disabled { cursor: not-allowed; opacity: .55; }
 
 /* Shared inputs */
-.createForm input, .createForm select, .card input, .usageList select, .speechFields input {
+.createForm input, .createForm select, .card input, .usageList select, .speechFields input, .speechFields select {
   width: 100%; min-width: 0; min-height: 36px; padding: 0 10px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 14px;
 }
-.createForm input:focus, .createForm select:focus, .card input:focus, .usageList select:focus, .speechFields input:focus { border-color: var(--focus); outline: 3px solid var(--focus-ring); }
-.speechFields input:disabled, .usageList select:disabled { cursor: not-allowed; opacity: .55; }
+.createForm input:focus, .createForm select:focus, .card input:focus, .usageList select:focus, .speechFields input:focus, .speechFields select:focus { border-color: var(--focus); outline: 3px solid var(--focus-ring); }
+.speechFields input:disabled, .speechFields select:disabled, .usageList select:disabled { cursor: not-allowed; opacity: .55; }
 .createForm input[type="checkbox"], .card input[type="checkbox"] { width: 16px; min-height: 0; height: 16px; accent-color: var(--primary-bg); }
 .createForm button[type="submit"], .card form button, .speechActions button[type="submit"] { min-height: 34px; padding: 0 14px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; }
 .createForm button:disabled, .card button:disabled, .speechActions button:disabled { cursor: wait; opacity: .55; }
@@ -80,6 +80,8 @@
 .speechFields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .speechFields[hidden] { display: none; }
 .speechFields label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; }
+.modelActions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.sonioxHelp { grid-column: 1 / -1; overflow-wrap: anywhere; }
 .speechActions { display: flex; justify-content: flex-end; gap: 8px; }
 .settingNote { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
 
@@ -99,5 +101,5 @@
   .usageList label { flex-wrap: wrap; }
   .usageList select { width: 100%; }
   .templateSummary { flex-wrap: wrap; }
-  .createForm input, .createForm select, .card input, .usageList select, .speechFields input { min-height: 44px; font-size: 16px; }
+  .createForm input, .createForm select, .card input, .usageList select, .speechFields input, .speechFields select { min-height: 44px; font-size: 16px; }
 }
