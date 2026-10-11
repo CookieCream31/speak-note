@@ -42,7 +42,19 @@ Soniox公式ドキュメントを読み、リアルタイムと非同期を独�
 
 テストはmock HTTP／WebSocketとSQLiteのAPIテストで、設定の独立・暗号化、Sonioxのtoken連結／時刻／話者、失敗時保護、初回FinalからのAI／テンプレート引継ぎ、処理ID再利用、曖昧な送信の再送停止、重複発話の防止、停止処理、UIの保存・処理中・エラーを確認します。PostgreSQL Migrationは運用DBへ接続せずoffline SQLで検証します。
 
-実Sonioxアカウント・課金API・Safari／実スマートフォン・長時間録音・運用PostgreSQLへの適用は未検証です。接続テストだけでは音声認識品質、残高、同時接続枠、ファイル容量制限まで保証しないため、短い実録音と小さいアップロードで両用途を確認してください。LiveはHTTPS／localhost、WebSocketとAudioWorkletに対応したブラウザが必要です。
+実Sonioxアカウント・課金API・Safari／実スマートフォン・長時間録音は未検証です。運用PostgreSQLへのMigration適用は、下記の利用者の反映ログで確認しました。接続テストだけでは音声認識品質、残高、同時接続枠、ファイル容量制限まで保証しないため、短い実録音と小さいアップロードで両用途を確認してください。LiveはHTTPS／localhost、WebSocketとAudioWorkletに対応したブラウザが必要です。
+
+### 利用者の運用反映ログ
+
+記録日: 2026-10-12（日本時間）。利用者が実行したコマンドの提示ログに基づく記録です。エージェントは稼働中Dockerや運用DBを操作していません。
+
+- `docker compose stop worker live-worker realtime-ai-worker answer-worker`で4つのWorkerが停止。
+- Backendの再起動後、`docker compose up -d --wait --no-deps backend`でHealthy。
+- `docker compose exec -T backend alembic current`が`20261012_0026 (head)`。
+- 4つのWorkerの再開がすべてStarted。
+- Frontendの再起動操作が報告されています。再起動後の状態・ブラウザ表示・Soniox接続テスト・実音声認識は未確認です。
+
+次はブラウザを再読み込みし、上記「設定と操作」の手順でリアルタイムと非同期をそれぞれ確認します。
 
 ### 変更したファイル
 

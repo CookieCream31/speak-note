@@ -97,6 +97,8 @@ sudo docker compose ps backend frontend worker live-worker realtime-ai-worker an
 
 Migrationに失敗した場合はWorkerを止めたままBackendログを確認します。Volumeを削除しません。反映後にブラウザを再読み込みし、[Soniox設定と動作確認](soniox-transcription.md#設定と操作)を行います。エージェントは稼働中Dockerの再起動・運用DBへのMigration適用・実Sonioxへの音声送信を行っていません。録音中の設定保存は次のSessionから適用されます。
 
+利用者の提示ログでは、運用DBが`20261012_0026 (head)`、BackendがHealthy、4つのWorkerがStartedであることを確認しています。Frontendの再起動操作も報告されています。反映後の画面・Soniox実接続は未確認です。[運用反映の記録](soniox-transcription.md#利用者の運用反映ログ)を参照してください。同じ環境で直接実装した変更を反映する場合、上記の`git pull --ff-only`は省略できます。別環境などで更新されたコードをGitHubから取得する場合に実行します。
+
 <a id="record-video-toggle"></a>
 ### 会議作成の3つの取り込み方法・画面共有内の録画スイッチへの表示変更
 
