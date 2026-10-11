@@ -41,7 +41,8 @@ describe("independent transcription settings forms", () => {
     await submit(form);
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe("/api/v1/transcription/async-settings");
-    expect(JSON.parse(init.body)).toEqual({ provider: "soniox", soniox_model: "stt-async-v5", soniox_language: "ja", soniox_api_key: "private-key" });
+    expect(JSON.parse(init.body)).toEqual({ provider: "soniox", soniox_model: "stt-async-v5", soniox_api_key: "private-key" });
+    expect(host.querySelector('[name="soniox_language"]')).toBeNull();
     expect(field("soniox_api_key").value).toBe("");
     expect(host.querySelector('[role="status"]')?.textContent).toContain("保存しました");
     await submit(form);

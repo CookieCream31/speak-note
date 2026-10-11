@@ -23,10 +23,6 @@ from app.services.analysis.processor import (
     find_completed_final,
     resolve_analysis_profile,
 )
-from app.services.transcription.settings import (
-    RealtimeTranscriptionConfigurationError,
-    snapshot_async_transcription,
-)
 
 FINAL_JOB_TYPES = (JobType.PREPROCESS_MEDIA, JobType.TRANSCRIBE, JobType.ANALYZE)
 
@@ -149,8 +145,15 @@ def regenerate_summary(
         )
         if audio is None:
             raise AnalysisProcessingError("録音の保存または動画変換の完了を待ってください")
+        # Load transcription settings only for the first Final, avoiding the
+        # package initialization cycle between analysis and transcription workers.
+        from app.services.transcription.settings import (
+            RealtimeTranscriptionConfigurationError,
+            snapshot_async_transcription,
+        )
+
         try:
-            transcription_request = snapshot_async_transcription(session)
+            transcription_request = snapshot_async_transcription(session, meeting)
         except RealtimeTranscriptionConfigurationError as exc:
             raise AnalysisProcessingError(str(exc)) from exc
         job = Job(

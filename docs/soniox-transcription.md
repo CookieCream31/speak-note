@@ -15,11 +15,11 @@ Soniox公式ドキュメントを読み、リアルタイムと非同期を独�
 
 ## 設定と操作
 
-1. Migration 0026を反映します。録音・録画・処理中Jobが終わってから[反映手順](operations.md#soniox)を実行します。
+1. 最新コードのMigration 0027まで反映します。録音・録画・処理中Jobが終わってから[反映手順](operations.md#meeting-languages)を実行します。
 2. `MASTER_ENCRYPTION_KEY`を設定済みであることを確認します。SonioxのAPI Keyは`.env`へ追加せず、画面からDBへ暗号化保存します。既存のGemini／Azureと同じ暗号化基盤です。
-3. AI設定 →「リアルタイム文字起こし」でSonioxを選び、API Keyを入力します。「モデル一覧を取得」を押してモデル（既定`stt-rt-v5`）を選び、言語ヒント`ja`を確認し、「設定を保存」を押します。「接続テスト」はモデル取得と一時キー発行を確認し、音声を送信しません。必要な権限は下の表を参照してください。
-4. 確定版もSonioxにする場合は「非同期・確定版の文字起こし」でSonioxを選び、API Keyを入力してモデル一覧を取得します。モデル（既定`stt-async-v5`）と`ja`、API Keyを別途保存し、接続テストします。同じキーを両方へ入力しても構いません。片方の保存はもう片方の選択やAzureキーを変更しません。
-5. 新しい会議から録音・画面共有を開始します。途中認識の表示と発話確定後の保存を確認します。共有音声とマイクは従来どおり混合され、映像の保存ON/OFFは文字起こし設定と独立です。
+3. AI設定 →「リアルタイム文字起こし」でSonioxを選び、API Keyを入力します。「モデル一覧を取得」を押してモデル（既定`stt-rt-v5`）を選び、「設定を保存」を押します。「接続テスト」はモデル取得と一時キー発行を確認し、音声を送信しません。必要な権限は下の表を参照してください。
+4. 確定版もSonioxにする場合は「非同期・確定版の文字起こし」でSonioxを選び、API Keyを入力してモデル一覧を取得します。モデル（既定`stt-async-v5`）とAPI Keyを別途保存し、接続テストします。同じキーを両方へ入力しても構いません。片方の保存はもう片方の選択やAzureキーを変更しません。
+5. 新しい会議の「会議で話す言語」を選び（初期値は日本語・Strict OFF）、録音・画面共有を開始します。途中認識の表示と発話確定後の保存を確認します。共有音声とマイクは従来どおり混合され、映像の保存ON/OFFは文字起こし設定と独立です。[会議言語・Language hints・Strictの詳細](meeting-transcription-languages.md)。
 6. 停止・保存完了後、「要約を再生成」でAIとテンプレートを選びます。Finalがなければ初回だけ非同期処理を行います。既存Finalがある場合はその版を再利用し、Sonioxへ音声を再送しません。エンジン設定変更でも既存Final・生成履歴を自動更新しません。
 7. 音声・動画アップロードでも、アップロード時に選んだ非同期設定でFinalが自動生成されることを確認します。AIを使う会議では、その後の解析Jobと根拠・会議後質問も確認します。
 
@@ -53,7 +53,7 @@ Full accessをOFFにし、用途別に以下を指定します。WriteはReadの
 - Liveは16kHz・16bit・monoの`pcm_s16le`を送信します。恒久キーはBackendに残し、録音中のSoniox Sessionに限って60秒・一回限り・最大5時間の一時キーを発行します。接続期限は開始済みのストリームを60秒で切る意味ではありません。再接続ごとに新しいキーを取得します。[一時キーの期限](https://soniox.com/docs/guides/temporary-api-keys)。
 - 非確定tokenは表示用だけです。Sonioxが確定したtokenを連結し、話者変更・発話区切り・10秒区間で保存します。空白とsubwordを保持し、翻訳tokenと制御markerを本文へ含めません。接続ごとの話者番号は暫定IDです。停止時にPCM末尾をflushし、空text frameを送り、最終応答を待ちます。
 - Soniox通信断は最大3回自動再接続します。認証・残高・権限エラーでは再接続を繰り返しません。録音保存用のMediaRecorder／Backend接続は独立して継続します。Soniox切断中の音声はLiveへ遡って再送せず、保存音声から非同期Finalで処理します。録音中にブラウザを更新しないでください。
-- 非同期はJobの`transcription_request`に予約時のprovider／model／language、file／transcription ID、送信状態を保存します。設定変更は予約済みJobに影響しません。保存内容にAPI Keyは含めません。動画の変換Jobから後続文字起こしJobにも設定を引き継ぎます。旧Jobのnull設定はWhisperXです。
+- 非同期はJobの`transcription_request`に予約時のprovider／model／language／language_hints／language_hints_strict、file／transcription ID、送信状態を保存します。設定変更は予約済みJobに影響しません。Liveも開始時にSessionへ配列・Strictを固定し、短期キー更新でも同じ設定を返します。保存内容にAPI Keyは含めません。動画の変換Jobから後続文字起こしJobにも設定を引き継ぎます。旧Jobのnull設定はWhisperXです。
 - pollがタイムアウトした場合や取得APIが失敗した場合は、そのJobの「再試行」で同じSoniox処理IDへ戻ります。POSTを無条件に再送しません。送信成功が不明な場合は`client_reference_id`で一覧を照合し、一致が一つだけなら再開します。これはSoniox側のunique制約ではありません。照合不能・重複時は「二重送信を防ぐため再送を停止」として失敗します。Consoleで該当Job UUIDの処理を確認してください。
 - Sonioxが`error`になった処理や、復旧不能な送信では保存音声・Live・既存Final・要約を保持します。Soniox側のFile／Transcriptionは調査・再試行用に残ります。不要になったものはConsoleで、処理がcompleted／errorであることを確認してから削除します。processing中のFileを先に削除しないでください。
 - 正常時はFinalをDBへcommitしてからSoniox側のTranscriptionとFileを削除します。削除に失敗してもFinalは保持し、Job checkpointの`cleanup_pending`に残します。Consoleで後から削除できます。speak-note内の元音声やDocker volumeは削除しません。
@@ -61,7 +61,7 @@ Full accessをOFFにし、用途別に以下を指定します。WriteはReadの
 
 ## 実装と検証
 
-主要な変更はBackendの`services/transcription/soniox.py`・設定API／モデル／schema・Job／Worker・Liveの結果保存と一時キー発行、Frontendの`soniox-speech-stream.ts`・`pcm-audio-input.ts`・録音UI・独立した設定フォームです。Migrationは`20261012_0026`（0025の後）です。既存Azure PCM Workletを共有し、停止時の末尾flushを追加しました。恒久キーや音声をGitへ含めません。
+主要な変更はBackendの`services/transcription/soniox.py`・設定API／モデル／schema・Job／Worker・Liveの結果保存と一時キー発行、Frontendの`soniox-speech-stream.ts`・`pcm-audio-input.ts`・録音UI・独立した設定フォームです。初回導入のMigrationは`20261012_0026`（0025の後）、現在のheadは会議言語設定を追加した`20261012_0027`です。既存Azure PCM Workletを共有し、停止時の末尾flushを追加しました。恒久キーや音声をGitへ含めません。0027の変更ファイル・検証結果・制約は[会議言語ガイド](meeting-transcription-languages.md#実装検証)を参照してください。
 
 テストはmock HTTP／WebSocketとSQLiteのAPIテストで、設定の独立・暗号化、Sonioxのtoken連結／時刻／話者、失敗時保護、初回FinalからのAI／テンプレート引継ぎ、処理ID再利用、曖昧な送信の再送停止、重複発話の防止、停止処理、UIの保存・処理中・エラーを確認します。PostgreSQL Migrationは運用DBへ接続せずoffline SQLで検証します。
 

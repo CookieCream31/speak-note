@@ -89,6 +89,8 @@ export interface Meeting {
   is_favorite: boolean;
   min_speakers: number | null;
   max_speakers: number | null;
+  transcription_language_hints?: string[] | null;
+  transcription_language_hints_strict?: boolean;
   summary_format: MeetingSummaryFormat;
   meeting_context: string | null;
   template_id: string | null;
@@ -391,6 +393,8 @@ export const meetingsApi = {
     title: string,
     sourceType: MeetingSourceType,
     options?: {
+      transcription_language_hints?: string[];
+      transcription_language_hints_strict?: boolean;
       min_speakers?: number | null;
       max_speakers?: number | null;
       summary_format?: MeetingSummaryFormat;
@@ -406,6 +410,8 @@ export const meetingsApi = {
   update: (
     id: string,
     fields: {
+      transcription_language_hints?: string[];
+      transcription_language_hints_strict?: boolean;
       title?: string;
       status?: MeetingStatus;
       is_favorite?: boolean;

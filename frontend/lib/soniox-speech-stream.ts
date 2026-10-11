@@ -125,8 +125,14 @@ export async function startSonioxSpeechStream(options: StreamOptions): Promise<A
   };
   const connect = async () => {
     const response = await fetch(options.tokenUrl, { method: "POST", cache: "no-store" });
-    if (!response.ok) throw new Error(`Sonioxの一時キーを取得できません (${response.status})`);
-    const token = await response.json() as { api_key: string; model: string; language: string };
+    if (!response.ok) {
+      const failure = await response.json().catch(() => ({})) as { detail?: unknown };
+      throw new Error(typeof failure.detail === "string" ? failure.detail : `Sonioxの一時キーを取得できません (${response.status})`);
+    }
+    const token = await response.json() as {
+      api_key: string; model: string; language: string;
+      language_hints?: string[]; language_hints_strict?: boolean;
+    };
     if (stopping) return;
     const next = new WebSocket("wss://stt-rt.soniox.com/transcribe-websocket", ["soniox-api-key", token.api_key]);
     socket = next;
@@ -139,7 +145,9 @@ export async function startSonioxSpeechStream(options: StreamOptions): Promise<A
       next.onopen = () => {
         clearTimeout(timeout);
         next.send(JSON.stringify({ model: token.model, audio_format: "pcm_s16le",
-          sample_rate: 16_000, num_channels: 1, language_hints: [token.language],
+          sample_rate: 16_000, num_channels: 1,
+          ...((token.language_hints ?? [token.language]).length ? { language_hints: token.language_hints ?? [token.language] } : {}),
+          language_hints_strict: token.language_hints_strict ?? false,
           enable_speaker_diarization: true, enable_language_identification: true,
           enable_endpoint_detection: true }));
         resolve();
@@ -177,7 +185,7 @@ export async function startSonioxSpeechStream(options: StreamOptions): Promise<A
     retryTimer = setTimeout(() => {
       retryTimer = null;
       attempts += 1;
-      void connect().catch(() => { options.onError("Sonioxへの再接続に失敗しました"); scheduleReconnect(); });
+      void connect().catch((error) => { options.onError(error instanceof Error ? error.message : "Sonioxへの再接続に失敗しました"); scheduleReconnect(); });
     }, 1000 * attempts + 1000);
   };
   try {

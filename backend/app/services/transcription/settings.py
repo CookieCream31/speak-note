@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
 from app.models.job import Job
+from app.models.meeting import Meeting
 from app.models.realtime import RealtimeSession
 from app.models.transcript import TranscriptVersion
 from app.models.transcription import (
@@ -15,6 +16,7 @@ from app.services.llm import SecretCipher, SecretConfigurationError, SecretDecry
 from app.services.transcription.azure import AzureSpeechClient, AzureSpeechError
 from app.services.transcription.base import TranscriptionClient
 from app.services.transcription.client import WhisperXClient
+from app.services.transcription.languages import TranscriptionLanguageError, provider_language
 from app.services.transcription.soniox import SonioxClient
 
 
@@ -56,17 +58,26 @@ def decrypt_soniox_key(
         ) from exc
 
 
-def snapshot_async_transcription(db: Session) -> dict[str, str]:
+def snapshot_async_transcription(db: Session, meeting: Meeting | None = None) -> dict[str, Any]:
     stored = get_async_transcription_settings(db)
     if stored.provider == "soniox" and not stored.soniox_encrypted_api_key:
         raise RealtimeTranscriptionConfigurationError("Sonioxの非同期API Keyを保存してください")
     application = get_settings()
+    try:
+        language, options = provider_language(
+            meeting,
+            stored.provider,
+            stored.soniox_language
+            if stored.provider == "soniox"
+            else application.whisperx_language,
+        )
+    except TranscriptionLanguageError as exc:
+        raise RealtimeTranscriptionConfigurationError(str(exc)) from exc
     return {
         "provider": stored.provider,
         "model": stored.soniox_model if stored.provider == "soniox" else application.whisperx_model,
-        "language": stored.soniox_language
-        if stored.provider == "soniox"
-        else application.whisperx_language,
+        "language": language,
+        **options,
     }
 
 
@@ -85,6 +96,8 @@ def build_final_transcription_client(
             decrypt_soniox_key(stored, application_settings),
             model=request["model"],
             language=request["language"],
+            language_hints=request.get("language_hints"),
+            language_hints_strict=request.get("language_hints_strict", False),
             state={**request, "reference_id": str(job.id)},
             checkpoint=checkpoint,
         )
@@ -104,6 +117,7 @@ def build_final_transcription_client(
 def resolve_realtime_transcription(
     db: Session,
     application_settings: Settings,
+    meeting: Meeting | None = None,
 ) -> tuple[RealtimeTranscriptionProvider, str, str, str | None]:
     settings = get_realtime_transcription_settings(db)
     provider = RealtimeTranscriptionProvider(settings.provider)
@@ -112,7 +126,12 @@ def resolve_realtime_transcription(
             raise RealtimeTranscriptionConfigurationError(
                 "SonioxのリアルタイムAPI Keyを保存してください"
             )
-        return provider, settings.soniox_model, settings.soniox_language, None
+        return (
+            provider,
+            settings.soniox_model,
+            _language(meeting, provider.value, settings.soniox_language),
+            None,
+        )
     if provider == RealtimeTranscriptionProvider.AZURE_SPEECH:
         if not settings.azure_region or settings.encrypted_api_key is None:
             raise RealtimeTranscriptionConfigurationError(
@@ -125,13 +144,25 @@ def resolve_realtime_transcription(
             ).region
         except AzureSpeechError as exc:
             raise RealtimeTranscriptionConfigurationError(str(exc)) from exc
-        return provider, "azure-speech", settings.azure_language, region
+        return (
+            provider,
+            "azure-speech",
+            _language(meeting, provider.value, settings.azure_language),
+            region,
+        )
     return (
         provider,
         application_settings.whisperx_model,
-        application_settings.whisperx_language,
+        _language(meeting, provider.value, application_settings.whisperx_language),
         None,
     )
+
+
+def _language(meeting: Meeting | None, provider: str, fallback: str) -> str:
+    try:
+        return provider_language(meeting, provider, fallback)[0]
+    except TranscriptionLanguageError as exc:
+        raise RealtimeTranscriptionConfigurationError(str(exc)) from exc
 
 
 def build_realtime_transcription_client(
@@ -145,11 +176,12 @@ def build_realtime_transcription_client(
             "Soniox LiveはブラウザのWebSocketで処理します"
         )
     if provider == RealtimeTranscriptionProvider.WHISPERX:
+        transcript = db.get(TranscriptVersion, realtime_session.transcript_version_id)
         return WhisperXClient(
             base_url=application_settings.whisperx_base_url,
             api_key=application_settings.whisperx_api_key.get_secret_value(),
-            model=application_settings.whisperx_model,
-            language=application_settings.whisperx_language,
+            model=transcript.model if transcript else application_settings.whisperx_model,
+            language=transcript.language if transcript else application_settings.whisperx_language,
             timeout_seconds=application_settings.whisperx_timeout_seconds,
             max_attempts=application_settings.whisperx_max_attempts,
             retry_delay_seconds=application_settings.whisperx_retry_delay_seconds,

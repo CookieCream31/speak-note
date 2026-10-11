@@ -93,3 +93,5 @@ class SonioxRealtimeTokenRead(BaseModel):
     expires_at: datetime
     model: str
     language: str
+    language_hints: list[str]
+    language_hints_strict: bool = False

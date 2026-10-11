@@ -7,6 +7,7 @@ from app.models.transcription import (
     RealtimeTranscriptionProvider,
     RealtimeTranscriptionSettings,
 )
+from app.schemas.transcription_language import TranscriptionLanguageOptionsRead
 from app.schemas.transcription_settings import (
     AsyncTranscriptionSettingsRead,
     AsyncTranscriptionSettingsUpdate,
@@ -29,6 +30,7 @@ from app.services.transcription.azure import (
     AzureSpeechError,
     validate_azure_region,
 )
+from app.services.transcription.languages import language_options
 from app.services.transcription.settings import (
     get_async_transcription_settings,
     get_realtime_transcription_settings,
@@ -36,6 +38,14 @@ from app.services.transcription.settings import (
 from app.services.transcription.soniox import SonioxClient, SonioxError
 
 router = APIRouter(prefix="/transcription", tags=["transcription-settings"])
+
+
+@router.get("/language-options", response_model=TranscriptionLanguageOptionsRead)
+def read_language_options(
+    session: DbSession,
+    include_realtime: bool = True,
+) -> TranscriptionLanguageOptionsRead:
+    return language_options(session, include_realtime=include_realtime)
 
 
 def _cipher() -> SecretCipher:

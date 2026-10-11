@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 
 import type { Meeting } from "@/lib/api";
+import { MeetingLanguageFields, type MeetingLanguageSelection } from "./meeting-language-fields";
 
 import styles from "./meeting-transcription-settings.module.css";
 
@@ -11,6 +12,10 @@ interface MeetingTranscriptionSettingsProps {
   minSpeakers: number | null;
   maxSpeakers: number | null;
   disabled: boolean;
+  languageHints?: string[] | null;
+  languageHintsStrict?: boolean;
+  includeRealtime?: boolean;
+  languageLocked?: boolean;
 }
 
 function parseCount(value: string): number | null {
@@ -28,15 +33,25 @@ export function MeetingTranscriptionSettings({
   minSpeakers,
   maxSpeakers,
   disabled,
+  languageHints = null,
+  languageHintsStrict = false,
+  includeRealtime = true,
+  languageLocked = false,
 }: MeetingTranscriptionSettingsProps) {
+  const [language, setLanguage] = useState<MeetingLanguageSelection>({ hints: languageHints, strict: languageHintsStrict });
   const [minimum, setMinimum] = useState(minSpeakers?.toString() ?? "");
   const [maximum, setMaximum] = useState(maxSpeakers?.toString() ?? "");
   const [saving, setSaving] = useState(false);
+  const requestPending = useRef(false);
   const [message, setMessage] = useState("");
+  const [messageIsError, setMessageIsError] = useState(false);
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (disabled || requestPending.current) return;
+    requestPending.current = true;
     setMessage("");
+    setMessageIsError(false);
     try {
       const nextMinimum = parseCount(minimum);
       const nextMaximum = parseCount(maximum);
@@ -54,13 +69,17 @@ export function MeetingTranscriptionSettings({
         body: JSON.stringify({
           min_speakers: nextMinimum,
           max_speakers: nextMaximum,
+          ...(!languageLocked && language.hints !== null ? {
+            transcription_language_hints: language.hints,
+            transcription_language_hints_strict: language.strict,
+          } : {}),
         }),
       });
       if (!response.ok) {
-        let detail = "話者数を保存できませんでした";
+        let detail = "文字起こし設定を保存できませんでした";
         try {
-          const payload = await response.json() as { detail?: string };
-          if (payload.detail) detail = payload.detail;
+          const payload = await response.json() as { detail?: unknown };
+          if (typeof payload.detail === "string") detail = payload.detail;
         } catch {
           // Keep the generic message for non-JSON responses.
         }
@@ -69,16 +88,21 @@ export function MeetingTranscriptionSettings({
       const meeting = await response.json() as Meeting;
       setMinimum(meeting.min_speakers?.toString() ?? "");
       setMaximum(meeting.max_speakers?.toString() ?? "");
+      setLanguage({ hints: meeting.transcription_language_hints ?? null, strict: meeting.transcription_language_hints_strict ?? false });
       setMessage("保存済み。次の文字起こしから適用します");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "話者数を保存できませんでした");
+      setMessageIsError(true);
+      setMessage(error instanceof Error ? error.message : "文字起こし設定を保存できませんでした");
     } finally {
+      requestPending.current = false;
       setSaving(false);
     }
   }
 
   return (
     <form className={styles.settings} onSubmit={(event) => void save(event)}>
+      <MeetingLanguageFields value={language} onChange={setLanguage} includeRealtime={includeRealtime} disabled={disabled || saving || languageLocked} />
+      <p>{languageLocked ? "確定文字起こしの作成後は言語を変更できません。要約再生成は保存済みFinalを再利用します。" : "言語は録音開始前、または初回の確定文字起こしを予約する前に保存してください。"}</p>
       <div className={styles.heading}>
         <span>文字起こしの話者数</span>
         <small>任意</small>
@@ -121,7 +145,7 @@ export function MeetingTranscriptionSettings({
           ? "文字起こし処理中は変更できません。"
           : "最小は下限、最大は上限です。空欄なら自動判定。同じ数にすると固定できます。"}
       </p>
-      {message && <output aria-live="polite">{message}</output>}
+      {message && <output role={messageIsError ? "alert" : "status"} data-error={messageIsError} aria-live="polite">{message}</output>}
     </form>
   );
 }

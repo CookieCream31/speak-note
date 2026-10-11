@@ -94,6 +94,8 @@ class SonioxClient:
         model: str = "stt-async-v5",
         language: str = "ja",
         *,
+        language_hints: list[str] | None = None,
+        language_hints_strict: bool = False,
         transport: httpx.BaseTransport | None = None,
         timeout_seconds: float = 7200,
         poll_interval_seconds: float = 5,
@@ -103,6 +105,11 @@ class SonioxClient:
         self.api_key = api_key
         self.model = model
         self.language = language
+        self.language_hints = list(language_hints) if language_hints is not None else [language]
+        self.language_hints_strict = language_hints_strict
+        self.explicit_language_options = language_hints is not None
+        if language_hints_strict and not self.language_hints:
+            raise SonioxError("Strictには言語の選択が必要です")
         self.transport = transport
         self.timeout_seconds = timeout_seconds
         self.poll_interval_seconds = poll_interval_seconds
@@ -199,6 +206,36 @@ class SonioxClient:
             available[identifier] = {"id": identifier, "name": name}
         return list(available.values())
 
+    def validate_language_options(self, *, realtime: bool) -> None:
+        models = self._request("GET", "/models").get("models")
+        mode = "real_time" if realtime else "async"
+        if not isinstance(models, list):
+            raise SonioxError("Sonioxモデル一覧の形式が不正です")
+        model = next(
+            (
+                item
+                for item in models
+                if isinstance(item, dict)
+                and item.get("id") == self.model
+                and item.get("transcription_mode") == mode
+            ),
+            None,
+        )
+        if model is None:
+            raise SonioxError("選択したSonioxモデルが利用できません")
+        if self.language_hints_strict and model.get("supports_language_hints_strict") is not True:
+            raise SonioxError("選択したSonioxモデルはStrict language hintsに対応していません")
+        languages = model.get("languages")
+        if not isinstance(languages, list):
+            raise SonioxError("Sonioxモデルの対応言語を確認できません")
+        codes = {
+            item.get("code")
+            for item in languages
+            if isinstance(item, dict) and isinstance(item.get("code"), str)
+        }
+        if any(code not in codes for code in self.language_hints):
+            raise SonioxError("選択した言語はこのSonioxモデルに対応していません")
+
     def temporary_key(self, session_id: uuid.UUID) -> dict[str, Any]:
         return self._request(
             "POST",
@@ -251,6 +288,14 @@ class SonioxClient:
         # Soniox diarization has no min/max speaker options; do not invent fields.
         reference = str(self.state.get("reference_id") or uuid.uuid4())
         self._save(reference_id=reference)
+        if (
+            self.explicit_language_options
+            and not self.state.get("language_options_validated")
+            and not self.state.get("file_id")
+            and not self.state.get("submission_pending")
+        ):
+            self.validate_language_options(realtime=False)
+            self._save(language_options_validated=True)
         if self.state.get("submission_pending") == "files" and not self.state.get("file_id"):
             self._save(
                 file_id=self._recover_submission("files", reference), submission_pending=None
@@ -280,7 +325,12 @@ class SonioxClient:
                 json={
                     "file_id": self.state["file_id"],
                     "model": self.model,
-                    "language_hints": [self.language],
+                    **({"language_hints": self.language_hints} if self.language_hints else {}),
+                    **(
+                        {"language_hints_strict": self.language_hints_strict}
+                        if self.explicit_language_options
+                        else {}
+                    ),
                     "enable_speaker_diarization": True,
                     "enable_language_identification": True,
                     "client_reference_id": reference,

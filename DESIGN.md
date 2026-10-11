@@ -407,7 +407,7 @@ WhisperX固有処理は `transcription` Service層へ隔離する。
 
 ### 7.2 Soniox（2026-10-12）
 
-ユーザー指定によりSoniox公式仕様に基づくリアルタイム／非同期APIを追加する。既定のWhisperXと既存Azure設定を保持し、Live用singleton設定と非同期用singleton設定を分離する。Sonioxのモデル・ISO言語ヒント・暗号化API Keyを各用途で保存する。新しい会議Session／Jobにだけ設定を適用する。Sonioxでは最小／最大話者数のAPIフィールドが提供されていないため、話者分離を有効にし、WhisperX専用の話者数指定は送らない。
+ユーザー指定によりSoniox公式仕様に基づくリアルタイム／非同期APIを追加する。既定のWhisperXと既存Azure設定を保持し、Live用singleton設定と非同期用singleton設定を分離する。Sonioxのモデル・暗号化API Keyを各用途で保存し、言語は7.3の会議単位設定を使う。既存のsingletonの言語は互換性のため保持する。新しい会議Session／Jobにだけ設定を適用する。Sonioxでは最小／最大話者数のAPIフィールドが提供されていないため、話者分離を有効にし、WhisperX専用の話者数指定は送らない。
 
 - Live: `stt-rt-v5`、`wss://stt-rt.soniox.com/transcribe-websocket`。Backendが公式RESTで60秒・single_use・最大18,000秒の一時キーを発行し、ブラウザは`["soniox-api-key", key]`のprotocolで接続する。恒久キーをブラウザへ返さず、キーをconfig messageへ含める旧認証方式は使用しない。音声は`pcm_s16le`／16,000Hz／mono。通常の録音・映像保存を並行継続し、Soniox用のChunk文字起こしJobを作らない。
 - 確定tokenは一度だけ追加し、非確定tokenは毎応答で置換する。話者変更、endpointの`<end>`、`<fin>`、長い発話の10秒区間、finishedで発話を区切る。途中仮説を確定結果として保存しない。停止時にWorklet末尾をflushし、空の**text** frameを送って最終応答を最大8秒待つ。既知の確定tokenだけを保存する。話者は接続単位の暫定IDとし、再接続前後を同一人物と断定しない。
@@ -422,6 +422,20 @@ WhisperX固有処理は `transcription` Service層へ隔離する。
 Migration `20261012_0026`は0025に続き、Live設定のSoniox項目・provider制約、独立非同期設定テーブル、Jobのnullable JSONB checkpointを追加する。既存会議・Transcript・Azureキーを変更しない。downgradeはSoniox設定／checkpointを除くため、処理を停止しバックアップを取得してから行う。
 
 公式根拠と操作手順は[Sonioxガイド](docs/soniox-transcription.md)に記載する。
+
+### 7.3 会議ごとの文字起こし言語（2026-10-12）
+
+ユーザー指定によりAI設定の言語入力を会議作成・会議詳細の「文字起こし設定」へ移す。会議に`transcription_language_hints`（ISOコード配列）と`transcription_language_hints_strict`を保存する。新規API作成の既定は`["ja"]`／false、空配列は自動判定、nullは既存会議の用途別言語を維持する互換状態。PATCHでnullへ戻すことは禁止する。重複・不正コード・Strictと空配列・現在のエンジンに未対応の組み合わせは422にする。
+
+Sonioxでは配列を`language_hints`、Strictを`language_hints_strict`へ渡し、自動判定はhintsを省略する。言語識別は既存どおり有効にする。ヒントは他言語の認識を排除しない。Strictはbest effortで単一言語が最も安定し、翻訳・要約出力言語ではない。公式`GET /v1/models`の`languages`と`supports_language_hints_strict`を初回音声upload／Live一時キー発行前に確認し、未対応なら送信を止める。既存の処理ID・曖昧なPOSTの復旧を新しい要求で上書きしない。
+
+現行WhisperX / Azure連携は単一言語を要求し、自動判定・複数言語は使用エンジンがすべてSonioxの場合に限る。StrictはSonioxの処理にだけ適用する。AzureはISOコードを既定の認識ロケール（ja→ja-JP、en→en-USなど）に変換する。自動判定のために既存WhisperXサービスの設定を変更しない。
+
+Live開始時にMeetingをrow lockし、モデル・言語をTranscriptVersionへ、配列・StrictをRealtimeSessionのnullable JSONB`transcription_request`へ固定する。一時キー更新・再接続は現在のMeeting／共通言語を参照しない。WhisperXのChunk WorkerもLive版に保存したモデル・言語を使う。FinalのJobは予約時のモデル・言語・配列・Strictを既存checkpointへ保存し、動画変換から後続Job・再試行へ引き継ぐ。会議の言語を後から変更しても過去のLive設定は変えない。
+
+言語PATCHはMeetingをrow lockし、録音／finalizing Session、保存／全体処理／未処理ChunkのJob、録音・保存・処理中のMeeting状態、完成済みFinalがあれば409にする。Finalがある要約再生成は従来どおり解析だけ予約する。共通の接続先・モデル・キー、会議AI／テンプレート、Evidence・編集済み情報・質問処理の境界は維持する。
+
+Migration `20261012_0027`は0026に続き、Meetingの2項目とLive Sessionのsnapshotを追加する。既存会議のhintsはnull、Strictはfalse、既存Sessionはnullとし、履歴と処理中のJobを変更しない。UIは日本語／英語／自動／その他・複数と右側Strictスイッチを共通Componentで表示し、現在のエンジンの対応条件を読取専用APIで取得する。詳細は[会議言語ガイド](docs/meeting-transcription-languages.md)。
 
 ---
 

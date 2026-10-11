@@ -46,6 +46,7 @@ from app.services.realtime import (
     start_realtime_video_part,
 )
 from app.services.transcription.azure import AzureSpeechClient, AzureSpeechError
+from app.services.transcription.languages import provider_language
 from app.services.transcription.settings import (
     RealtimeTranscriptionConfigurationError,
     build_realtime_transcription_client,
@@ -74,13 +75,30 @@ def issue_soniox_token(
         raise HTTPException(status_code=409, detail="Live Transcriptが見つかりません")
     try:
         key = decrypt_soniox_key(get_realtime_transcription_settings(db), get_settings())
+        options = realtime_session.transcription_request or {}
+        hints = options.get("language_hints", [transcript.language])
+        strict = options.get("language_hints_strict", False)
+        if realtime_session.transcription_request is not None:
+            SonioxClient(
+                key,
+                model=transcript.model,
+                language_hints=hints,
+                language_hints_strict=strict,
+            ).validate_language_options(realtime=True)
         token = SonioxClient(key).temporary_key(realtime_session.id)
         result = SonioxRealtimeTokenRead(
-            **token, model=transcript.model, language=transcript.language
+            **token,
+            model=transcript.model,
+            language=transcript.language,
+            language_hints=hints,
+            language_hints_strict=strict,
         )
     except RealtimeTranscriptionConfigurationError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except (SonioxError, ValueError, TypeError) as exc:
+    except SonioxError as exc:
+        # SonioxError messages are sanitized by the service, including capability failures.
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except (ValueError, TypeError) as exc:
         raise HTTPException(
             status_code=502,
             detail="Sonioxの一時キーを発行できません。キー・権限・接続を確認してください",
@@ -298,11 +316,18 @@ async def _open_session(
         raise RealtimeCaptureError("startメッセージの形式が不正です")
 
     def start() -> tuple[RealtimeSession, str]:
-        meeting = db.get(Meeting, meeting_id)
+        meeting = db.scalar(
+            select(Meeting)
+            .where(Meeting.id == meeting_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
         if meeting is None:
             raise RealtimeCaptureError("会議が見つかりません")
         try:
-            provider, model, language, region = resolve_realtime_transcription(db, settings)
+            provider, model, language, region = resolve_realtime_transcription(
+                db, settings, meeting
+            )
         except RealtimeTranscriptionConfigurationError as exc:
             raise RealtimeCaptureError(str(exc)) from exc
         started = start_realtime_session(
@@ -315,6 +340,16 @@ async def _open_session(
             language=language,
             transcription_provider=provider.value,
             transcription_region=region,
+            transcription_request=(
+                {
+                    "provider": provider.value,
+                    "model": model,
+                    "language": language,
+                    **provider_language(meeting, provider.value, language)[1],
+                }
+                if meeting.transcription_language_hints is not None
+                else None
+            ),
             split_capture=split_capture,
             audio_mime_type=audio_mime_type,
         )

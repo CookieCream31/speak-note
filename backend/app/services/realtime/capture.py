@@ -2,6 +2,7 @@ import logging
 import uuid
 from datetime import timedelta
 from pathlib import Path
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -52,6 +53,7 @@ def start_realtime_session(
     language: str,
     transcription_provider: str = "whisperx",
     transcription_region: str | None = None,
+    transcription_request: dict[str, Any] | None = None,
     split_capture: bool = False,
     audio_mime_type: str | None = None,
 ) -> RealtimeSession:
@@ -175,6 +177,7 @@ def start_realtime_session(
         has_system_audio=has_system_audio,
         transcription_provider=transcription_provider,
         transcription_region=transcription_region,
+        transcription_request=transcription_request,
     )
     meeting.status = MeetingStatus.RECORDING
     meeting.started_at = utc_now()

@@ -184,8 +184,6 @@ export function AISettingsManager({
     const form = event.currentTarget;
     const data = new FormData(form);
     const region = formString(data, "azure_region");
-    const language = formString(data, "azure_language")
-      || initialTranscriptionSettings.azure_language;
     const apiKey = formString(data, "api_key");
     const sonioxKey = formString(data, "soniox_api_key");
     if (transcriptionProvider === "soniox" && !sonioxKey && !hasSonioxApiKey) {
@@ -210,11 +208,9 @@ export function AISettingsManager({
         body: JSON.stringify({
           provider: transcriptionProvider,
           azure_region: region || initialTranscriptionSettings.azure_region,
-          azure_language: language,
           ...(apiKey ? { api_key: apiKey } : {}),
           ...(transcriptionProvider === "soniox" ? {
             soniox_model: formString(data, "soniox_model"),
-            soniox_language: formString(data, "soniox_language"),
             ...(sonioxKey ? { soniox_api_key: sonioxKey } : {}),
           } : {}),
         }),
@@ -459,15 +455,6 @@ export function AISettingsManager({
                     />
                   </label>
                   <label>
-                    <span>認識言語</span>
-                    <input
-                      name="azure_language"
-                      defaultValue={initialTranscriptionSettings.azure_language}
-                      placeholder="ja-JP"
-                      disabled={transcriptionProvider !== "azure_speech" || busy}
-                    />
-                  </label>
-                  <label>
                     <span>Azure API Key</span>
                     <input
                       name="api_key"
@@ -478,7 +465,8 @@ export function AISettingsManager({
                     />
                   </label>
                 </div>
-                <SonioxFields model={initialTranscriptionSettings.soniox_model ?? "stt-rt-v5"} language={initialTranscriptionSettings.soniox_language ?? "ja"} masked={initialTranscriptionSettings.soniox_api_key_masked} purpose="realtime" hasSavedKey={hasSonioxApiKey} onLoadingChange={setSonioxModelsLoading} disabled={transcriptionProvider !== "soniox" || busy || sonioxModelsLoading} hidden={transcriptionProvider !== "soniox"} />
+                <SonioxFields model={initialTranscriptionSettings.soniox_model ?? "stt-rt-v5"} masked={initialTranscriptionSettings.soniox_api_key_masked} purpose="realtime" hasSavedKey={hasSonioxApiKey} onLoadingChange={setSonioxModelsLoading} disabled={transcriptionProvider !== "soniox" || busy || sonioxModelsLoading} hidden={transcriptionProvider !== "soniox"} />
+                <p className={styles.settingNote}>文字起こし言語は「新しい会議」または会議ページの「文字起こし設定」で選択します。</p>
                 <div className={styles.speechActions}>
                   <button
                     className={styles.secondaryButton}
@@ -489,7 +477,7 @@ export function AISettingsManager({
                   <button disabled={busy || sonioxModelsLoading} type="submit">設定を保存</button>
                 </div>
                 <p className={styles.settingNote}>
-                  Azureのリアルタイム話者分離はStandard (S0) が必要です。Sonioxは録音中の音声をSonioxへ送信し、短期キーでWebSocketへ接続します。言語ヒントは日本語ならjaです。どちらもリアルタイム版は暫定扱いです。
+                  Azureのリアルタイム話者分離はStandard (S0) が必要です。Sonioxは録音中の音声をSonioxへ送信し、短期キーでWebSocketへ接続します。どちらもリアルタイム版は暫定扱いです。
                 </p>
               </form>
             </section>

@@ -213,6 +213,8 @@ def test_upload_job_snapshots_async_provider_and_legacy_jobs_stay_whisperx(
             "provider": "soniox",
             "model": "stt-async-v5",
             "language": "ja",
+            "language_hints": ["ja"],
+            "language_hints_strict": False,
         }
         assert (
             build_final_transcription_client(

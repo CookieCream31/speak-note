@@ -296,6 +296,24 @@ npm run typecheck
 テストではFinalがない初回、Finalの再利用、モデル・テンプレート編集後の固定設定、snapshotによる指示・検証、Liveの拒否、連打・処理中・録音中の拒否、API失敗、Final保存後の再開、編集済み項目の保護を確認します。UIは選択・送信・キャンセル・連打・処理中・エラー再送を確認します。本番DBへのMigration、PostgreSQLでの同時要求、実WhisperX/AI接続、端末表示は別途実機確認が必要です。
 
 
+## 会議ごとの文字起こし言語
+
+新規会議は言語配列とStrictを保存し、Live Session開始時／Final Job予約時に固定します。既存会議のnull配列は従来の用途別設定を保持します。`services/transcription/languages.py`が各エンジンの対応条件、`settings.py`がsnapshotとClient構築、Soniox Clientが音声送信前のモデル能力検証を担当します。WhisperXの自動判定のために他サービスを変更しません。
+
+```bash
+cd /home/llm/speak-note/backend
+python -m pytest tests/test_meeting_transcription_languages.py tests/test_soniox_transcription.py tests/test_summary_regeneration.py tests/test_chunked_upload.py -q
+python -m pytest -q
+python -m alembic heads
+DATABASE_URL=postgresql+psycopg://dummy:dummy@localhost/dummy python -m alembic upgrade 20261012_0026:head --sql
+cd /home/llm/speak-note/frontend
+npm test
+npm run lint
+npm run typecheck
+```
+
+formatter／lint／型チェックは変更範囲で成功を確認し、全体に残る既存エラーは区別して記録します。APIテストはSQLite、Sonioxはmockで、実PostgreSQLの同時要求・実音声認識を代替するものではありません。変更ファイルと検証結果、未検証事項は[会議言語ガイド](meeting-transcription-languages.md#実装検証)を参照してください。
+
 <a id="display-theme"></a>
 ## 表示テーマの実装と変更時の確認
 

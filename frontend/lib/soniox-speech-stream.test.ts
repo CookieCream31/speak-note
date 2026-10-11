@@ -102,6 +102,21 @@ describe("Soniox streaming lifecycle", () => {
     expect(onResult.mock.calls[1][0].speakerLabel).toBe("話者 2");
     await controller.stop();
   });
+  it.each([
+    { hints: ["ja", "en"], strict: true },
+    { hints: [], strict: false },
+  ])("uses session language options on every connection: $hints", async ({ hints, strict }) => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ api_key: "temporary", model: "stt-rt-v5", language: "auto", language_hints: hints, language_hints_strict: strict }) })));
+    const { socket, controller } = await start();
+    const first = JSON.parse(socket.sent[0] as string);
+    expect(first.language_hints).toEqual(hints.length ? hints : undefined);
+    expect(first.language_hints_strict).toBe(strict);
+    socket.close(); await vi.advanceTimersByTimeAsync(1000); await tick();
+    const next = FakeSocket.instances[1]; next.open(); await tick();
+    expect(JSON.parse(next.sent[0] as string)).toMatchObject({ language_hints_strict: strict });
+    expect(JSON.parse(next.sent[0] as string).language_hints).toEqual(hints.length ? hints : undefined);
+    await controller.stop();
+  });
   it("shows authentication errors and does not reconnect indefinitely", async () => {
     const { socket, controller, onError } = await start();
     socket.receive({ error_code: 401, error_message: "private secret" });
@@ -109,5 +124,11 @@ describe("Soniox streaming lifecycle", () => {
     expect(FakeSocket.instances).toHaveLength(1);
     expect(onError.mock.calls.flat().join("")).not.toContain("private secret");
     expect(onError).toHaveBeenCalled(); await controller.stop();
+  });
+  it("reports unsupported language options before connecting or sending audio", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 502, json: async () => ({ detail: "選択したSonioxモデルはStrict language hintsに対応していません" }) })));
+    await expect(startSonioxSpeechStream({ tokenUrl: "/soniox-token", audioStream: {} as MediaStream, onResult: vi.fn(), onError: vi.fn() })).rejects.toThrow("Strict language hintsに対応していません");
+    expect(FakeSocket.instances).toHaveLength(0);
+    expect(pcm.callback).toBeNull();
   });
 });

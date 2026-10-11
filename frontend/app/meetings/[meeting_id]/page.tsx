@@ -376,7 +376,7 @@ export default async function MeetingDetailPage({
             />
             <details className={styles.settingChip}>
               <summary>
-                <span>話者数</span>
+                <span>文字起こし設定</span>
                 <strong>{speakerCountLabel(meeting.min_speakers, meeting.max_speakers)}</strong>
                 <ChevronDown size={14} aria-hidden="true" />
               </summary>
@@ -385,8 +385,13 @@ export default async function MeetingDetailPage({
                   meetingId={meeting.id}
                   minSpeakers={meeting.min_speakers}
                   maxSpeakers={meeting.max_speakers}
+                  languageHints={meeting.transcription_language_hints ?? null}
+                  languageHintsStrict={meeting.transcription_language_hints_strict ?? false}
+                  includeRealtime={isRealtimeCapture}
+                  languageLocked={Boolean(finalTranscript)}
                   disabled={[
                     "recording",
+                    "uploading",
                     "preprocessing",
                     "queued",
                     "transcribing",

@@ -13,7 +13,6 @@ from app.services.media.live_recording import (
     LiveVideoPartInput,
 )
 from app.services.media.storage import MediaStorage
-from app.services.transcription.settings import snapshot_async_transcription
 
 
 def process_video_job(
@@ -146,8 +145,9 @@ def process_video_job(
                     meeting_id=meeting.id,
                     type=JobType.TRANSCRIBE,
                     progress=0,
-                    transcription_request=job.transcription_request
-                    or snapshot_async_transcription(session),
+                    # New uploads already froze their options before preprocessing.
+                    # Keep NULL on legacy jobs so they remain WhisperX requests.
+                    transcription_request=job.transcription_request,
                 )
             )
         meeting.status = MeetingStatus.QUEUED

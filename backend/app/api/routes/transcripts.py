@@ -179,7 +179,7 @@ def start_final_transcription(meeting: MeetingDep, session: DbSession) -> Job:
         )
 
     try:
-        request = snapshot_async_transcription(session)
+        request = snapshot_async_transcription(session, meeting)
     except RealtimeTranscriptionConfigurationError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     job = Job(

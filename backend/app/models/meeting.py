@@ -1,7 +1,7 @@
 import enum
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
     JSON,
@@ -116,10 +116,14 @@ class Meeting(Base):
     template_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("meeting_templates.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    template_snapshot: Mapped[dict | None] = mapped_column(
+    template_snapshot: Mapped[dict[str, Any] | None] = mapped_column(
         JSON().with_variant(JSONB, "postgresql"), nullable=True
     )
     meeting_context: Mapped[str | None] = mapped_column(Text, nullable=True)
+    transcription_language_hints: Mapped[list[str] | None] = mapped_column(
+        JSON().with_variant(JSONB, "postgresql"), nullable=True
+    )
+    transcription_language_hints_strict: Mapped[bool] = mapped_column(Boolean, default=False)
 
     ai_profile: Mapped["AIProfile | None"] = relationship(back_populates="meetings")
     jobs: Mapped[list["Job"]] = relationship(

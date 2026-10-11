@@ -1,5 +1,4 @@
 import uuid
-from typing import Any
 from datetime import datetime
 from typing import Any, Literal
 
@@ -7,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from app.models.meeting import MeetingSourceType, MeetingStatus
 from app.schemas.tag import MeetingTagRead
+from app.schemas.transcription_language import LanguageHints, validate_language_hints
 
 MeetingSummaryFormat = Literal["standard", "concise", "detailed", "bullet"]
 
@@ -31,6 +31,16 @@ class MeetingCreate(MeetingBase):
     summary_format: MeetingSummaryFormat = "standard"
     template_id: uuid.UUID | None = None
     meeting_context: str | None = Field(default=None, max_length=4000)
+    transcription_language_hints: LanguageHints = Field(default_factory=lambda: ["ja"])
+    transcription_language_hints_strict: bool = False
+
+    _validate_languages = field_validator("transcription_language_hints")(validate_language_hints)
+
+    @model_validator(mode="after")
+    def validate_strict_language(self) -> "MeetingCreate":
+        if self.transcription_language_hints_strict and not self.transcription_language_hints:
+            raise ValueError("言語を選択してからStrictを有効にしてください")
+        return self
 
     @field_validator("meeting_context")
     @classmethod
@@ -60,6 +70,10 @@ class MeetingUpdate(BaseModel):
     max_speakers: int | None = Field(default=None, ge=1)
     summary_format: MeetingSummaryFormat | None = None
     meeting_context: str | None = Field(default=None, max_length=4000)
+    transcription_language_hints: LanguageHints | None = None
+    transcription_language_hints_strict: bool | None = None
+
+    _validate_languages = field_validator("transcription_language_hints")(validate_language_hints)
 
     @model_validator(mode="after")
     def validate_speaker_bounds(self) -> "MeetingUpdate":
@@ -75,7 +89,14 @@ class MeetingUpdate(BaseModel):
     @classmethod
     def reject_null_required_fields(cls, value: Any) -> Any:
         if isinstance(value, dict):
-            for field in ("title", "status", "is_favorite", "summary_format"):
+            for field in (
+                "title",
+                "status",
+                "is_favorite",
+                "summary_format",
+                "transcription_language_hints",
+                "transcription_language_hints_strict",
+            ):
                 if field in value and value[field] is None:
                     raise ValueError(f"{field} must not be null")
         return value
@@ -121,6 +142,8 @@ class MeetingRead(MeetingBase):
     template_id: uuid.UUID | None
     template_snapshot: dict[str, Any] | None
     meeting_context: str | None
+    transcription_language_hints: list[str] | None
+    transcription_language_hints_strict: bool
     tags: list[MeetingTagRead] = Field(default_factory=list)
 
 

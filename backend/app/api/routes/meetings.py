@@ -2,16 +2,17 @@ import uuid
 
 from fastapi import APIRouter, Header, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import RedirectResponse
-from sqlalchemy import func, select
+from sqlalchemy import func, select, true
 from sqlalchemy.exc import IntegrityError
 
 from app.api.dependencies import DbSession, MeetingDep, StorageDep
 from app.core.config import get_settings
-from app.models.job import Job, JobType
+from app.models.job import Job, JobStatus, JobType
 from app.models.knowledge import Project
 from app.models.media import Media, MediaKind
 from app.models.meeting import Meeting, MeetingSourceType, MeetingStatus
 from app.models.meeting_template import MeetingTemplate
+from app.models.realtime import RealtimeSession, RealtimeSessionStatus
 from app.models.tag import MeetingTag
 from app.models.upload import MediaUploadSession, MediaUploadStatus, utc_now
 from app.schemas.job import JobRead
@@ -29,11 +30,17 @@ from app.schemas.upload import (
     MediaUploadSessionCreate,
     MediaUploadSessionRead,
 )
+from app.services.analysis.processor import find_completed_final
+from app.services.analysis.regeneration import lock_meeting
 from app.services.media import (
     InvalidAudioError,
     InvalidUploadChunkError,
     InvalidVideoError,
     UploadTooLargeError,
+)
+from app.services.transcription.languages import (
+    TranscriptionLanguageError,
+    validate_meeting_languages,
 )
 
 router = APIRouter(prefix="/meetings", tags=["meetings"])
@@ -46,7 +53,7 @@ def list_meetings(
     offset: int = Query(default=0, ge=0),
     project_id: uuid.UUID | None = None,
 ) -> MeetingList:
-    criteria = Meeting.project_id == project_id if project_id is not None else True
+    criteria = Meeting.project_id == project_id if project_id is not None else true()
     total = session.scalar(select(func.count()).select_from(Meeting).where(criteria)) or 0
     meeting_models = list(
         session.scalars(
@@ -93,7 +100,18 @@ def create_meeting(payload: MeetingCreate, session: DbSession) -> Meeting:
         ),
         meeting_context=payload.meeting_context,
         project_id=payload.project_id,
+        transcription_language_hints=payload.transcription_language_hints,
+        transcription_language_hints_strict=payload.transcription_language_hints_strict,
     )
+    try:
+        validate_meeting_languages(
+            session,
+            meeting,
+            payload.transcription_language_hints,
+            payload.transcription_language_hints_strict,
+        )
+    except TranscriptionLanguageError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     session.add(meeting)
     session.commit()
     session.refresh(meeting)
@@ -154,6 +172,68 @@ def update_meeting(
     session: DbSession,
 ) -> Meeting:
     updates = payload.model_dump(exclude_unset=True)
+    if {"transcription_language_hints", "transcription_language_hints_strict"} & updates.keys():
+        meeting = lock_meeting(session, meeting)
+        hints = updates.get("transcription_language_hints", meeting.transcription_language_hints)
+        strict = updates.get(
+            "transcription_language_hints_strict", meeting.transcription_language_hints_strict
+        )
+        changed = (
+            hints != meeting.transcription_language_hints
+            or strict != meeting.transcription_language_hints_strict
+        )
+        if changed:
+            active_session = session.scalar(
+                select(RealtimeSession.id)
+                .where(
+                    RealtimeSession.meeting_id == meeting.id,
+                    RealtimeSession.status.in_(
+                        (RealtimeSessionStatus.RECORDING, RealtimeSessionStatus.FINALIZING)
+                    ),
+                )
+                .limit(1)
+            )
+            active_job = session.scalar(
+                select(Job.id)
+                .where(
+                    Job.meeting_id == meeting.id,
+                    Job.type.in_(
+                        (
+                            JobType.PREPROCESS_MEDIA,
+                            JobType.TRANSCRIBE,
+                            JobType.TRANSCRIBE_LIVE,
+                            JobType.ANALYZE,
+                        )
+                    ),
+                    Job.status.in_((JobStatus.QUEUED, JobStatus.RUNNING)),
+                )
+                .limit(1)
+            )
+            if (
+                active_session
+                or active_job
+                or meeting.status
+                in {
+                    MeetingStatus.RECORDING,
+                    MeetingStatus.UPLOADING,
+                    MeetingStatus.PREPROCESSING,
+                    MeetingStatus.QUEUED,
+                    MeetingStatus.TRANSCRIBING,
+                    MeetingStatus.ANALYZING,
+                }
+            ):
+                raise HTTPException(
+                    status_code=409, detail="録音・保存・処理中は文字起こし言語を変更できません"
+                )
+            if find_completed_final(session, meeting) is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail="確定文字起こしの作成後は言語を変更できません。要約再生成は保存済みFinalを再利用します",
+                )
+            try:
+                validate_meeting_languages(session, meeting, hints, strict)
+            except TranscriptionLanguageError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
     if (
         updates.get("project_id") is not None
         and session.get(Project, updates["project_id"]) is None
@@ -564,6 +644,10 @@ def _save_upload_and_job(
     duplicate_message: str,
     upload_session: MediaUploadSession | None = None,
 ) -> MediaUploadRead | RedirectResponse:
+    # Upload completion may have just resolved media_upload into audio/video_upload.
+    # Flush those pending changes before refreshing under the meeting lock.
+    session.flush()
+    meeting = lock_meeting(session, meeting)
     media = Media(
         id=media_id,
         meeting_id=meeting.id,
@@ -572,14 +656,24 @@ def _save_upload_and_job(
         mime_type=mime_type,
         size_bytes=size_bytes,
     )
-    from app.services.transcription.settings import snapshot_async_transcription
+    from app.services.transcription.settings import (
+        RealtimeTranscriptionConfigurationError,
+        snapshot_async_transcription,
+    )
+
+    try:
+        transcription_request = snapshot_async_transcription(session, meeting)
+    except RealtimeTranscriptionConfigurationError as exc:
+        session.rollback()
+        storage.delete_file(stored_path)
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     job = Job(
         id=job_id or uuid.uuid4(),
         meeting_id=meeting.id,
         type=job_type,
         progress=0,
-        transcription_request=snapshot_async_transcription(session),
+        transcription_request=transcription_request,
     )
     meeting.status = MeetingStatus.QUEUED
     if upload_session is not None:

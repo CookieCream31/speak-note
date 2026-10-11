@@ -4,8 +4,8 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { AsyncTranscriptionSettings } from "@/lib/api";
 import styles from "./ai-settings-manager.module.css";
 
-export function SonioxFields({ model, language, masked, purpose, hasSavedKey, onLoadingChange, disabled = false, hidden = false }: {
-  model: string; language: string; masked?: string | null; purpose: "realtime" | "async";
+export function SonioxFields({ model, masked, purpose, hasSavedKey, onLoadingChange, disabled = false, hidden = false }: {
+  model: string; masked?: string | null; purpose: "realtime" | "async";
   hasSavedKey: boolean; onLoadingChange: (loading: boolean) => void; disabled?: boolean; hidden?: boolean;
 }) {
   const keyInput = useRef<HTMLInputElement>(null);
@@ -60,7 +60,6 @@ export function SonioxFields({ model, language, masked, purpose, hasSavedKey, on
       {models === null && selectedModel && <option value={selectedModel}>{selectedModel}（現在の選択）</option>}
       {models?.map((entry) => <option key={entry.id} value={entry.id}>{entry.name} · {entry.id}</option>)}
     </select></label>
-    <label><span>言語ヒント</span><input name="soniox_language" defaultValue={language} placeholder="ja" pattern="[a-z]{2,3}" disabled={disabled || loading} required /></label>
     <div className={styles.modelActions}>
       <button type="button" className={styles.secondaryButton} disabled={disabled || loading || (!hasDraftKey && !hasSavedKey)} onClick={() => void loadModels()}>{loading ? "取得中…" : "モデル一覧を取得"}</button>
       <span className={styles.settingNote}>入力したキー、またはこの用途の保存済みキーで取得します。取得だけでは設定を保存しません。</span>
@@ -108,7 +107,7 @@ export function AsyncTranscriptionSettingsForm({ initialSettings }: { initialSet
       const saved = await saveTranscriptionRequest("async-settings", {
         provider,
         ...(provider === "soniox" ? {
-          soniox_model: String(data.get("soniox_model")), soniox_language: String(data.get("soniox_language")),
+          soniox_model: String(data.get("soniox_model")),
           ...(key ? { soniox_api_key: key } : {}),
         } : {}),
       }) as AsyncTranscriptionSettings;
@@ -124,7 +123,8 @@ export function AsyncTranscriptionSettingsForm({ initialSettings }: { initialSet
         <input type="radio" name="async_transcription_provider" value={value} checked={provider === value} onChange={() => setProvider(value)} />{value === "soniox" ? "Soniox" : "WhisperX"}
       </label>)}
     </fieldset>
-    <SonioxFields model={initialSettings.soniox_model} language={initialSettings.soniox_language} masked={initialSettings.soniox_api_key_masked} purpose="async" hasSavedKey={hasKey} onLoadingChange={setModelsLoading} disabled={provider !== "soniox" || busy || modelsLoading} hidden={provider !== "soniox"} />
+    <SonioxFields model={initialSettings.soniox_model} masked={initialSettings.soniox_api_key_masked} purpose="async" hasSavedKey={hasKey} onLoadingChange={setModelsLoading} disabled={provider !== "soniox" || busy || modelsLoading} hidden={provider !== "soniox"} />
+    <p className={styles.settingNote}>文字起こし言語は「新しい会議」または会議ページの「文字起こし設定」で選択します。</p>
     <p className={styles.settingNote}>Sonioxを選ぶと、アップロード音声と停止後の保存音声をSonioxへ送信します。録音中の設定とは独立しています。保存済みの確定文字起こしがある要約再生成では、音声を再送しません。話者数の最小・最大指定はWhisperXでのみ使用します。</p>
     <div className={styles.speechActions}>
       <button type="button" className={styles.secondaryButton} disabled={busy || modelsLoading || !hasKey || provider !== "soniox"} onClick={() => void run(() => saveTranscriptionRequest("async-settings/test"), "Sonioxへの接続に成功しました")}>接続テスト</button>

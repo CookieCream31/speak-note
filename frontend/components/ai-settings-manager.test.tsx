@@ -37,8 +37,9 @@ describe("AISettingsManager", () => {
     expect(html).toContain('href="/settings/templates"');
     expect(html).toContain('name="azure_region"');
     expect(html).toContain('value="japaneast"');
-    expect(html).toContain('name="azure_language"');
-    expect(html).toContain('value="ja-JP"');
+    expect(html).not.toContain('name="azure_language"');
+    expect(html).not.toContain('name="soniox_language"');
+    expect(html).toContain("文字起こし設定");
     expect(html).toContain('type="password"');
     expect(html).toContain('placeholder="****-key"');
     expect(html).not.toContain("azure-speech-secret-key");

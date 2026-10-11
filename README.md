@@ -4,7 +4,7 @@
 確定版の文字起こし・話者分離にはWhisperXまたはSoniox非同期API、要約・質問回答にはOllama / Geminiを使用します。
 録音中の文字起こしはWhisperX / Azure AI Speech / SonioxリアルタイムAPIから、確定版とは独立して選べます。
 
-最終照合: **2026-10-12**（Sonioxのモデル一覧取得・用途別選択・APIキー権限、モデル一覧追加後の利用者の再起動ログ、リアルタイム／非同期の独立設定、短期キー、Workerの再試行、利用者のMigration 0026反映ログ、従来の会議・要約再生成・録音・表示・Git運用・新規環境の起動手順を照合）。この文書は現在のソースコードとCompose設定を説明します。機能ごとの検証と過去の反映ログは関連ガイドへ記録しています。
+最終照合: **2026-10-12**（会議ごとの文字起こし言語・Language hints・Strict、設定の固定と互換性、Migration 0027、Sonioxのモデル一覧・用途別APIキー権限、利用者のMigration 0026反映ログ、従来の会議・要約再生成・録音・表示・Git運用・新規環境の起動手順を照合）。この文書は現在のソースコードとCompose設定を説明します。機能ごとの検証と過去の反映ログは関連ガイドへ記録しています。
 外部APIの実接続、認識精度、すべての端末での動作を保証するものではありません。
 
 今後の機能追加・修正では毎回、実装とこのREADMEを照合し、操作・構成・設定・制約などの説明に影響する変更を同じ作業で反映します。詳しい作業ルールは[AGENTS.md](AGENTS.md)と[開発ガイド](docs/development.md)を参照してください。
@@ -23,7 +23,8 @@
 | [議事録テンプレートガイド](docs/meeting-templates.md) | テンプレートの管理、会議ごとのsnapshot、表示 |
 | [要約再生成の実装・検証記録](docs/summary-regeneration.md) | 変更ファイル、テスト結果、未検証事項 |
 | [共有音声録音の実装・検証記録](docs/shared-audio.md) | 映像を保存しない録音、テスト、Migration 0025 |
-| [Soniox文字起こし](docs/soniox-transcription.md) | リアルタイム／非同期の設定、公式仕様、再試行、Migration 0026 |
+| [Soniox文字起こし](docs/soniox-transcription.md) | リアルタイム／非同期の設定、公式仕様、再試行 |
+| [会議ごとの文字起こし言語](docs/meeting-transcription-languages.md) | 自動判定・言語ヒント・Strict、互換性、Migration 0027 |
 | [表示テーマガイド](docs/dark-mode.md) | ダークモード、設定の保存、全画面の対応範囲と検証 |
 | [リデザイン実装ガイド](docs/redesign.md) | 画面デザイン変更の段階・配色・レイアウト（未実装の計画。モックアップは `docs/redesign/mockups/`） |
 
@@ -183,7 +184,7 @@ curl --fail http://localhost:8001/api/v1/health
 sudo docker compose exec -T backend alembic current
 ```
 
-`config --quiet` は構文確認のみです。値を展開する `docker compose config` の出力にはSecretが含まれ得るため、共有しないでください。Backendは起動時にAlembic Migrationを実行します。現行ソースのheadは `20261012_0026` です。Frontendは起動時にlockfileを確認し、必要なら `npm ci` を実行します。初回ビルド中はヘルスチェックが通るまで待ってから確認してください。エラー時は[障害調査](docs/operations.md#troubleshooting)を参照してください。
+`config --quiet` は構文確認のみです。値を展開する `docker compose config` の出力にはSecretが含まれ得るため、共有しないでください。Backendは起動時にAlembic Migrationを実行します。現行ソースのheadは `20261012_0027` です。Frontendは起動時にlockfileを確認し、必要なら `npm ci` を実行します。初回ビルド中はヘルスチェックが通るまで待ってから確認してください。エラー時は[障害調査](docs/operations.md#troubleshooting)を参照してください。
 
 - 画面（Compose既定）: [http://localhost:3000](http://localhost:3000)。`FRONTEND_PORT` を変えた場合はそのホスト側ポートを使用します。2026-09-28のユーザー提供ログでは3001→コンテナ3000です。
 - APIドキュメント: [http://localhost:8001/docs](http://localhost:8001/docs)
@@ -255,10 +256,18 @@ DB・環境変数の変更はありません。リデザイン第2段階でFront
 
 ### Sonioxのリアルタイム・非同期文字起こし
 
-AI設定で「リアルタイム文字起こし」と「非同期・確定版の文字起こし」を別々に保存します。初期値は両方WhisperXで、既存設定を自動変更しません。Sonioxの既定モデルはリアルタイムが`stt-rt-v5`、非同期が`stt-async-v5`、言語ヒントは`ja`です。API Keyを入力し「モデル一覧を取得」を押すと、その用途に対応するモデルを選択できます。保存済みキーでも取得でき、取得だけではキー・設定を保存しません。選択後に「設定を保存」と接続テストを行います。両方でSonioxを使う場合はそれぞれの欄にキーを保存します。同じキーを入力しても構いません。録音中の音声と非同期処理の保存音声はSonioxへ送信され、料金が発生します。
+AI設定で「リアルタイム文字起こし」と「非同期・確定版の文字起こし」のエンジン・モデル・API Keyを別々に保存します。文字起こし言語は会議ごとに選択します。初期値は両方WhisperXで、既存設定を自動変更しません。Sonioxの既定モデルはリアルタイムが`stt-rt-v5`、非同期が`stt-async-v5`です。API Keyを入力し「モデル一覧を取得」を押すと、その用途に対応するモデルを選択できます。保存済みキーでも取得でき、取得だけではキー・設定を保存しません。選択後に「設定を保存」と接続テストを行います。両方でSonioxを使う場合はそれぞれの欄にキーを保存します。同じキーを入力しても構いません。録音中の音声と非同期処理の保存音声はSonioxへ送信され、料金が発生します。
 
 両用途を同じキーで使う場合はFull accessをOFFにし、Speech-to-text, real-time／Model listing／Temporary API keysをAccess、Speech-to-text, async／FilesをWrite、その他をNo Accessにします。WriteにはReadが含まれます。用途別の最小権限は[Sonioxガイド](docs/soniox-transcription.md#モデル一覧とapiキーの権限)を参照してください。権限変更の反映には数分かかる場合があります。
 
 恒久キーはBackendで暗号化し、ブラウザには60秒で接続期限が切れる一回限りのキーを渡します。非同期処理は通常Workerがファイル送信・処理予約・状態確認・結果保存を行い、保存後にSoniox上のファイルと文字起こしを削除します。通信障害時は処理IDを再利用し、送信成功が不明なときは照合できるまで再送しません。Sonioxには最小／最大話者数を指定しません。設定・制約・確認手順・Docker反映は[Sonioxガイド](docs/soniox-transcription.md)を参照してください。追加環境変数・依存追加はありません。利用者の反映ログで運用DBの`20261012_0026 (head)`、BackendのHealthy、4つのWorkerの起動を確認しています。モデル一覧機能追加後の再起動ログでもBackendのhealthy、FrontendのUp、4つのWorkerのRunningを確認しました。反映後の画面表示・実キーでのモデル取得・音声認識は未確認です。
+
+### 会議ごとの文字起こし言語
+
+「新しい会議」の「会議で話す言語」で日本語・英語・その他を選びます。初期値は日本語、StrictはOFFです。Sonioxでは自動判定と複数言語に対応します。Language hintsは認識のヒントで、他の言語も認識します。「選択した言語に限定する」はStrictで、強く優先しますが完全な保証ではありません。通常はOFF、話す言語が確実な場合だけONにします。翻訳やAI要約の出力言語を指定する設定ではありません。
+
+会議ページの「文字起こし設定」でも、録音開始前または初回Finalの予約前に変更できます。録音・保存・処理中とFinal作成後は言語変更を禁止します。選択は会議に保存し、Live開始時と全体処理Job予約時に固定します。再接続・再試行・動画変換後にも引き継ぎます。AI設定の言語入力は廃止し、既存会議の従来設定と履歴を保持します。WhisperX / Azureの現行連携は単一言語です。自動判定・複数言語は使用する文字起こしエンジンがすべてSonioxのときに選べ、StrictはSonioxにだけ適用します。モデルの対応言語・Strict対応は音声送信前に公式モデル情報で検証します。
+
+この追加にはMigration `20261012_0027`が必要です。運用DBへの0027適用と実APIでの音声認識は未確認です。[反映手順](docs/operations.md#meeting-languages)と[操作・検証・制約](docs/meeting-transcription-languages.md)を参照してください。
 
 Migration `20260927_0023` が必要です。追加環境変数はありません。録音・録画と保存、実行中Jobの終了を確認してから[要約再生成の反映手順](docs/operations.md#summary-regeneration)を実行してください。操作・動作確認は[操作ガイド](docs/usage.md#summary-regeneration)、実装と検証は[開発ガイド](docs/development.md#summary-regeneration)に記載しています。
