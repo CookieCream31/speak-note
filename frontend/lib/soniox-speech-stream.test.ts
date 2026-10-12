@@ -78,7 +78,8 @@ describe("Soniox streaming lifecycle", () => {
     socket.receive({ tokens: [token("Hello"), { text: "こんにちは", is_final: true, translation_status: "translation", language: "ja", source_language: "en", speaker: "1" }] });
     socket.close();
     expect(onResult.mock.calls[0][0].text).toBe("Hello");
-    expect(onTranslation.mock.calls[0][0]).toMatchObject({ text: "こんにちは", speakerLabel: "話者 1" });
+    expect(onTranslation.mock.calls[0][0]).toMatchObject({ text: "こんにちは", speakerLabel: "SPEAKER_UNKNOWN" });
+    expect(onTranslation.mock.calls[1][0].speakerLabel).toBe(onResult.mock.calls[0][0].speakerLabel);
     expect(onTranslation.mock.calls[0][0].sourceResultId).toBe(onResult.mock.calls[0][0].resultId);
     expect(onTranslation.mock.calls[0][0]).not.toHaveProperty("startMs");
     await vi.advanceTimersByTimeAsync(1000); await tick();
@@ -93,7 +94,7 @@ describe("Soniox streaming lifecycle", () => {
     expect(socket.url).toBe("wss://stt-rt.soniox.com/transcribe-websocket");
     expect(socket.protocols).toEqual(["soniox-api-key", "temporary-key"]);
     const config = JSON.parse(socket.sent[0] as string);
-    expect(config).toMatchObject({ audio_format: "pcm_s16le", sample_rate: 16000, num_channels: 1, enable_endpoint_detection: true });
+    expect(config).toMatchObject({ audio_format: "pcm_s16le", sample_rate: 16000, num_channels: 1, enable_speaker_diarization: true, enable_endpoint_detection: false });
     expect(config.api_key).toBeUndefined();
     const buffer = new ArrayBuffer(3200); pcm.callback?.(buffer);
     expect(socket.sent[1]).toBe(buffer);
@@ -113,12 +114,53 @@ describe("Soniox streaming lifecycle", () => {
     expect(onResult).toHaveBeenCalledOnce();
     await vi.advanceTimersByTimeAsync(1000); await tick();
     const next = FakeSocket.instances[1]; next.open(); await tick();
+    expect(JSON.parse(next.sent[0] as string).enable_endpoint_detection).toBe(false);
     expect(fetch).toHaveBeenCalledTimes(2);
     next.receive({ tokens: [token("次の発言"), { text: "<end>", is_final: true }] });
     expect(onResult).toHaveBeenCalledTimes(2);
     expect(onResult.mock.calls[0][0].resultId).not.toBe(onResult.mock.calls[1][0].resultId);
     expect(onResult.mock.calls[1][0].speakerLabel).toBe("話者 2");
     await controller.stop();
+  });
+  it("does not allocate speakers from changing hypotheses and reuses only previously confirmed labels", async () => {
+    const { socket, controller, onResult, onInterim } = await start();
+    socket.receive({ tokens: [token("途中", false, "1")] });
+    socket.receive({ tokens: [token("別の途中", false, "9")] });
+    expect(onInterim.mock.calls.map((call) => call[0].speakerLabel)).toEqual(["SPEAKER_UNKNOWN", "SPEAKER_UNKNOWN"]);
+    socket.receive({ tokens: [token("最初の確定", true, "2")], finished: true });
+    expect(onResult.mock.calls[0][0].speakerLabel).toBe("話者 1");
+    await controller.stop();
+  });
+  it("shares confirmed original and translation labels without counting provisional translation speakers", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ api_key: "temporary", model: "stt-rt-v5", language: "en", translation: { type: "one_way", target_language: "ja" } }) })));
+    const { socket, controller, onResult, onInterim, onTranslation } = await start();
+    const translated = (text: string, is_final: boolean, speaker: string) => ({ text, is_final, speaker, translation_status: "translation", language: "ja", source_language: "en" });
+    socket.receive({ tokens: [translated("変わる話者", false, "99")] });
+    expect(onTranslation.mock.calls[0][0].speakerLabel).toBe("SPEAKER_UNKNOWN");
+    socket.receive({ tokens: [token("Hello", true, "2"), token("Next", true, "3"), translated("こんにちは", false, "2")] });
+    expect(onResult.mock.calls[0][0].speakerLabel).toBe("話者 1");
+    expect(onTranslation.mock.calls.at(-1)![0].speakerLabel).toBe("話者 1");
+    socket.receive({ tokens: [token("続きの途中", false, "3")] });
+    expect(onInterim.mock.calls.at(-1)![0].speakerLabel).toBe("SPEAKER_UNKNOWN");
+    socket.receive({ tokens: [translated("次の話者", true, "3")], finished: true });
+    expect(onResult.mock.calls[1][0].speakerLabel).toBe("話者 2");
+    expect(onTranslation.mock.calls.at(-1)![0].speakerLabel).toBe("話者 2");
+    await controller.stop();
+  });
+  it("keeps naturally finalized speech and drafts flowing without endpoints or forced finalize requests", async () => {
+    const { socket, controller, onResult, onInterim } = await start();
+    socket.receive({ tokens: [token("未確定", false)] });
+    await vi.advanceTimersByTimeAsync(21_000);
+    expect(onResult).not.toHaveBeenCalled();
+    expect(onInterim.mock.calls[0][0].text).toBe("未確定");
+    const confirmed = { ...token("確定部分"), start_ms: 0, end_ms: 500 };
+    socket.receive({ tokens: [confirmed, token(" 途中", false)] });
+    socket.receive({ tokens: [{ ...token("続き"), start_ms: 10_001, end_ms: 10_500 }, token(" 最後の途中", false)] });
+    expect(onResult.mock.calls[0][0]).toMatchObject({ text: "確定部分", speakerLabel: "話者 1" });
+    expect(onInterim.mock.calls.at(-1)![0].text).toBe("続き 最後の途中");
+    await controller.stop();
+    expect(onResult.mock.calls.map((call) => call[0].text)).toEqual(["確定部分", "続き"]);
+    expect(socket.sent.filter((value) => typeof value === "string" && value !== "").map((value) => JSON.parse(value as string).type)).not.toContain("finalize");
   });
   it.each([
     { hints: ["ja", "en"], strict: true },

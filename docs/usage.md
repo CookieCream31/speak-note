@@ -97,6 +97,8 @@ AI設定の「リアルタイム文字起こし」でWhisperX / Azure AI Speech 
 
 Azureはリージョン（例: japaneast）、API Keyを保存して接続テストします。言語は会議ごとに選択し、日本語ならja-JP、英語ならen-USを使用します。
 SonioxはAPI Keyを入力して「モデル一覧を取得」を押し、モデル（既定`stt-rt-v5`）を選択します。保存済みキーでの取得もできます。設定を保存して接続テストし、文字起こし言語は会議作成時に選びます。音声はSonioxへ送信されます。確定版もSonioxにしたい場合は、下の「非同期・確定版の文字起こし」で同様に一覧を取得してモデル（既定`stt-async-v5`）を選び、別途キーと設定を保存します。[必要なキー権限・詳しい手順と制約](soniox-transcription.md)。
+
+Soniox Liveは話者分離の精度を優先します。早期確定をOFFにし、認識途中の文章を表示しながら自然な確定を待ちます。文字・話者の確定、保存、リアルタイムAIの更新が遅れる場合があります。暫定の話者IDが変わっても表示番号を増やさず、原文・翻訳は同じ確定話者の番号を使います。再接続後や会議後のFinalの番号が同じ人物になる保証はありません。「WhisperXの話者数」はWhisperX用の設定で、Soniox・Azureの人数判定は自動です。[精度優先の確認手順](soniox-transcription.md#diarization-accuracy)。
 API KeyはBackendで暗号化保存し、ブラウザには有効期限のある認識用Tokenを渡します。
 本プロジェクトの話者分離はStandard (S0) Resourceを使う設計です。
 

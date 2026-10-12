@@ -19,5 +19,7 @@ describe("MeetingTranscriptionSettings", () => {
     expect(html).toContain('aria-label="最大話者数"');
     expect(html).toContain('value="4"');
     expect(html).toContain("空欄なら自動判定");
+    expect(html).toContain("WhisperXの話者数");
+    expect(html).toContain("Soniox・Azureは自動判定です");
   });
 });

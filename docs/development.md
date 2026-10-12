@@ -319,6 +319,8 @@ formatter／lint／型チェックは変更範囲で成功を確認し、全体�
 <a id="realtime-translation"></a>
 ## リアルタイム翻訳
 
+Soniox Liveは精度を優先して`enable_endpoint_detection: false`とし、定期的なmanual finalizeを送りません。`presentSpeaker`は確定履歴の採用時だけ新しい番号を作成し、暫定原文・翻訳では既知番号の参照に限定します。新しい暫定IDは`SPEAKER_UNKNOWN`です。原文と翻訳のMap、接続ごとのnamespaceを維持します。テストでは自然な確定tokenの10秒区間・停止・再接続、途中話者の変化による欠番の防止、原文／翻訳の番号一致、未確定tokenを強制保存しないことを確認します。[精度優先の変更・検証](soniox-transcription.md#diarization-accuracy)。
+
 `schemas/translation.py`が一方向／双方向の設定と保存payloadを検証します。Meetingの設定は開始時にSessionへ固定し、Soniox Clientが公式モデルの翻訳対応をキー発行前に確認します。`services/realtime/translation.py`は原文とは別テーブルに確定翻訳を保存し、Sessionのrow lockと一意IDで重複を防ぎます。保存応答を返す前にlockを解放し、同じIDの異なる本文は拒否します。翻訳だけの検証失敗は終了応答として再送を止め、録音・原文の接続を継続します。
 
 Frontendは`soniox-translation.ts`で時刻のない翻訳tokenを組み立て、`live-translation-store.ts`で仮説と確定履歴を分離します。原文accumulatorが確定tokenの表示結果IDを記録し、翻訳accumulatorは到着順で先行する同じ話者・原言語の表示ブロックを参照します。`source_result_id`は0029で保存し、BackendのSession内UUIDから`source_segment_id`を返します。原文未保存でも翻訳を受け付け、IDが表示されるまでは同じ枠の末尾に残します。別Session・別接続やFinalへ推測で対応付けません。

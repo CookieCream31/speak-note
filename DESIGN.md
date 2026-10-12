@@ -411,6 +411,8 @@ WhisperX固有処理は `transcription` Service層へ隔離する。
 
 - Live: `stt-rt-v5`、`wss://stt-rt.soniox.com/transcribe-websocket`。Backendが公式RESTで60秒・single_use・最大18,000秒の一時キーを発行し、ブラウザは`["soniox-api-key", key]`のprotocolで接続する。恒久キーをブラウザへ返さず、キーをconfig messageへ含める旧認証方式は使用しない。音声は`pcm_s16le`／16,000Hz／mono。通常の録音・映像保存を並行継続し、Soniox用のChunk文字起こしJobを作らない。
 - 確定tokenは一度だけ追加し、非確定tokenは毎応答で置換する。話者変更、endpointの`<end>`、`<fin>`、長い発話の10秒区間、finishedで発話を区切る。途中仮説を確定結果として保存しない。停止時にWorklet末尾をflushし、空の**text** frameを送って最終応答を最大8秒待つ。既知の確定tokenだけを保存する。話者は接続単位の暫定IDとし、再接続前後を同一人物と断定しない。
+- ユーザーの精度優先指定（2026-10-13）により、Soniox Liveは話者分離を有効のまま`enable_endpoint_detection: false`で接続・再接続する。公式が指摘する早期確定による話者分離精度の低下を避け、定期的なmanual finalizeも送らない。途中表示は継続し、確定表示・保存・AI更新が従来より遅れる場合がある。10秒区間はSonioxが既に確定したtokenの保存単位であり、APIの確定を強制する時間ではない。`<end>`／`<fin>`が返った場合の読取互換性と終了処理は保持する。
+- 話者の表示番号は確定履歴として採用する原文・翻訳だけで作成し、暫定表示では既知の表示番号を参照するだけとする。未知の暫定話者は`SPEAKER_UNKNOWN`で、IDが変化しても番号を消費しない。原文・翻訳で表示Mapを共用し、接続をまたぐ話者を推測で統合しない。最小／最大の人数指定はWhisperXにだけ適用されることを設定画面に明示する。
 - 通信断・送信遅延では最大3回、新しい一時キーで再接続する。認証・残高・権限エラーで再接続を繰り返さない。保存用録音は継続し、切断区間は非同期Finalで処理する。無音だけを再接続の理由にしない。keepaliveは20秒間隔。タイムラインは実際の最初のPCM送信位置を基準に整数msへ補正する。
 - 非同期: `stt-async-v5`、`https://api.soniox.com/v1`。通常の`transcribe` Job／Workerがローカル保存音声をFiles APIへuploadし、`file_id`でTranscriptions APIへ予約、queued／processingをpollし、completed後に時刻・話者付きtokenを取得する。HTTP Requestで完了まで待たない。予約時点のエンジン・モデル・言語をJobの`transcription_request`に固定する。動画アップロードは変換前のJobから設定を引き継ぐ。既存Jobのnull設定はWhisperXとして扱う。
 - Soniox側file／transcriptionのUUIDと送信状態をDBへcheckpointする。POSTを無条件に再試行しない。送信応答を失った場合はJob UUIDを`client_reference_id`として一覧を照合し、一致が一つの場合だけ再開する（Soniox側ではunique／idempotency keyではない）。不明・重複の場合はJobをfailedにし、再送を止める。GET／DELETEは最大3回、全体処理待機は最大2時間。再試行は保存した同一処理IDから再開する。

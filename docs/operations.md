@@ -176,6 +176,20 @@ sudo docker compose ps frontend
 
 反映後にブラウザを再読み込みし、同じ言語・話者の短い翻訳断片がカードを積まず一つの文章になること、原文と訳文の左端・本文幅・文字サイズが揃うこと、PCとスマートフォンで読み進められることを確認します。停止後のLive履歴と、高精度版の「リアルタイム原文と翻訳」でも同じ表示を確認します。[変更・検証記録](realtime-translation.md#translation-paragraphs)。
 
+<a id="soniox-accuracy"></a>
+## Sonioxの話者分離を精度優先にする変更の反映
+
+早期確定のOFFと暫定話者の表示番号の修正はFrontendのみです。追加のDB変更・依存・環境変数はありません。0029まで反映済みなら、録音・録画・保存が終了してから次を実行します。以前のheadなら[Backendを含む反映手順](#realtime-translation)を使用します。同じ環境でソース更新済みなら`git pull`は省略できます。
+
+```bash
+cd /home/llm/speak-note
+git pull --ff-only
+sudo docker compose restart frontend
+sudo docker compose ps frontend
+```
+
+反映後にブラウザを再読み込みし、新しく録音を開始します。Soniox接続の設定は開始・再接続時に適用されます。文字や話者の確定・保存が遅れても、認識途中の表示を確認してください。2人以上で交互に話し、表示番号が暫定認識の変化だけで増えないこと、原文と翻訳の番号が一致すること、停止後の原文・翻訳を保持することを確認します。[仕様・検証・未確認事項](soniox-transcription.md#diarization-accuracy)。
+
 <a id="language-picker-ui"></a>
 ### 言語の検索一覧・タグ・詳細設定への表示改善
 

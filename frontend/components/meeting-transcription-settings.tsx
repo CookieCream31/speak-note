@@ -109,7 +109,7 @@ export function MeetingTranscriptionSettings({
       <MeetingLanguageFields value={language} onChange={setLanguage} includeRealtime={includeRealtime} disabled={disabled || saving || languageLocked} translationLocked={translationLocked} />
       <p>{languageLocked ? "確定文字起こしの作成後は言語を変更できません。要約再生成は保存済みFinalを再利用します。" : "言語は録音開始前、または初回の確定文字起こしを予約する前に保存してください。"}</p>
       <div className={styles.heading}>
-        <span>文字起こしの話者数</span>
+        <span>WhisperXの話者数</span>
         <small>任意</small>
       </div>
       <div className={styles.fields}>
@@ -148,7 +148,7 @@ export function MeetingTranscriptionSettings({
       <p>
         {disabled
           ? "文字起こし処理中は変更できません。"
-          : "最小は下限、最大は上限です。空欄なら自動判定。同じ数にすると固定できます。"}
+          : "WhisperXでの認識に適用します。最小は下限、最大は上限です。空欄なら自動判定。同じ数にすると固定できます。Soniox・Azureは自動判定です。"}
       </p>
       {message && <output role={messageIsError ? "alert" : "status"} data-error={messageIsError} aria-live="polite">{message}</output>}
     </form>

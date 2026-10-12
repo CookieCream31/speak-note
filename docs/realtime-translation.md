@@ -1,6 +1,6 @@
 # Sonioxリアルタイム翻訳
 
-最終照合: 2026-10-12（翻訳断片の文章表示・本文幅と文字サイズ・暫定更新・表示用対応情報の保存・Migration 0029）。[README](../README.md) · [会議言語](meeting-transcription-languages.md) · [反映手順](operations.md#realtime-translation)
+最終照合: 2026-10-13（Sonioxの話者分離精度優先・原文と翻訳の話者番号、文章表示・表示用対応情報の保存・Migration 0029）。[README](../README.md) · [会議言語](meeting-transcription-languages.md) · [反映手順](operations.md#realtime-translation)
 
 ## 設定と操作
 
@@ -12,6 +12,8 @@
 6. 録音停止後・ページ再読み込み後も、翻訳をLive原文の下へ表示します。対応情報のない以前の翻訳や原文未到着の翻訳は、同じ枠内の「翻訳履歴」に残します。高精度版を選択している場合は、文字起こしの下で「リアルタイム原文と翻訳」を開きます。保存音声・Live原文・Final・要約・ユーザー編集済み情報は保持します。
 
 Sonioxへ送るのは既存のリアルタイム音声です。追加のLLMや音声合成サービスは使いません。API権限は従来のLiveと同じSpeech-to-text, real-time／Temporary API keys／Model listingのAccessです。[キー権限](soniox-transcription.md#モデル一覧とapiキーの権限)。文字起こし・翻訳の利用料金や残高はSoniox側で確認してください。
+
+Soniox Liveは話者分離の精度を優先して早期確定をOFFにしています。翻訳中の文章は引き続き表示しますが、原文・翻訳の確定と保存が遅れる場合があります。未知の暫定話者では表示番号を作成せず、確定した原文・翻訳で同じ番号を共用します。[仕様・検証・確認手順](soniox-transcription.md#diarization-accuracy)。
 
 ## 公式仕様と保存の境界
 

@@ -1,6 +1,6 @@
 # Soniox文字起こし
 
-最終照合: 2026-10-12。[README](../README.md) · [操作ガイド](usage.md) · [Docker反映](operations.md#soniox)
+最終照合: 2026-10-13（Live話者分離の精度優先・暫定話者の表示番号・WhisperX用人数指定）。[README](../README.md) · [操作ガイド](usage.md) · [Docker反映](operations.md#soniox)
 
 ## 公式仕様と実装の境界
 
@@ -15,7 +15,7 @@ Soniox公式ドキュメントを読み、リアルタイムと非同期を独�
 
 ## 設定と操作
 
-1. 最新コードのMigration 0027まで反映します。録音・録画・処理中Jobが終わってから[反映手順](operations.md#meeting-languages)を実行します。
+1. 最新コードのMigration 0029まで反映します。録音・録画・保存・処理中Jobが終わってから[反映手順](operations.md#realtime-translation)を実行します。0029適用済みの精度優先変更は[Frontendのみの反映](operations.md#soniox-accuracy)です。
 2. `MASTER_ENCRYPTION_KEY`を設定済みであることを確認します。SonioxのAPI Keyは`.env`へ追加せず、画面からDBへ暗号化保存します。既存のGemini／Azureと同じ暗号化基盤です。
 3. AI設定 →「リアルタイム文字起こし」でSonioxを選び、API Keyを入力します。「モデル一覧を取得」を押してモデル（既定`stt-rt-v5`）を選び、「設定を保存」を押します。「接続テスト」はモデル取得と一時キー発行を確認し、音声を送信しません。必要な権限は下の表を参照してください。
 4. 確定版もSonioxにする場合は「非同期・確定版の文字起こし」でSonioxを選び、API Keyを入力してモデル一覧を取得します。モデル（既定`stt-async-v5`）とAPI Keyを別途保存し、接続テストします。同じキーを両方へ入力しても構いません。片方の保存はもう片方の選択やAzureキーを変更しません。
@@ -24,6 +24,33 @@ Soniox公式ドキュメントを読み、リアルタイムと非同期を独�
 7. 音声・動画アップロードでも、アップロード時に選んだ非同期設定でFinalが自動生成されることを確認します。AIを使う会議では、その後の解析Jobと根拠・会議後質問も確認します。
 
 設定をWhisperXへ戻すと新しいSession／JobからWhisperXを使用します。Soniox恒久キーの削除はPUTの`clear_soniox_api_key`（WhisperXへ切り替える同じ要求で指定）に対応します。画面にはキーの全文を表示せず、マスクだけ返します。リアルタイム用と非同期用のキーは別々に管理します。
+
+<a id="diarization-accuracy"></a>
+## 話者分離の精度優先（2026-10-13）
+
+ユーザー指定により、Soniox Liveは`enable_speaker_diarization: true`を維持し、`enable_endpoint_detection: false`で接続します。再接続でも同じ設定です。公式は早期確定が話者分離の精度を下げると説明しており、精度を最優先する場合はendpoint detectionを使わないことを推奨しています。[公式の話者分離](https://soniox.com/docs/stt/concepts/speaker-diarization)、[早期確定のトレードオフ](https://soniox.com/docs/stt/rt/endpoint-detection)。
+
+認識途中の原文・翻訳は引き続き表示します。Sonioxが自然に確定したtokenだけを保存し、定期的なmanual finalizeは送りません。アプリの10秒区間は既に確定したtokenの保存単位であり、Sonioxの確定を強制しません。短い発話は、話者変更・次の区間・録音停止まで保存を待つ場合があります。確定表示・保存・原文を根拠にしたAI更新は遅くなることがあります。停止時は従来どおりPCM末尾と空text frameを送り、最終応答を最大8秒待ちます。
+
+原文・翻訳の話者Mapを共用し、確定履歴へ採用するときだけ表示番号を作成します。暫定表示では既知の番号だけ参照し、未知の話者は`SPEAKER_UNKNOWN`とします。暫定IDが1→9→2と変わっても、最初の確定発言は「話者1」から始まります。再接続では別のnamespaceを使い、前の接続の同名IDを同じ人物と断定しません。Liveと会議後のFinalの人物対応も自動では保証しません。人数指定欄は「WhisperXの話者数」と明示し、Soniox・Azureは自動判定と説明します。
+
+この変更はFrontendだけで、追加Migration・依存・環境変数はありません。現行headは0029のままです。既存の履歴・会議設定・録音・Jobは書き換えず、新しく開始・再接続するSoniox WebSocketから適用します。録音・録画・保存を終えてから[反映手順](operations.md#soniox-accuracy)を実行します。
+
+| 役割 | 変更したファイル |
+| --- | --- |
+| Sonioxの送信設定・話者表示 | `frontend/lib/soniox-speech-stream.ts`、`soniox-speech-stream.test.ts` |
+| WhisperX用人数指定の説明 | `frontend/components/meeting-transcription-settings.tsx`、`meeting-transcription-settings.test.tsx` |
+| 文書 | `README.md`、`DESIGN.md`、`docs/{soniox-transcription,realtime-translation,usage,development,operations}.md` |
+
+| コマンド | 結果 |
+| --- | --- |
+| `node node_modules/vitest/vitest.mjs run` | Frontend全体290件・50ファイル成功 |
+| `node node_modules/eslint/bin/eslint.js .`／`node node_modules/typescript/bin/tsc --noEmit` | 成功 |
+| `git diff --check` | 成功。Frontendには専用formatterなし |
+
+mockで早期確定OFF・再接続への引継ぎ、暫定話者による欠番の防止、原文と翻訳の番号一致、endpointのない自然な確定・10秒区間・停止、未確定文字の保存防止、定期的な強制確定を送らないことを確認しました。暫定のspeaker 1から確定のspeaker 2へ変わる再現ケースも「話者2」ではなく「話者1」で始まります。Backend・DBを変更していないため、この変更ではBackendテスト・Migration検証を再実行していません。
+
+実Soniox音声による話者分離精度・確定遅延、実機Safari、Docker反映は未検証です。精度向上の幅を保証するものではありません。反映後は2人以上で交互に話し、認識途中の表示、話者番号の推移、翻訳との一致、停止後の保存履歴を確認します。会議後のより安定した話者分離は、保存音声を使うFinalで確認します。
 
 ## モデル一覧とAPIキーの権限
 

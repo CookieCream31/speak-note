@@ -121,23 +121,25 @@ export async function startSonioxSpeechStream(options: StreamOptions): Promise<A
   let audioStarted = false;
   let acceptingAudio = true;
   const speakerLabels = new Map<string, string>();
-  const presentSpeaker = (speakerLabel: string): string => {
+  const presentSpeaker = (speakerLabel: string, confirmed = true): string => {
     if (speakerLabel === "SPEAKER_UNKNOWN") return speakerLabel;
     let label = speakerLabels.get(speakerLabel);
     if (!label) {
+      // Provisional speaker IDs can change; they must not reserve display numbers.
+      if (!confirmed) return "SPEAKER_UNKNOWN";
       label = `話者 ${speakerLabels.size + 1}`;
       speakerLabels.set(speakerLabel, label);
     }
     return label;
   };
-  const present = (result: AzureSpeechResult): AzureSpeechResult => ({ ...result, speakerLabel: presentSpeaker(result.speakerLabel) });
-  const publishTranslation = (result: LiveTranslationResult, isFinal = true) => options.onTranslation?.({ ...result, speakerLabel: presentSpeaker(result.speakerLabel) }, isFinal);
+  const present = (result: AzureSpeechResult, confirmed = true): AzureSpeechResult => ({ ...result, speakerLabel: presentSpeaker(result.speakerLabel, confirmed) });
+  const publishTranslation = (result: LiveTranslationResult, isFinal = true) => options.onTranslation?.({ ...result, speakerLabel: presentSpeaker(result.speakerLabel, isFinal) }, isFinal);
   const publishFinal = (result: AzureSpeechResult) => options.onResult(present(result));
   const publish = (response: SonioxResponse) => {
     const previousId = accumulator?.resultId;
     const results = accumulator?.accept(response);
     results?.finals.forEach(publishFinal);
-    if (results?.interim) options.onInterim?.(present(results.interim));
+    if (results?.interim) options.onInterim?.(present(results.interim, false));
     else if (previousId) options.onInterimCleared?.(previousId);
     const previousTranslationId = translations?.resultId;
     const translated = translations?.accept(response, (token) => results?.sourceResultIds.get(token));
@@ -174,7 +176,8 @@ export async function startSonioxSpeechStream(options: StreamOptions): Promise<A
           language_hints_strict: token.language_hints_strict ?? false,
           ...(token.translation ? { translation: token.translation } : {}),
           enable_speaker_diarization: true, enable_language_identification: true,
-          enable_endpoint_detection: true }));
+          // Let Soniox retain context for diarization instead of finalizing speech early.
+          enable_endpoint_detection: false }));
         resolve();
       };
       next.onerror = () => { clearTimeout(timeout); reject(new Error("Sonioxへの接続に失敗しました")); };

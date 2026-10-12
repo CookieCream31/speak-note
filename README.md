@@ -4,7 +4,7 @@
 確定版の文字起こし・話者分離にはWhisperXまたはSoniox非同期API、要約・質問回答にはOllama / Geminiを使用します。
 録音中の文字起こしはWhisperX / Azure AI Speech / SonioxリアルタイムAPIから、確定版とは独立して選べます。
 
-最終照合: **2026-10-12**（翻訳断片を原文直下の一つの文章へ連結、本文列の幅・文字サイズ・暫定更新・保存失敗、遅れて届く翻訳・停止後の並び・旧履歴・Finalとの分離、表示用対応情報のMigration 0029、会議ごとの翻訳設定・再接続、言語タグ・検索UI・Strict、Migration 0027・0028、用途別APIキー権限、利用者のMigration 0026・0027反映ログ、従来の会議・要約再生成・録音・表示・Git運用・新規環境の起動手順を照合）。この文書は現在のソースコードとCompose設定を説明します。機能ごとの検証と過去の反映ログは関連ガイドへ記録しています。
+最終照合: **2026-10-13**（Soniox Liveの話者分離精度を優先した早期確定OFF、暫定話者で表示番号を消費しない処理、WhisperX用人数指定の説明、翻訳断片の文章表示・保存状態、停止後の並び・旧履歴・Finalとの分離、Migration 0029、会議言語・検索UI・Strict、用途別APIキー権限、利用者のMigration 0026・0027反映ログ、従来の会議・要約再生成・録音・表示・Git運用・新規環境の起動手順を照合）。この文書は現在のソースコードとCompose設定を説明します。機能ごとの検証と過去の反映ログは関連ガイドへ記録しています。
 外部APIの実接続、認識精度、すべての端末での動作を保証するものではありません。
 
 今後の機能追加・修正では毎回、実装とこのREADMEを照合し、操作・構成・設定・制約などの説明に影響する変更を同じ作業で反映します。詳しい作業ルールは[AGENTS.md](AGENTS.md)と[開発ガイド](docs/development.md)を参照してください。
@@ -282,5 +282,7 @@ Language hintsは認識のヒントで、Sonioxでは他の言語も認識しま
 Migration `20261012_0028`と`20261012_0029`が必要です。0029は翻訳履歴にnullableな表示用対応情報を追加し、既存結果を保持します。追加環境変数・依存追加はありません。運用DBへの適用と実Soniox音声による翻訳は未確認です。録音・録画・保存・実行中Jobを終了してから[反映手順](docs/operations.md#realtime-translation)を実行してください。
 
 翻訳の文章表示への変更自体はFrontendのみで、追加のDB変更はありません。0029まで反映済みなら[Frontendのみの反映手順](docs/operations.md#translation-paragraphs)を使用します。
+
+Soniox Liveは**話者分離の精度を優先**し、早期確定（endpoint detection）をOFFにしています。認識途中の表示は続きますが、文字・話者の確定と保存、原文を使うAI更新が遅れる場合があります。定期的な強制確定は行いません。話者番号は確定履歴に採用した話者で作成し、暫定IDが変わっても番号を消費しません。原文と翻訳で番号を共有します。人数の最小／最大指定はWhisperXでの認識だけに適用します。[精度優先の仕様・確認手順](docs/soniox-transcription.md#diarization-accuracy)。変更はFrontendのみで、追加Migration・環境変数はありません。[反映手順](docs/operations.md#soniox-accuracy)。
 
 Migration `20260927_0023` が必要です。追加環境変数はありません。録音・録画と保存、実行中Jobの終了を確認してから[要約再生成の反映手順](docs/operations.md#summary-regeneration)を実行してください。操作・動作確認は[操作ガイド](docs/usage.md#summary-regeneration)、実装と検証は[開発ガイド](docs/development.md#summary-regeneration)に記載しています。
