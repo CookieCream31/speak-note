@@ -25,6 +25,9 @@ export function InlineTranslations({ rows, showSpeaker = false }: { rows: LiveTr
   return <div className={styles.inline} aria-label="リアルタイム翻訳">
     {groupTranslationParagraphs(rows).map((paragraph) => {
       const first = paragraph.rows[0];
+      const sourceName = names.of(first.source_language) ?? first.source_language;
+      const targetName = names.of(first.target_language) ?? first.target_language;
+      const sameLanguage = first.source_language === first.target_language;
       const errors = [...new Set(paragraph.rows.flatMap((row) => row.error ? [row.error] : []))];
       const status = errors.length ? "保存失敗"
         : paragraph.rows.some((row) => row.isFinal === false) ? "翻訳中"
@@ -33,7 +36,9 @@ export function InlineTranslations({ rows, showSpeaker = false }: { rows: LiveTr
         <div className={styles.meta}>
           <strong>翻訳</strong>
           {showSpeaker && <span>{first.speaker_label && first.speaker_label !== "SPEAKER_UNKNOWN" ? first.speaker_label : "話者不明"}</span>}
-          <span>{names.of(first.source_language) ?? first.source_language} → {names.of(first.target_language) ?? first.target_language}</span>
+          <span title={sameLanguage ? "原言語と翻訳先の情報が同じです。原文と会議の言語設定を確認してください。" : undefined}>
+            {sameLanguage ? `${targetName}（原言語の判定要確認）` : `${sourceName} → ${targetName}`}
+          </span>
           <small>{status}</small>
         </div>
         <p className={styles.text} dir="auto">

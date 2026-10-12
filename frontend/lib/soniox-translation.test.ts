@@ -55,12 +55,25 @@ describe("Soniox live translation", () => {
     const translated = new SonioxTranslationAccumulator("socket");
     const response = { tokens: [
       { text: "First", is_final: true, start_ms: 0, end_ms: 1000, speaker: "1" }, token("最初"),
-      { text: "Second", is_final: true, start_ms: 10_100, end_ms: 11_000, speaker: "1" }, token("続き"),
+      { text: " Second", is_final: true, start_ms: 10_100, end_ms: 11_000, speaker: "1" }, token("続き"),
       { text: "Third", is_final: true, start_ms: 11_000, end_ms: 12_000, speaker: "2" }, { ...token("別の話者"), speaker: "2" },
     ], finished: true };
     const originals = original.accept(response);
     expect(translated.accept(response, (item) => originals.sourceResultIds.get(item)).finals.map((row) => row.sourceResultId))
       .toEqual(["socket:0", "socket:1", "socket:2"]);
+  });
+  it("keeps translations attached to the complete original word across the save boundary", () => {
+    const original = new SonioxTranscriptAccumulator("word", 0);
+    const translated = new SonioxTranslationAccumulator("word");
+    const response = { tokens: [
+      { text: "Capac", is_final: true, start_ms: 0, end_ms: 500, speaker: "1", language: "en" },
+      { text: "itance", is_final: true, start_ms: 10_100, end_ms: 10_500, speaker: "1", language: "en" }, token("容量"),
+      { text: " is", is_final: true, start_ms: 11_000, end_ms: 11_500, speaker: "1", language: "en" }, token("は"),
+    ], finished: true };
+    const originals = original.accept(response);
+    expect(originals.finals.map((result) => result.text)).toEqual(["Capacitance", "is"]);
+    expect(translated.accept(response, (item) => originals.sourceResultIds.get(item)).finals.map((row) => [row.text, row.sourceResultId]))
+      .toEqual([["容量", "word:0"], ["は", "word:1"]]);
   });
   it("leaves conflicting speaker or language metadata unpaired instead of attaching to the wrong original", () => {
     const accumulator = new SonioxTranslationAccumulator("socket");

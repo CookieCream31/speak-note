@@ -1,6 +1,6 @@
 # Soniox文字起こし
 
-最終照合: 2026-10-13（Live話者分離の精度優先・暫定話者の表示番号・WhisperX用人数指定）。[README](../README.md) · [操作ガイド](usage.md) · [Docker反映](operations.md#soniox)
+最終照合: 2026-10-13（Live原文の単語境界・話者分離の精度優先・暫定話者の表示番号・WhisperX用人数指定）。[README](../README.md) · [操作ガイド](usage.md) · [Docker反映](operations.md#soniox)
 
 ## 公式仕様と実装の境界
 
@@ -51,6 +51,23 @@ Soniox公式ドキュメントを読み、リアルタイムと非同期を独�
 mockで早期確定OFF・再接続への引継ぎ、暫定話者による欠番の防止、原文と翻訳の番号一致、endpointのない自然な確定・10秒区間・停止、未確定文字の保存防止、定期的な強制確定を送らないことを確認しました。暫定のspeaker 1から確定のspeaker 2へ変わる再現ケースも「話者2」ではなく「話者1」で始まります。Backend・DBを変更していないため、この変更ではBackendテスト・Migration検証を再実行していません。
 
 実Soniox音声による話者分離精度・確定遅延、実機Safari、Docker反映は未検証です。精度向上の幅を保証するものではありません。反映後は2人以上で交互に話し、認識途中の表示、話者番号の推移、翻訳との一致、停止後の保存履歴を確認します。会議後のより安定した話者分離は、保存音声を使うFinalで確認します。
+
+<a id="word-boundaries"></a>
+## Live原文の単語分断防止（2026-10-13）
+
+[公式のリアルタイム仕様](https://soniox.com/docs/stt/rt/real-time-transcription#how-processing-works)ではtokenは単語の一部・単語・空白として届きます。従来の保存処理は10秒を超えたtokenの直前で区切っていたため、`Capac`と`itance`の間に訳文が入り、原文の単語が分断されることがありました。
+
+現在は単語の続きと句読点を同じ保存区間に残し、約10秒以降の空白などで区切ります。日本語等の空白を使わない文字の区切りは維持します。話者変更・終了marker・停止は従来どおり優先し、自然に確定したtokenだけを保存します。早期確定・強制finalizeは引き続きOFFです。翻訳の表示用参照も原文の実際の区切りに従います。
+
+変更は`frontend/lib/soniox-speech-stream.ts`と同テスト・`soniox-translation.test.ts`、`components/live-translation-panel.tsx`と同テスト、README・DESIGN・関連ガイドです。Frontend全体テスト301件・50ファイル、ESLint、型チェック、`git diff --check`が成功しました。単語・短縮形・数字と単位・アクセント・キリル／ハングル文字・句読点、話者変更、停止、翻訳の原文参照、同言語メタデータの表示と本文保持を検証しました。既存の日本語区切り・再接続・未確定結果の保護も全体テストで確認しています。Chromiumのライト／ダーク×幅320・393・560・844・1280・1920px×Live／停止後／Final履歴の36条件で文章表示・保存状態・同言語メタデータの確認表示・横はみ出しなしを確認しました。Frontend専用formatterは未設定です。
+
+実行コマンド: Frontend内で`node node_modules/vitest/vitest.mjs run`、`node node_modules/eslint/bin/eslint.js .`、`node node_modules/typescript/bin/tsc --noEmit`、Project内で`git diff --check`。ブラウザ検証は一時プレビューに実Component・CSSをbundleしてPlaywrightで実施しました（`/tmp/speak-note-inline-translation-browser/check.py`）。
+
+追加Migration・環境変数・依存はありません。録音と保存を終え、更新後のページで新しく開始する録音から適用します（[Frontend反映手順](operations.md#soniox-accuracy)）。過去に分断して保存した原文は、失われたtoken境界を推測して書き換えません。実Soniox音声・iPhone実機・Docker反映は未検証です。Backend・DBは変更していないため、BackendテストやMigration検証は今回再実行していません。
+
+翻訳の言語ラベルはAPIの`source_language`（原言語）と`language`（翻訳先）を使用します。同じ言語が両方に入った場合は「日本語（原言語の判定要確認）」などと表示し、本文・言語情報・保存状態を維持します。表示中の英単語だけから原言語を推測して上書きしません。既存履歴にも同じ表示を適用します。
+
+確認対象の会議はHTTP GETで読取を行い、保存原文の単語分断と、翻訳25件中1件の`ja`→`ja`を確認しました。会議の保存設定は自動判定・Strict OFF・日本語への一方向翻訳でした。Sonioxの生token応答は保存していないため、言語判定の原因は未確定です。録音開始時snapshotのDB直接確認はDockerアクセス権限とsudo認証が必要なため未実施で、コード障害ではありません。DB・会議設定・履歴を書き換える操作は行っていません。次回の会議で使用言語が分かっていれば、日本語・英語のヒント指定を検討します（[公式Language hints](https://soniox.com/docs/stt/concepts/language-hints)）。
 
 ## モデル一覧とAPIキーの権限
 

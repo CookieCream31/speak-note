@@ -33,6 +33,16 @@ interface StreamOptions {
   onTranslationCleared?: (resultId: string) => void;
 }
 
+function continuesWord(previousText: string, nextText: string): boolean {
+  // Soniox tokens may be subwords (e.g. "Capac" + "itance"). Keep both
+  // word continuations and closing punctuation in the same saved segment.
+  if (/^[,.;:!?%…。，、！？：；)\]}»”]/u.test(nextText)) return true;
+  const edges = [Array.from(previousText).at(-1) ?? "", Array.from(nextText)[0] ?? ""];
+  const wordCharacter = /[\p{L}\p{N}\p{M}'’ʼ\-‐‑\u200c\u200d]/u;
+  const unspacedScript = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u;
+  return edges.every((edge) => wordCharacter.test(edge) && !unspacedScript.test(edge));
+}
+
 export class SonioxTranscriptAccumulator {
   private pending: SonioxToken[] = [];
   private sequence = 0;
@@ -71,7 +81,8 @@ export class SonioxTranscriptAccumulator {
       if (!token.is_final) { drafts.push(token); continue; }
       const previous = this.pending.at(-1);
       if (previous && (previous.speaker !== token.speaker
-          || (token.start_ms ?? 0) - (this.pending[0].start_ms ?? 0) >= 10_000)) flush();
+          || ((token.start_ms ?? 0) - (this.pending[0].start_ms ?? 0) >= 10_000
+            && !continuesWord(previous.text, token.text)))) flush();
       sourceResultIds.set(token, this.resultId);
       this.pending.push(token);
     }

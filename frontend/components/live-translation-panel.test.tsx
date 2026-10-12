@@ -46,6 +46,16 @@ describe("translated captions", () => {
     expect(host.querySelector("img")).toBeNull();
     expect(host.textContent).toContain('<img src="x"');
   });
+  it("flags same-language metadata while preserving saved captions and their reported languages", async () => {
+    const row = Object.freeze({ id: "same", result_id: "same", sequence: 0, text: "残りの分を計上に入れましょう。", source_language: "ja", target_language: "ja", speaker_label: "話者 3", saved: true });
+    await act(async () => root.render(<InlineTranslations rows={[row]} />));
+    expect(host.textContent).toContain("日本語（原言語の判定要確認）");
+    expect(host.textContent).not.toContain("日本語 → 日本語");
+    expect(host.textContent).not.toContain("英語");
+    expect(host.querySelector('p[dir="auto"]')?.textContent).toBe(row.text);
+    expect(host.querySelector('small')?.textContent).toBe("保存済み");
+    expect(row).toMatchObject({ source_language: "ja", target_language: "ja", text: "残りの分を計上に入れましょう。" });
+  });
   it("keeps a rejected translation visible as a failure without claiming it was saved", async () => {
     await act(async () => root.render(<LiveTranslationPanel meetingId={meetingId} />));
     await act(async () => getLiveTranslationStore(meetingId).accept(result, true));

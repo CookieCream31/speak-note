@@ -331,6 +331,8 @@ Frontendは`soniox-translation.ts`で時刻のない翻訳tokenを組み立て�
 
 文章表示では`translation-paragraphs.ts`が連続する同じ言語対・話者の断片を段落にまとめます。保存値を変更せず、断片のspanを結果IDで保持し、暫定更新・ACKでも同じ文章の末尾を更新します。段落の状態は保存失敗→翻訳中→保存待ち→保存済みの順で集約し、エラー文は重複排除して表示します。原文と翻訳を`streamBody`／`turnBody`へまとめ、Gridの時刻列へ翻訳が配置される問題を防ぎます。本文領域の文字サイズと行間を訳文へ継承し、再生画面のスマホ向け指定にも揃えます。ブラウザでは原文と訳文の左端・幅・上下位置・文字サイズ・行間を比較し、12断片でも一つの段落になることを確認します。[文章表示の変更と検証](realtime-translation.md#translation-paragraphs)。
 
+Soniox原文の時間による保存区切りは、単語の途中・句読点の直前を避けます。原文tokenの表示IDを翻訳へ渡すため、区切りの変更は`soniox-speech-stream.test.ts`だけでなく`soniox-translation.test.ts`でも検証します。単語の分断再現と次の単語での保存、話者変更／終了、翻訳の参照保持を確認し、既存の区切りテストには公式token仕様と同じ先頭空白を使います。`live-translation-panel.test.tsx`は同言語メタデータの確認表示と本文保持も検証します。2026-10-13の全体検証は301件・ESLint・型チェック成功、翻訳表示のブラウザ検証は36条件成功でした。[変更と制約](soniox-transcription.md#word-boundaries)。
+
 `pytest tests/test_realtime_translation.py -q`、Frontend全体テスト・ESLint・型チェック、Alembic headsと0028→0029のoffline SQL、ブラウザの表示・保存を検証します。[変更ファイルと検証](realtime-translation.md#変更したファイル)。
 
 <a id="display-theme"></a>

@@ -43,6 +43,38 @@ describe("Soniox token assembly", () => {
     expect(result.finals.map((item) => item.speakerLabel)).toEqual(["SONIOX_connection-2_1", "SONIOX_connection-2_2"]);
     expect(new SonioxTranscriptAccumulator("connection-3", 0).accept({ tokens: [token("はい")], finished: true }).finals[0].speakerLabel).not.toBe(result.finals[0].speakerLabel);
   });
+  it.each([
+    ["Capac", "itance"],
+    ["I", "'m"],
+    ["5", "nF"],
+    ["café", "s"],
+    ["при", "вет"],
+    ["안녕", "하세요"],
+    ["Hello", "."],
+    ["Hello", ","],
+  ])("keeps the word/punctuation %s + %s together across the ten-second save boundary", (head, tail) => {
+    const accumulator = new SonioxTranscriptAccumulator("words", 2000);
+    accumulator.accept({ tokens: [{ ...token(head), start_ms: 0, end_ms: 500 }] });
+    const continuation = { ...token(tail), start_ms: 10_001, end_ms: 10_500 };
+    const middle = accumulator.accept({ tokens: [continuation] });
+    expect(middle.finals).toEqual([]);
+    expect(middle.interim?.text).toBe(head + tail);
+    expect(middle.sourceResultIds.get(continuation)).toBe("words:0");
+    const next = { ...token(" Next word."), start_ms: 11_000, end_ms: 11_500 };
+    const split = accumulator.accept({ tokens: [next] });
+    expect(split.finals).toEqual([expect.objectContaining({ resultId: "words:0", text: head + tail, startMs: 2000, endMs: 12_500 })]);
+    expect(split.interim?.text).toBe("Next word.");
+    expect(split.sourceResultIds.get(next)).toBe("words:1");
+    expect(accumulator.flush().map((result) => result.text)).toEqual(["Next word."]);
+    expect(accumulator.flush()).toEqual([]);
+  });
+  it("still separates final speakers and stop results when a word boundary is unavailable", () => {
+    const accumulator = new SonioxTranscriptAccumulator("speakers", 0);
+    accumulator.accept({ tokens: [{ ...token("Capac"), start_ms: 0, end_ms: 500 }] });
+    const split = accumulator.accept({ tokens: [{ ...token("itance", true, "2"), start_ms: 10_001, end_ms: 10_500 }] });
+    expect(split.finals[0]).toMatchObject({ text: "Capac", speakerLabel: "SONIOX_speakers_1" });
+    expect(accumulator.flush()[0]).toMatchObject({ text: "itance", speakerLabel: "SONIOX_speakers_2" });
+  });
   it("excludes translation/control tokens and rejects invalid responses", () => {
     const accumulator = new SonioxTranscriptAccumulator("a", 0);
     expect(accumulator.accept({ tokens: [{ ...token("translated"), translation_status: "translation" }, { text: "<fin>", is_final: true }], finished: true }).finals).toEqual([]);

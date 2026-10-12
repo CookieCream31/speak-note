@@ -22,9 +22,10 @@ Soniox Liveは話者分離の精度を優先して早期確定をOFFにしてい
 - WebSocketの設定に`translation`を追加します。一方向は`type: one_way`と`target_language`、双方向は`type: two_way`と`language_a`／`language_b`です。OFFでは送信しません。
 - 翻訳tokenは`translation_status: translation`で原文と分け、`language`を翻訳先、`source_language`を原言語として扱います。`is_final`がtrueのtokenだけ保存します。途中の仮説や制御tokenを本文へ保存しません。
 - 公式仕様で翻訳tokenには音声の時刻がなく、原文tokenと1対1の対応もありません。翻訳に時刻・Word・Evidence IDを作らず、再生位置のリンクも付けません。翻訳を原文やFinalへ混ぜず、AI解析・回答支援・会議後質問・要約再生成は従来の原文を根拠にします。
-- [公式の到着順](https://soniox.com/docs/translation/stt-translation/rt-translation#how-real-time-streaming-works)に基づき、先行する確定原文の表示ブロックを`source_result_id`で記録します。原文accumulatorの話者変更・10秒区切り・終了markerと同じ結果IDを使い、暫定翻訳から確定・遅延・再接続でも保持します。翻訳の話者や原言語と矛盾する原文には結び付けません。単語・文・時刻の厳密な対応を保証する情報ではありません。
+- [公式の到着順](https://soniox.com/docs/translation/stt-translation/rt-translation#how-real-time-streaming-works)に基づき、先行する確定原文の表示ブロックを`source_result_id`で記録します。原文accumulatorの話者変更・約10秒の単語境界での区切り・終了markerと同じ結果IDを使い、暫定翻訳から確定・遅延・再接続でも保持します。[単語途中の分断防止](soniox-transcription.md#word-boundaries)後も同じ参照を使います。翻訳の話者や原言語と矛盾する原文には結び付けません。単語・文・時刻の厳密な対応を保証する情報ではありません。
 - 保存payloadは同じSoniox接続の表示IDだけを許可します。BackendはSession内のUUIDを使ってLive原文の`source_segment_id`を計算し、別Sessionの原文へ結び付けません。翻訳が原文の保存より先に届いても保存でき、対応する原文が表示されたときに直下へ移します。順番や同じ話者名だけで旧翻訳を推測して割り当てません。この表示用参照をAIのEvidence検証へ流用しません。
 - 翻訳の話者表示も接続単位の暫定ラベルです。恒久的な人物IDとして扱いません。「保存済み」はDBへの保存であり、ユーザーが内容を確認・確定した意味ではありません。
+- 原言語と翻訳先が同じコードの場合、言語表示は「日本語（原言語の判定要確認）」などとします。同言語への矢印表示を避け、APIの言語情報と本文は保持します。保存状態とは別の表示で、原文の言語を推測して書き換えません。既存履歴も同じ表示です。
 - 翻訳の設定はMeetingへ保存し、録音開始時のRealtimeSessionの既存`transcription_request`へ固定します。一時キー更新・再接続は現在のMeetingではなく固定済み設定を使用します。非同期のJob設定には追加しません。
 - 接続前の公式モデル情報でモード・対応言語と`one_way_translation`／`two_way_translation`を検証します。現在の連携は`all_languages`を明示したモデルを受け付け、非対応・情報不足ならキー発行と音声送信を止めます。
 - 翻訳履歴は`realtime_translations`へ原文と別に保存します。Sessionとresult IDから作る一意IDで重複を防ぎ、同じIDで本文を上書きしません。Backend接続断では未確認の確定翻訳を再送し、保存応答後に再送を止めます。検証で拒否された翻訳も再送を止め、録音・原文の接続を継続します。Soniox切断時は確定済みtokenだけを残します。失敗時に過去の結果を削除しません。
