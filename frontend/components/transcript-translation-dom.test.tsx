@@ -21,15 +21,16 @@ describe("playback transcript translations", () => {
     act(() => root.render(<TranscriptDocument meetingId={meetingId} mediaUrl="/audio" turns={turns} translations={persisted} />));
     const original = host.querySelector('[data-transcript-text]');
     const article = original?.closest("article");
-    expect(article?.querySelector('li')?.textContent).toContain("原文の翻訳");
+    expect(article?.querySelector('[data-translation-paragraph]')?.textContent).toContain("原文の翻訳");
     expect(original?.textContent).toBe("Original words");
-    expect(article?.querySelector('li [data-seek-ms]')).toBeNull();
-    expect(article?.querySelector('li p')?.getAttribute('dir')).toBe("auto");
+    expect(article?.querySelector('[data-translation-paragraph] [data-seek-ms]')).toBeNull();
+    expect(article?.querySelector('[data-translation-paragraph] p')?.getAttribute('dir')).toBe("auto");
+    expect(original?.parentElement).toBe(article?.querySelector('[aria-label="リアルタイム翻訳"]')?.parentElement);
     expect(host.querySelectorAll('[data-transcript-turn]')).toHaveLength(1);
   });
   it("keeps legacy and missing-original captions visible inside the transcript document", () => {
     act(() => root.render(<TranscriptDocument meetingId={meetingId} turns={turns} translations={[{ ...persisted[0], source_segment_id: null }]} />));
-    expect(host.querySelector('article li')).toBeNull();
+    expect(host.querySelector('article [data-translation-paragraph]')).toBeNull();
     expect(host.querySelector('[data-transcript-document] [aria-label="翻訳履歴"]')?.textContent).toContain("原文の翻訳");
     act(() => root.render(<TranscriptDocument meetingId={meetingId} turns={[]} translations={persisted} />));
     expect(host.textContent).toContain("原文の翻訳");

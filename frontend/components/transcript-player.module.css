@@ -595,6 +595,7 @@
   margin: 0 -18px;
   padding: 18px;
 }
+.turnBody { grid-column: 2; min-width: 0; }
 .meta { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding-top: 5px; }
 .meta > strong { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
 .timestamp { padding: 0; color: var(--blue); background: none; border: 0; cursor: pointer; font: 700 12px var(--font-mono); }
@@ -654,6 +655,7 @@
   .videoControls .mediaTime { height: 34px; padding: 0 9px; font-size: 12px; }
   .videoChapterStatus { display: none; }
   .turn { grid-template-columns: 1fr; gap: 8px; margin: 0; padding: 18px 0; }
+  .turnBody { grid-column: 1; }
   .meta { display: grid; grid-template-columns: auto 1fr; align-items: center; }
 }
 
@@ -693,7 +695,7 @@
 .resumeFollowButton:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 .resumeFollowButton[hidden] { display: none; }
 :global([data-transcript-player][data-media-kind="audio"]) .resumeFollowButton { bottom: 132px; }
-.document { max-width: 1100px; margin: 0 auto; padding: 12px 22px 42px; }
+.document { max-width: 1100px; margin: 0 auto; padding: 12px 22px 42px; font-size: clamp(16px, 1.45vw, 20px); line-height: 1.85; }
 .turn { margin: 0; padding: 16px 4px; border-bottom: 1px solid var(--line); }
 .transcriptText { font-size: clamp(16px, 1.45vw, 20px); line-height: 1.85; }
 @media (max-width: 1180px) {
@@ -906,7 +908,7 @@
   .documentControls { padding: 9px 12px; }
   .followStatus { white-space: normal; }
   .document { padding: 8px 12px 36px; }
-  .transcriptText { font-size: 16px; line-height: 1.75; }
+  .document, .transcriptText { font-size: 16px; line-height: 1.75; }
   .player.audioPlayer { padding: 10px 9px 9px; }
   .audioControlRow { gap: 2px; }
   .audioPlayButton { min-width: 76px; padding: 0 10px; }

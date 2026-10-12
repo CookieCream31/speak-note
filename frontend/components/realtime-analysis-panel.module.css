@@ -142,7 +142,7 @@
 .transcriptToolbar strong { color: var(--blue); font-size: 12px; letter-spacing: .12em; }
 .transcriptToolbar > span { white-space: nowrap; font-weight: 800; }
 .transcriptPane > .empty { margin: 22px; }
-.transcriptDocument { max-width: 1100px; margin: 0 auto; padding: 12px 22px 42px; }
+.transcriptDocument { max-width: 1100px; margin: 0 auto; padding: 12px 22px 42px; font-size: clamp(16px, 1.45vw, 20px); line-height: 1.85; }
 
 .transcriptTurn {
   display: grid;
@@ -289,7 +289,7 @@
 }
 .streamPhrase:first-child { border-top: 0; }
 .streamPhrase[data-continuation="true"] { border-top: 0; padding-top: 0; }
-.streamPhrase .transcriptText { grid-column: 2; }
+.streamBody { grid-column: 2; min-width: 0; }
 .streamPhrase .transcriptMeta[hidden] { display: none; }
 .streamPhrase[data-final="false"] .transcriptText { color: var(--text-secondary); }
 @media (max-width: 820px) {
@@ -297,7 +297,7 @@
 }
 @media (max-width: 520px) {
   .streamPhrase { grid-template-columns: 1fr; gap: 8px; padding: 18px 0; }
-  .streamPhrase .transcriptText { grid-column: 1; }
+  .streamBody { grid-column: 1; }
 }
 
 /* Redesign 3-4: recording layout (recorder + live transcript | analysis and answer assist tabs). */

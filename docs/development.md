@@ -325,6 +325,8 @@ Frontendは`soniox-translation.ts`で時刻のない翻訳tokenを組み立て�
 
 `RecordingConnection`が翻訳の未確認結果を再送し、保存／拒否の応答でqueueから外します。`InlineTranslations`を`LiveTranscriptStream`・再生用`TranscriptDocument`の原文直下で共用し、旧履歴も同じ枠内へ表示します。高精度版ではLive原文と翻訳を開閉式の履歴に保持します。翻訳をTranscript StoreやAI Evidenceへ渡さず、字幕・カラオケ・シークも原文を使います。共通言語欄は取り込み方法が変わった際に前の対応情報を使わず、再取得まで操作を止めます。
 
+文章表示では`translation-paragraphs.ts`が連続する同じ言語対・話者の断片を段落にまとめます。保存値を変更せず、断片のspanを結果IDで保持し、暫定更新・ACKでも同じ文章の末尾を更新します。段落の状態は保存失敗→翻訳中→保存待ち→保存済みの順で集約し、エラー文は重複排除して表示します。原文と翻訳を`streamBody`／`turnBody`へまとめ、Gridの時刻列へ翻訳が配置される問題を防ぎます。本文領域の文字サイズと行間を訳文へ継承し、再生画面のスマホ向け指定にも揃えます。ブラウザでは原文と訳文の左端・幅・上下位置・文字サイズ・行間を比較し、12断片でも一つの段落になることを確認します。[文章表示の変更と検証](realtime-translation.md#translation-paragraphs)。
+
 `pytest tests/test_realtime_translation.py -q`、Frontend全体テスト・ESLint・型チェック、Alembic headsと0028→0029のoffline SQL、ブラウザの表示・保存を検証します。[変更ファイルと検証](realtime-translation.md#変更したファイル)。
 
 <a id="display-theme"></a>

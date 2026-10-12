@@ -315,11 +315,13 @@ const LiveTranscriptPhrase = memo(function LiveTranscriptPhrase({
         <strong>{final ? speakerName(segment) : "認識中"}</strong>
         <span>{final ? "暫定" : "話者は確定後に表示"}</span>
       </div>
-      <p className={styles.transcriptText} id={"live-segment-" + segment.id}>
-        {segment.persistedId && <span id={"live-segment-" + segment.persistedId} />}
-        {segment.text}
-      </p>
-      <InlineTranslations rows={translations} />
+      <div className={styles.streamBody}>
+        <p className={styles.transcriptText} id={"live-segment-" + segment.id}>
+          {segment.persistedId && <span id={"live-segment-" + segment.persistedId} />}
+          {segment.text}
+        </p>
+        <InlineTranslations rows={translations} />
+      </div>
     </article>
   );
 });

@@ -1,6 +1,6 @@
 # Sonioxリアルタイム翻訳
 
-最終照合: 2026-10-12（原文直下の表示・表示用対応情報の保存・Migration 0029）。[README](../README.md) · [会議言語](meeting-transcription-languages.md) · [反映手順](operations.md#realtime-translation)
+最終照合: 2026-10-12（翻訳断片の文章表示・本文幅と文字サイズ・暫定更新・表示用対応情報の保存・Migration 0029）。[README](../README.md) · [会議言語](meeting-transcription-languages.md) · [反映手順](operations.md#realtime-translation)
 
 ## 設定と操作
 
@@ -8,7 +8,7 @@
 2. 新しい画面共有・マイク会議の「会議で話す言語」を選び（英語の音声なら英語）、右側の「リアルタイム翻訳」をONにします。既定はOFFです。アップロード会議では表示しません。
 3. 一方向では翻訳先を1つ選びます（ON時の初期値は日本語）。双方向では異なる言語A／Bを選びます（初期値は英語／日本語）。原文の言語ヒントと翻訳先は独立しており、どちらを変更しても他方を自動変更しません。双方向でStrictを使う場合は両方の話す言語をヒントに含めます。含められない構成ではStrictをOFFにしてください。
 4. 作成前の会議ページでも「文字起こし設定」で選び直して保存できます。録音開始後は翻訳設定を変更できません。既存会議はOFFのままです。
-5. 録音中は同じ文字起こし枠で、原文の発話ブロック直下に「翻訳」を表示します。原文と翻訳は一緒にスクロールします。翻訳中の仮説は置き換え、確定した翻訳は履歴へ追加します。保存応答前は「保存待ち」、保存後は「保存済み」、拒否・送信失敗時は「保存失敗」です。
+5. 録音中は同じ文字起こし枠で、原文の文章直下に翻訳文を表示します。同じ言語・話者の細かい断片を一つの段落につなげ、本文幅・文字サイズ・行間を原文に揃えます。原文と翻訳は一緒にスクロールします。翻訳中の末尾は置き換え、確定した文章は保持します。言語と状態は段落に一度だけ表示し、保存応答前は「保存待ち」、保存後は「保存済み」、拒否・送信失敗時は「保存失敗」です。
 6. 録音停止後・ページ再読み込み後も、翻訳をLive原文の下へ表示します。対応情報のない以前の翻訳や原文未到着の翻訳は、同じ枠内の「翻訳履歴」に残します。高精度版を選択している場合は、文字起こしの下で「リアルタイム原文と翻訳」を開きます。保存音声・Live原文・Final・要約・ユーザー編集済み情報は保持します。
 
 Sonioxへ送るのは既存のリアルタイム音声です。追加のLLMや音声合成サービスは使いません。API権限は従来のLiveと同じSpeech-to-text, real-time／Temporary API keys／Model listingのAccessです。[キー権限](soniox-transcription.md#モデル一覧とapiキーの権限)。文字起こし・翻訳の利用料金や残高はSoniox側で確認してください。
@@ -34,6 +34,34 @@ Migration `20261012_0028`は0027に続き、Meetingのnullable JSONB設定と、
 Migration `20261012_0029`は0028に続き、`realtime_translations.source_result_id`（nullable String(200)）だけ追加します。旧履歴はnullのまま保持し、本文・原文・音声・既存Jobを書き換えません。0029だけのdowngradeは表示用の対応情報を失いますが、翻訳本文は保持します。
 
 運用DBへの0028・0029適用とDocker反映はこの作業では実行していません。[反映手順](operations.md#realtime-translation)で、録音・録画・保存・実行中Jobを終了してから反映します。Frontendだけの再起動では新しいDB列を追加できません。
+
+<a id="translation-paragraphs"></a>
+## 翻訳を文章として並べる表示修正
+
+以前の表示は翻訳の断片ごとにカードを追加し、PCではGridの時刻・話者列に翻訳が配置されていました。現在は原文と訳文を同じ本文列に置き、同じ言語対・話者で連続する断片を一つの文章段落につなげます。空白を使う言語では断片間に空白を補い、日本語等や句読点の前には不要な空白を加えません。保存データや原文への対応は変更しません。
+
+段落の言語・状態は一度だけ表示します。暫定の末尾は同じspanで更新し、確定した文章を保持します。状態は保存失敗・翻訳中・保存待ち・保存済みの優先順で集約します。同じエラー文は一度だけ表示し、失敗した文章も残します。言語対・話者が変わると段落を分けます。原文と訳文の本文幅・文字サイズ・行間をPC・スマホ・Live履歴で揃え、訳文のクリックを再生位置の指定として扱いません。
+
+この修正はFrontendだけで、追加のMigration・環境変数・依存はありません。現行headは0029のままです。0029まで適用済みなら[Frontendのみの反映手順](operations.md#translation-paragraphs)を使用します。
+
+| 役割 | 変更したファイル |
+| --- | --- |
+| 断片の段落化と表示 | `frontend/lib/translation-paragraphs.ts`、`frontend/components/live-translation-panel.tsx`、`live-translation-panel.module.css` |
+| 原文と訳文を同じ本文列へ配置 | `frontend/components/realtime-analysis-panel.tsx`・CSS、`frontend/components/transcript-player.tsx`・CSS |
+| テスト | `frontend/lib/translation-paragraphs.test.ts`、`frontend/components/{live-translation-panel,live-transcript-dom,transcript-translation-dom}.test.tsx` |
+| 文書 | `README.md`、`DESIGN.md`、`docs/{realtime-translation,usage,development,operations}.md` |
+
+| コマンド | 結果 |
+| --- | --- |
+| `node node_modules/vitest/vitest.mjs run` | Frontend全体287件・50ファイル成功 |
+| `node node_modules/eslint/bin/eslint.js .` | 成功 |
+| `node node_modules/typescript/bin/tsc --noEmit` | 成功 |
+| `git diff --check` | 成功。Frontendには専用formatterなし |
+| Playwright Chromium（mock API＋実Component＋実CSS） | light／dark × 320・393・560・844・1280・1920px × 録音中・Live再生・Finalの36条件で、12断片が一つの文章・左端と幅の一致・上下位置・文字サイズと行間の一致・暫定更新・保存失敗・RTL・横overflowなしを確認 |
+
+Backend・DB・音声送信・tokenの確定判定を変更していないため、今回はBackendテストとMigration検証を再実行していません。下記に0029実装時の結果を残します。実Soniox音声・実機Safari・Docker反映は今回も未検証です。
+
+動作確認: 日本語→英語で短く録音し、「Hi, hello.」「So, um, well,」等の短い翻訳がカードを増やさず、原文の文章の下でつながって読めることを確認します。PCでもスマホでも左端・本文幅を確認し、録音停止後に再読み込みして保存済み履歴も確認します。高精度版を閲覧している場合は「リアルタイム原文と翻訳」を開きます。
 
 <a id="変更したファイル"></a>
 ## 原文直下の表示で変更したファイル（0029）

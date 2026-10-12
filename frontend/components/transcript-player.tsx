@@ -509,22 +509,24 @@ export function TranscriptDocument({
                 <strong>{turn.speakerName}</strong>
               )}
             </div>
-            <button
-              type="button"
-              className={styles.transcriptText}
-              data-transcript-text
-              data-turn-index={index}
-              data-seek-ms={turn.startMs}
-              disabled={!mediaUrl}
-              title="クリックした単語・文字の位置から再生"
-            >
-              <span data-karaoke-before />
-              <span className={styles.karaokeHighlight} data-karaoke-highlight />
-              <span data-karaoke-after>
-                {turn.words.map((word) => word.text).join("")}
-              </span>
-            </button>
-            <InlineTranslations rows={bySource.get(turn.id) ?? []} />
+            <div className={styles.turnBody}>
+              <button
+                type="button"
+                className={styles.transcriptText}
+                data-transcript-text
+                data-turn-index={index}
+                data-seek-ms={turn.startMs}
+                disabled={!mediaUrl}
+                title="クリックした単語・文字の位置から再生"
+              >
+                <span data-karaoke-before />
+                <span className={styles.karaokeHighlight} data-karaoke-highlight />
+                <span data-karaoke-after>
+                  {turn.words.map((word) => word.text).join("")}
+                </span>
+              </button>
+              <InlineTranslations rows={bySource.get(turn.id) ?? []} />
+            </div>
           </article>
         ))}
         <TranslationRemainder rows={unmatched} waiting={Boolean(translation) && !rows.length} />

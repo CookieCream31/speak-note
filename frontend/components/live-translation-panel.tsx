@@ -3,6 +3,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 import type { LiveTranslation, RealtimeTranslationConfig } from "@/lib/api";
 import { getLiveTranslationStore } from "@/lib/live-translation-store";
+import { groupTranslationParagraphs, translationSeparator } from "@/lib/translation-paragraphs";
 import styles from "./live-translation-panel.module.css";
 
 const names = new Intl.DisplayNames(["ja"], { type: "language" });
@@ -22,13 +23,28 @@ export function useLiveTranslations(meetingId: string, persisted: LiveTranslatio
 export function InlineTranslations({ rows, showSpeaker = false }: { rows: LiveTranslation[]; showSpeaker?: boolean }) {
   if (!rows.length) return null;
   return <div className={styles.inline} aria-label="リアルタイム翻訳">
-    <ol className={styles.rows}>
-      {rows.map((row) => <li key={row.result_id} data-interim={row.isFinal === false}>
-        <div className={styles.meta}><strong>翻訳</strong>{showSpeaker && <span>{row.speaker_label && row.speaker_label !== "SPEAKER_UNKNOWN" ? row.speaker_label : "話者不明"}</span>}<span>{names.of(row.source_language) ?? row.source_language} → {names.of(row.target_language) ?? row.target_language}</span><small>{row.error ? "保存失敗" : row.isFinal === false ? "翻訳中" : row.saved ? "保存済み" : "保存待ち"}</small></div>
-        <p dir="auto">{row.text}</p>
-        {row.error && <p className={styles.error} role="alert">{row.error}</p>}
-      </li>)}
-    </ol>
+    {groupTranslationParagraphs(rows).map((paragraph) => {
+      const first = paragraph.rows[0];
+      const errors = [...new Set(paragraph.rows.flatMap((row) => row.error ? [row.error] : []))];
+      const status = errors.length ? "保存失敗"
+        : paragraph.rows.some((row) => row.isFinal === false) ? "翻訳中"
+        : paragraph.rows.some((row) => !row.saved) ? "保存待ち" : "保存済み";
+      return <div className={styles.paragraph} key={paragraph.id} data-translation-paragraph>
+        <div className={styles.meta}>
+          <strong>翻訳</strong>
+          {showSpeaker && <span>{first.speaker_label && first.speaker_label !== "SPEAKER_UNKNOWN" ? first.speaker_label : "話者不明"}</span>}
+          <span>{names.of(first.source_language) ?? first.source_language} → {names.of(first.target_language) ?? first.target_language}</span>
+          <small>{status}</small>
+        </div>
+        <p className={styles.text} dir="auto">
+          {paragraph.rows.map((row, index) => <span key={row.result_id}
+            data-translation-result-id={row.result_id} data-interim={row.isFinal === false}>
+            {index > 0 ? translationSeparator(paragraph.rows[index - 1].text, row.text, row.target_language) : ""}{row.text}
+          </span>)}
+        </p>
+        {errors.map((error) => <p key={error} className={styles.error} role="alert">{error}</p>)}
+      </div>;
+    })}
   </div>;
 }
 

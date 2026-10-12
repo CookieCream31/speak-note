@@ -162,6 +162,20 @@ sudo docker compose ps backend frontend worker live-worker realtime-ai-worker an
 
 Migrationで失敗した場合はWorkerを停止したままBackendログを確認します。Volumeを削除しません。反映後にブラウザを再読み込みし、翻訳のON／OFF・翻訳先、短い英語音声→日本語、双方向を確認してください。原文の発話直下へ翻訳が届くこと、同じ枠内でスクロールすること、停止・再読み込み後も対応を保つこと、高精度版では「リアルタイム原文と翻訳」を開けること、旧翻訳を閲覧できることも確認します。[操作と検証](realtime-translation.md)。
 
+<a id="translation-paragraphs"></a>
+## 翻訳を文章で表示する修正の反映
+
+この修正はFrontendのみで、追加のDB変更・依存・環境変数はありません。Migration 0029まで反映済みの環境では、録音・録画・保存が終了してから以下を実行します。0029以前なら、上の[Backendを含む反映手順](#realtime-translation)を使用してください。同じ環境でソース更新済みなら`git pull`は省略できます。
+
+```bash
+cd /home/llm/speak-note
+git pull --ff-only
+sudo docker compose restart frontend
+sudo docker compose ps frontend
+```
+
+反映後にブラウザを再読み込みし、同じ言語・話者の短い翻訳断片がカードを積まず一つの文章になること、原文と訳文の左端・本文幅・文字サイズが揃うこと、PCとスマートフォンで読み進められることを確認します。停止後のLive履歴と、高精度版の「リアルタイム原文と翻訳」でも同じ表示を確認します。[変更・検証記録](realtime-translation.md#translation-paragraphs)。
+
 <a id="language-picker-ui"></a>
 ### 言語の検索一覧・タグ・詳細設定への表示改善
 

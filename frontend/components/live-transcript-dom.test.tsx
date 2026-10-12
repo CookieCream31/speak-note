@@ -50,15 +50,15 @@ describe("mounted live transcript transitions", () => {
     act(() => getLiveTranslationStore(meetingId).accept(translation, false));
     expect(first?.textContent).toContain("翻訳中");
     expect(second?.textContent).not.toContain("こん");
-    const caption = first?.querySelector('li');
+    const caption = first?.querySelector('[data-translation-result-id="t"]');
     act(() => getLiveTranslationStore(meetingId).accept({ ...translation, text: "こんにちは" }, true));
     act(() => getLiveTranslationStore(meetingId).markSaved("t"));
-    expect(first?.querySelector('li')).toBe(caption);
+    expect(first?.querySelector('[data-translation-result-id="t"]')).toBe(caption);
     expect(first?.textContent).toContain("こんにちは");
     expect(first?.textContent).toContain("保存済み");
     expect(container.querySelector('[data-result-id="first"]')).toBe(first);
     expect(container.querySelector('[data-result-id="second"]')).toBe(second);
-    expect(first?.querySelector('li [data-seek-ms]')).toBeNull();
+    expect(first?.querySelector('[data-translation-paragraph] [data-seek-ms]')).toBeNull();
   });
   it("places saved translations below saved originals after reload and keeps legacy captions in the same document", () => {
     const segment: TranscriptSegment = { id: "db-source", text: "Stored original", start_ms: 0, end_ms: 1000, confidence: null, sequence: 0, speaker: null, provisional_speaker_label: "話者 1", words: [] };
@@ -71,7 +71,8 @@ describe("mounted live transcript transitions", () => {
     expect(source?.textContent).not.toContain("以前の翻訳");
     const document = container.querySelector('[aria-label="ライブ文字起こし"]');
     expect(document?.querySelector('[aria-label="翻訳履歴"]')?.textContent).toContain("以前の翻訳");
-    expect(document?.querySelectorAll('li')).toHaveLength(2);
+    expect(document?.querySelectorAll('[data-translation-result-id]')).toHaveLength(2);
+    expect(document?.querySelectorAll('[data-translation-paragraph]')).toHaveLength(2);
   });
   it("retains the actual phrase DOM node on finalization and same-speaker grouping", () => {
     render();
