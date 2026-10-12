@@ -321,9 +321,11 @@ formatter／lint／型チェックは変更範囲で成功を確認し、全体�
 
 `schemas/translation.py`が一方向／双方向の設定と保存payloadを検証します。Meetingの設定は開始時にSessionへ固定し、Soniox Clientが公式モデルの翻訳対応をキー発行前に確認します。`services/realtime/translation.py`は原文とは別テーブルに確定翻訳を保存し、Sessionのrow lockと一意IDで重複を防ぎます。保存応答を返す前にlockを解放し、同じIDの異なる本文は拒否します。翻訳だけの検証失敗は終了応答として再送を止め、録音・原文の接続を継続します。
 
-Frontendは`soniox-translation.ts`で時刻のない翻訳tokenを組み立て、`live-translation-store.ts`で仮説と確定履歴を分離します。`RecordingConnection`が翻訳の未確認結果を再送し、保存／拒否の応答でqueueから外します。`LiveTranslationPanel`は録音中と停止後の履歴・保存状態を表示し、翻訳をTranscript StoreやAI Evidenceへ渡しません。共通言語欄は取り込み方法が変わった際に前の対応情報を使わず、再取得まで操作を止めます。
+Frontendは`soniox-translation.ts`で時刻のない翻訳tokenを組み立て、`live-translation-store.ts`で仮説と確定履歴を分離します。原文accumulatorが確定tokenの表示結果IDを記録し、翻訳accumulatorは到着順で先行する同じ話者・原言語の表示ブロックを参照します。`source_result_id`は0029で保存し、BackendのSession内UUIDから`source_segment_id`を返します。原文未保存でも翻訳を受け付け、IDが表示されるまでは同じ枠の末尾に残します。別Session・別接続やFinalへ推測で対応付けません。
 
-`pytest tests/test_realtime_translation.py -q`、Frontend全体テスト・ESLint・型チェック、Alembic headsと0027→0028のoffline SQL、ブラウザの表示・保存を検証します。[変更ファイルと検証](realtime-translation.md#変更したファイル)。
+`RecordingConnection`が翻訳の未確認結果を再送し、保存／拒否の応答でqueueから外します。`InlineTranslations`を`LiveTranscriptStream`・再生用`TranscriptDocument`の原文直下で共用し、旧履歴も同じ枠内へ表示します。高精度版ではLive原文と翻訳を開閉式の履歴に保持します。翻訳をTranscript StoreやAI Evidenceへ渡さず、字幕・カラオケ・シークも原文を使います。共通言語欄は取り込み方法が変わった際に前の対応情報を使わず、再取得まで操作を止めます。
+
+`pytest tests/test_realtime_translation.py -q`、Frontend全体テスト・ESLint・型チェック、Alembic headsと0028→0029のoffline SQL、ブラウザの表示・保存を検証します。[変更ファイルと検証](realtime-translation.md#変更したファイル)。
 
 <a id="display-theme"></a>
 ## 表示テーマの実装と変更時の確認

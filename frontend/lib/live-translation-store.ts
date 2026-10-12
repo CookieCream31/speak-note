@@ -2,6 +2,27 @@ import type { LiveTranslation } from "./api";
 import type { LiveTranslationResult } from "./soniox-translation";
 
 const EMPTY = { history: [] as LiveTranslation[], interim: null as LiveTranslation | null };
+
+/** Only explicit display anchors are used; order and speaker names are not evidence of a match. */
+export function partitionLiveTranslations(
+  rows: LiveTranslation[],
+  sources: { id: string; aliases?: string[] }[],
+) {
+  const anchors = new Map(sources.flatMap((source) =>
+    [source.id, ...(source.aliases ?? [])].map((id) => [id, source.id] as const)));
+  const bySource = new Map<string, LiveTranslation[]>();
+  const unmatched: LiveTranslation[] = [];
+  for (const row of rows) {
+    const anchor = (row.source_result_id && anchors.get(row.source_result_id))
+      || (row.source_segment_id && anchors.get(row.source_segment_id));
+    if (!anchor) { unmatched.push(row); continue; }
+    const group = bySource.get(anchor) ?? [];
+    group.push(row);
+    bySource.set(anchor, group);
+  }
+  return { bySource, unmatched };
+}
+
 export function createLiveTranslationStore() {
   let snapshot = EMPTY;
   const finalized = new Set<string>();
@@ -17,7 +38,8 @@ export function createLiveTranslationStore() {
       if (!result.text.trim() || finalized.has(result.resultId)) return;
       const row: LiveTranslation = { id: result.resultId, result_id: result.resultId, sequence: snapshot.history.length,
         text: result.text, source_language: result.sourceLanguage, target_language: result.targetLanguage,
-        speaker_label: result.speakerLabel, isFinal, saved: saved.has(result.resultId) };
+        speaker_label: result.speakerLabel, source_result_id: result.sourceResultId,
+        isFinal, saved: saved.has(result.resultId) };
       if (isFinal) {
         finalized.add(result.resultId);
         update({ history: [...snapshot.history, row], interim: snapshot.interim?.result_id === result.resultId ? null : snapshot.interim });

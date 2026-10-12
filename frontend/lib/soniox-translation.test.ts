@@ -33,6 +33,43 @@ describe("Soniox live translation", () => {
     expect(() => parseSonioxResponse({ tokens: [{ ...token("翻訳"), language: undefined }] })).toThrow("翻訳言語");
     expect(() => parseSonioxResponse({ tokens: [{ ...token("翻訳"), source_language: 1 }] })).toThrow("翻訳言語");
   });
+  it("keeps a delayed translation under its original display block across response boundaries", () => {
+    const original = new SonioxTranscriptAccumulator("socket", 0);
+    const translated = new SonioxTranslationAccumulator("socket");
+    const accept = (response: Parameters<typeof original.accept>[0]) => {
+      const originals = original.accept(response);
+      return translated.accept(response, (item) => originals.sourceResultIds.get(item));
+    };
+    accept({ tokens: [{ text: "Hello", is_final: true, start_ms: 0, end_ms: 500, speaker: "1" }, { text: "<end>", is_final: true }] });
+    const draft = accept({ tokens: [token("こん", false)] });
+    expect(draft.interim?.sourceResultId).toBe("socket:0");
+    expect(accept({ tokens: [token("こんにちは"), { text: "<end>", is_final: true }] }).finals[0])
+      .toMatchObject({ text: "こんにちは", sourceResultId: "socket:0" });
+    accept({ tokens: [{ text: "Next", is_final: true, start_ms: 600, end_ms: 1000, speaker: "2" }] });
+    const next = accept({ tokens: [{ ...token("次の発言"), speaker: "2" }], finished: true });
+    expect(next.finals[0].sourceResultId).toBe("socket:1");
+    expect(new SonioxTranslationAccumulator("new-connection").accept({ tokens: [token("再接続後")], finished: true }).finals[0].sourceResultId).toBeNull();
+  });
+  it("uses actual original phrase boundaries for multiple speakers and long speech in one response", () => {
+    const original = new SonioxTranscriptAccumulator("socket", 0);
+    const translated = new SonioxTranslationAccumulator("socket");
+    const response = { tokens: [
+      { text: "First", is_final: true, start_ms: 0, end_ms: 1000, speaker: "1" }, token("最初"),
+      { text: "Second", is_final: true, start_ms: 10_100, end_ms: 11_000, speaker: "1" }, token("続き"),
+      { text: "Third", is_final: true, start_ms: 11_000, end_ms: 12_000, speaker: "2" }, { ...token("別の話者"), speaker: "2" },
+    ], finished: true };
+    const originals = original.accept(response);
+    expect(translated.accept(response, (item) => originals.sourceResultIds.get(item)).finals.map((row) => row.sourceResultId))
+      .toEqual(["socket:0", "socket:1", "socket:2"]);
+  });
+  it("leaves conflicting speaker or language metadata unpaired instead of attaching to the wrong original", () => {
+    const accumulator = new SonioxTranslationAccumulator("socket");
+    const source = { text: "Hello", is_final: true, start_ms: 0, end_ms: 100, speaker: "1", language: "en" };
+    accumulator.accept({ tokens: [source] }, () => "socket:0");
+    expect(accumulator.accept({ tokens: [{ ...token("別の話者"), speaker: "2" }], finished: true }).finals[0].sourceResultId).toBeNull();
+    accumulator.accept({ tokens: [source] }, () => "socket:0");
+    expect(accumulator.accept({ tokens: [token("別の言語", true, "ja", "fr")], finished: true }).finals[0].sourceResultId).toBeNull();
+  });
   it("separates drafts, ignores duplicate finals, and marks only acknowledged results as saved", () => {
     const store = createLiveTranslationStore();
     const result = { resultId: "x", text: "Hello", sourceLanguage: "ja", targetLanguage: "en", speakerLabel: "話者 1" };

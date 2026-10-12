@@ -1,9 +1,9 @@
-.panel { display: grid; gap: 12px; min-width: 0; padding: 16px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
-.panel header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
-.panel h3 { margin: 0; font-size: 14px; }
-.panel header span, .panel > p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
-.rows { display: grid; gap: 12px; max-height: 360px; margin: 0; padding: 0; list-style: none; overflow-y: auto; overflow-wrap: anywhere; }
-.rows li { padding: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.inline { min-width: 0; margin-top: 10px; padding-left: 12px; border-left: 2px solid var(--accent); }
+.remainder { min-width: 0; padding: 12px 0; }
+.remainder h3 { margin: 0 0 4px; font-size: 12px; font-weight: 600; color: var(--ink); }
+.remainder > p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.rows { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; overflow-wrap: anywhere; }
+.rows li { min-width: 0; padding: 10px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
 .rows li[data-interim="true"] { border-style: dashed; }
 .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 12px; }
 .meta strong { font-weight: 600; }

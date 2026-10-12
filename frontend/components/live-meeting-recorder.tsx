@@ -560,7 +560,7 @@ export function LiveMeetingRecorder({
               if (isFinal) {
                 try { queuePayload({ type: "soniox_translation", result_id: result.resultId,
                   text: result.text, source_language: result.sourceLanguage, target_language: result.targetLanguage,
-                  speaker_label: result.speakerLabel }); }
+                  speaker_label: result.speakerLabel, source_result_id: result.sourceResultId ?? null }); }
                 catch (error) {
                   const message = error instanceof Error ? error.message : "翻訳結果を保存できませんでした";
                   getLiveTranslationStore(meetingId).markFailed(result.resultId, message);

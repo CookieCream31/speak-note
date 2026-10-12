@@ -2,6 +2,9 @@
 
 import { ArrowDown, Download, Maximize, Pause, Play, RotateCcw, RotateCw, Volume2, VolumeX } from "lucide-react";
 import Script from "next/script";
+import type { LiveTranslation, RealtimeTranslationConfig } from "@/lib/api";
+import { partitionLiveTranslations } from "@/lib/live-translation-store";
+import { InlineTranslations, TranslationRemainder, useLiveTranslations } from "./live-translation-panel";
 
 import { InlineSpeakerName } from "./inline-speaker-name";
 import { VideoSettings } from "./video-settings";
@@ -23,6 +26,7 @@ export interface PlaybackTurn {
   speakerId: string | null;
   speakerName: string;
   words: PlaybackWord[];
+  sourceSegmentIds?: string[];
 }
 
 export interface PlaybackChapter {
@@ -451,8 +455,19 @@ export function TranscriptDocument({
   meetingId,
   mediaUrl,
   turns,
-}: Pick<TranscriptPlayerProps, "mediaUrl" | "turns"> & { meetingId: string }) {
-  if (turns.length === 0) return null;
+  translations,
+  translation,
+}: Pick<TranscriptPlayerProps, "mediaUrl" | "turns"> & {
+  meetingId: string;
+  translations?: LiveTranslation[];
+  translation?: RealtimeTranslationConfig | null;
+}) {
+  const rows = useLiveTranslations(meetingId, translations,
+    Boolean(translation || translations?.length || turns.some((turn) => turn.sourceSegmentIds?.length)));
+  const { bySource, unmatched } = partitionLiveTranslations(rows, turns.map((turn) => ({
+    id: turn.id, aliases: turn.sourceSegmentIds,
+  })));
+  if (turns.length === 0 && !rows.length && !translation) return null;
 
   return (
     <div className={styles.transcriptBody}>
@@ -509,8 +524,10 @@ export function TranscriptDocument({
                 {turn.words.map((word) => word.text).join("")}
               </span>
             </button>
+            <InlineTranslations rows={bySource.get(turn.id) ?? []} />
           </article>
         ))}
+        <TranslationRemainder rows={unmatched} waiting={Boolean(translation) && !rows.length} />
       </div>
     </div>
   );

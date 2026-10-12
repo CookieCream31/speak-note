@@ -53,9 +53,10 @@ export class SonioxTranscriptAccumulator {
     };
   }
 
-  accept(response: SonioxResponse): { finals: AzureSpeechResult[]; interim: AzureSpeechResult | null } {
+  accept(response: SonioxResponse) {
     const finals: AzureSpeechResult[] = [];
     const drafts: SonioxToken[] = [];
+    const sourceResultIds = new Map<SonioxToken, string>();
     const flush = () => {
       const result = this.result(this.pending);
       if (result) { finals.push(result); this.sequence += 1; }
@@ -71,11 +72,12 @@ export class SonioxTranscriptAccumulator {
       const previous = this.pending.at(-1);
       if (previous && (previous.speaker !== token.speaker
           || (token.start_ms ?? 0) - (this.pending[0].start_ms ?? 0) >= 10_000)) flush();
+      sourceResultIds.set(token, this.resultId);
       this.pending.push(token);
     }
     if (response.finished) flush();
     // Non-final tokens replace the hypothesis on each response.
-    return { finals, interim: this.result([...this.pending, ...drafts]) };
+    return { finals, interim: this.result([...this.pending, ...drafts]), sourceResultIds };
   }
 
   flush(): AzureSpeechResult[] { return this.accept({ finished: true }).finals; }
@@ -138,7 +140,7 @@ export async function startSonioxSpeechStream(options: StreamOptions): Promise<A
     if (results?.interim) options.onInterim?.(present(results.interim));
     else if (previousId) options.onInterimCleared?.(previousId);
     const previousTranslationId = translations?.resultId;
-    const translated = translations?.accept(response);
+    const translated = translations?.accept(response, (token) => results?.sourceResultIds.get(token));
     translated?.finals.forEach((result) => publishTranslation(result));
     if (translated?.interim) publishTranslation(translated.interim, false);
     else if (previousTranslationId) options.onTranslationCleared?.(previousTranslationId);

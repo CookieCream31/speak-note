@@ -4,6 +4,8 @@ import { MeetingReviewPanel } from "@/components/meeting-review-panel";
 import MeetingDetailPage from "./page";
 import { AppStatusPage } from "@/components/app-status-page";
 import { SummaryRegenerationButton } from "@/components/final-transcript-button";
+import { MeetingWorkspace } from "@/components/meeting-workspace";
+import { LiveTranscriptStream } from "@/components/realtime-analysis-panel";
 
 vi.mock("@/app/actions", () => ({ updateSegmentAction: vi.fn() }));
 vi.mock("@/components/meeting-review-panel", () => ({ MeetingReviewPanel: () => null }));
@@ -22,6 +24,14 @@ const realtime = { status: "completed", model: "live-ai", updated_at: "2026-09-2
   }, decisions: [], action_items: [], attention_items: [], key_facts: [] } };
 let finalAnalysis: Record<string, unknown> | null;
 let sharedAudio = false;
+let translationsEnabled = false;
+function workspace(node: ReactNode): ReactElement<ComponentProps<typeof MeetingWorkspace>> | undefined {
+  if (Array.isArray(node)) {
+    for (const child of node) { const found = workspace(child); if (found) return found; }
+  } else if (isValidElement<ComponentProps<typeof MeetingWorkspace>>(node) && node.type === MeetingWorkspace) {
+    return node;
+  } else if (isValidElement<{ children?: ReactNode }>(node)) return workspace(node.props.children);
+}
 function review(node: ReactNode): ReactElement<ReviewProps> | undefined {
   if (Array.isArray(node)) {
     for (const child of node) { const found = review(child); if (found) return found; }
@@ -50,6 +60,7 @@ async function page(search: { analysis_id?: string; transcript_kind?: string } =
   return panel;
 }
 beforeEach(() => {
+  translationsEnabled = false;
   finalAnalysis = null;
   sharedAudio = false;
   vi.stubGlobal("fetch", vi.fn(async (url: string) => {
@@ -63,7 +74,8 @@ beforeEach(() => {
     else if (path.endsWith("/media") && sharedAudio) data = [{ id: "audio", kind: "original_audio", mime_type: "audio/webm" }];
     else if (path.endsWith("/transcript?kind=live")) data = liveTranscript;
     else if (path.endsWith("/live/analysis")) data = realtime;
-    else if (path.endsWith("/live")) data = { status: "completed" };
+    else if (path.endsWith("/live")) data = { status: "completed", translation: translationsEnabled ? { type: "one_way", target_language: "ja" } : null,
+      translations: translationsEnabled ? [{ id: "caption", result_id: "caption", text: "翻訳", sequence: 0, source_language: "en", target_language: "ja", source_segment_id: "live-segment", speaker_label: null }] : [] };
     else if (path.endsWith("/analysis") || path.endsWith("/analyses/a")) {
       data = finalAnalysis; status = data ? 200 : 404;
     } else if (path.endsWith("/jobs")) data = sharedAudio ? [] : [{ id: "job", type: "analyze", status: "running", attempts: 1 }];
@@ -73,6 +85,28 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("meeting summary regeneration presentation", () => {
+  it("passes saved translations and original segment anchors into the Live transcript workspace", async () => {
+    translationsEnabled = true;
+    const element = await MeetingDetailPage({ params: Promise.resolve({ meeting_id: "m" }), searchParams: Promise.resolve({ transcript_kind: "live" }) });
+    const props = workspace(element)?.props;
+    expect(props?.playback.turns[0].sourceSegmentIds).toEqual(["live-segment"]);
+    expect(props?.transcriptTranslations?.[0].text).toBe("翻訳");
+    expect(props?.realtimeTranslation).toEqual({ type: "one_way", target_language: "ja" });
+  });
+  it("keeps realtime translations with realtime originals in the Final transcript footer", async () => {
+    translationsEnabled = true;
+    const element = await MeetingDetailPage({ params: Promise.resolve({ meeting_id: "m" }), searchParams: Promise.resolve({ transcript_kind: "final" }) });
+    const props = workspace(element)?.props;
+    expect(props?.playback.turns[0].sourceSegmentIds).toBeUndefined();
+    expect(props?.transcriptTranslations).toEqual([]);
+    expect(props?.realtimeTranslation).toBeNull();
+    const footer = props?.transcriptFooter as ReactElement<{ children: ReactNode[] }>;
+    const details = footer.props.children[0] as ReactElement<{ children: ReactNode[] }>;
+    const stream = details.props.children[1] as ReactElement<ComponentProps<typeof LiveTranscriptStream>>;
+    expect(stream.type).toBe(LiveTranscriptStream);
+    expect(stream.props.persistedSegments[0].id).toBe("live-segment");
+    expect(stream.props.persistedTranslations?.[0].text).toBe("翻訳");
+  });
   it("shows stopped shared audio as saved realtime notes ready for the first Final without video conversion", async () => {
     sharedAudio = true;
     const element = await MeetingDetailPage({ params: Promise.resolve({ meeting_id: "m" }),

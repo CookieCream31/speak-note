@@ -42,6 +42,7 @@ export interface LiveTranslation {
   id: string; result_id: string; sequence: number; text: string;
   source_language: string; target_language: string; speaker_label: string | null;
   created_at?: string; isFinal?: boolean; saved?: boolean; error?: string;
+  source_result_id?: string | null; source_segment_id?: string | null;
 }
 
 export interface RealtimeTranscriptionSettings {

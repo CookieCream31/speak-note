@@ -80,7 +80,7 @@ sudo docker compose restart frontend
 <a id="soniox"></a>
 ## Sonioxリアルタイム・非同期の反映（Migration 0026）
 
-Migration 0026は0025の後にLive設定・非同期設定・Job checkpointを追加しました。現行headは、会議言語とリアルタイム翻訳も追加した`20261012_0028`です。最新コードの反映は[リアルタイム翻訳の反映](#realtime-translation)を参照してください。新しい環境変数や依存追加はありません。録音・録画・保存・実行中Jobがすべて完了してから実行してください。
+Migration 0026は0025の後にLive設定・非同期設定・Job checkpointを追加しました。現行headは、会議言語・リアルタイム翻訳・原文直下の表示用対応情報も追加した`20261012_0029`です。最新コードの反映は[リアルタイム翻訳の反映](#realtime-translation)を参照してください。新しい環境変数や依存追加はありません。録音・録画・保存・実行中Jobがすべて完了してから実行してください。
 
 ```bash
 cd /home/llm/speak-note
@@ -89,7 +89,7 @@ sudo docker compose stop worker live-worker realtime-ai-worker answer-worker
 sudo docker compose restart backend
 sudo docker compose up -d --wait --no-deps backend
 sudo docker compose exec -T backend alembic current
-# 現行ソースは20261012_0028 (head)を確認してからWorkerを再開
+# 現行ソースは20261012_0029 (head)を確認してからWorkerを再開
 sudo docker compose up -d --no-deps worker live-worker realtime-ai-worker answer-worker
 sudo docker compose restart frontend
 sudo docker compose ps backend frontend worker live-worker realtime-ai-worker answer-worker
@@ -130,7 +130,7 @@ sudo docker compose stop worker live-worker realtime-ai-worker answer-worker
 sudo docker compose restart backend
 sudo docker compose up -d --wait --no-deps backend
 sudo docker compose exec -T backend alembic current
-# 現行ソースは20261012_0028 (head)を確認してからWorkerを再開
+# 現行ソースは20261012_0029 (head)を確認してからWorkerを再開
 sudo docker compose up -d --no-deps worker live-worker realtime-ai-worker answer-worker
 sudo docker compose restart frontend
 sudo docker compose ps backend frontend worker live-worker realtime-ai-worker answer-worker
@@ -138,12 +138,12 @@ sudo docker compose ps backend frontend worker live-worker realtime-ai-worker an
 
 Backend起動時にMigrationを適用します。失敗した場合はWorkerを止めたまま`sudo docker compose logs --tail=100 backend`で確認します。Volumeを削除しません。ブラウザ再読み込み後、「新しい会議」の「会議で話す言語」、AI設定の言語欄がなくなったこと、会議ページの「文字起こし設定」を確認し、[短い録音と再生成の確認](meeting-transcription-languages.md#動作確認)を行います。
 
-当時の利用者の提示ログで運用DBの`20261012_0027 (head)`、BackendのHealthy、4つのWorkerのStartedを確認しました。後続の言語UI変更後のログではFrontendの再起動後のUpも確認しました。[0027とFrontendの反映記録](meeting-transcription-languages.md#deployment-confirmation)。現在のソースには未反映のリアルタイム翻訳の0028も含むため、最新変更は次の手順で反映します。
+当時の利用者の提示ログで運用DBの`20261012_0027 (head)`、BackendのHealthy、4つのWorkerのStartedを確認しました。後続の言語UI変更後のログではFrontendの再起動後のUpも確認しました。[0027とFrontendの反映記録](meeting-transcription-languages.md#deployment-confirmation)。現在のソースにはリアルタイム翻訳の0028と表示用対応情報の0029も含みます。これらの運用DB反映ログは未確認のため、最新変更は次の手順で反映します。
 
 <a id="realtime-translation"></a>
-## リアルタイム翻訳の反映（Migration 0028）
+## リアルタイム翻訳の反映（Migration 0028・0029）
 
-Meetingへ翻訳設定、原文とは別の翻訳履歴を追加します。既存の会議・文字起こし・要約・Job・認証情報を保持し、新しい設定はOFFです。追加環境変数・依存追加はありません。運用DBへの0028適用とDocker反映は未実施です。
+0028はMeetingへ翻訳設定、原文とは別の翻訳履歴を追加します。0029は翻訳履歴へnullableな`source_result_id`を追加し、原文直下の表示順を停止後も保ちます。旧翻訳はnullのままで、文字起こし枠の原文の後に表示します。既存の会議・文字起こし・翻訳・要約・Job・認証情報を保持し、新しい設定はOFFです。追加環境変数・依存追加はありません。運用DBへの適用とDocker反映はこの作業では実行していません。
 
 録音・録画・保存・実行中Jobをすべて終えてから実行します。同じ環境でソースが更新済みなら`git pull`は省略できます。
 
@@ -154,18 +154,18 @@ git pull --ff-only
 sudo docker compose restart backend
 sudo docker compose up -d --wait --no-deps backend
 sudo docker compose exec -T backend alembic current
-# 20261012_0028 (head)とBackendのHealthyを確認してから再開
+# 20261012_0029 (head)とBackendのHealthyを確認してから再開
 sudo docker compose up -d --no-deps worker live-worker realtime-ai-worker answer-worker
 sudo docker compose restart frontend
 sudo docker compose ps backend frontend worker live-worker realtime-ai-worker answer-worker
 ```
 
-Migrationで失敗した場合はWorkerを停止したままBackendログを確認します。Volumeを削除しません。反映後にブラウザを再読み込みし、タグと「言語を選ぶ」の枠の高さ、翻訳のON／OFF・翻訳先、短い英語音声→日本語、双方向、停止・再読み込み後の翻訳履歴を確認してください。[操作と検証](realtime-translation.md)。
+Migrationで失敗した場合はWorkerを停止したままBackendログを確認します。Volumeを削除しません。反映後にブラウザを再読み込みし、翻訳のON／OFF・翻訳先、短い英語音声→日本語、双方向を確認してください。原文の発話直下へ翻訳が届くこと、同じ枠内でスクロールすること、停止・再読み込み後も対応を保つこと、高精度版では「リアルタイム原文と翻訳」を開けること、旧翻訳を閲覧できることも確認します。[操作と検証](realtime-translation.md)。
 
 <a id="language-picker-ui"></a>
 ### 言語の検索一覧・タグ・詳細設定への表示改善
 
-この表示改善自体は追加のDB変更がありません。当時は0027適用済みの環境へFrontendだけを反映しました。現行ソースはリアルタイム翻訳の0028も含むため、最新変更には[0028の反映手順](#realtime-translation)を使います。以下は当時のFrontendだけの反映例です。録音・録画と保存を終えてから実行します。
+この表示改善自体は追加のDB変更がありません。当時は0027適用済みの環境へFrontendだけを反映しました。現行ソースはリアルタイム翻訳の0028・0029も含むため、最新変更には[0029までの反映手順](#realtime-translation)を使います。以下は当時のFrontendだけの反映例です。録音・録画と保存を終えてから実行します。
 
 ```bash
 cd /home/llm/speak-note

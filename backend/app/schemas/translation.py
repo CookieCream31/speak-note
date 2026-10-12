@@ -44,6 +44,23 @@ class StreamingTranslation(BaseModel):
     source_language: LanguageCode
     target_language: LanguageCode
     speaker_label: str | None = Field(default=None, max_length=100)
+    source_result_id: str | None = Field(default=None, min_length=1, max_length=200)
+
+    @model_validator(mode="after")
+    def same_source_connection(self) -> "StreamingTranslation":
+        if self.source_result_id is not None:
+            prefix, marker, sequence = self.result_id.rpartition(":translation:")
+            source_prefix, separator, source_sequence = self.source_result_id.rpartition(":")
+            if (
+                not marker
+                or not prefix
+                or not sequence.isdecimal()
+                or not separator
+                or not source_sequence.isdecimal()
+                or source_prefix != prefix
+            ):
+                raise ValueError("翻訳の原文は同じ接続の文字起こしを指定してください")
+        return self
 
 
 class RealtimeTranslationRead(BaseModel):
@@ -55,4 +72,6 @@ class RealtimeTranslationRead(BaseModel):
     source_language: str
     target_language: str
     speaker_label: str | None
+    source_result_id: str | None = None
+    source_segment_id: uuid.UUID | None = None
     created_at: datetime

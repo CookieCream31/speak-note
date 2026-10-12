@@ -13,8 +13,7 @@ import { MeetingProjectSelector } from "@/components/meeting-project-selector";
 import { MeetingQuestionPanel } from "@/components/meeting-question-panel";
 import { MeetingReviewPanel } from "@/components/meeting-review-panel";
 import { MeetingTranscriptionSettings } from "@/components/meeting-transcription-settings";
-import { RealtimeAnalysisPanel } from "@/components/realtime-analysis-panel";
-import { LiveTranslationPanel } from "@/components/live-translation-panel";
+import { LiveTranscriptStream, RealtimeAnalysisPanel } from "@/components/realtime-analysis-panel";
 import { MeetingToolsPanel } from "@/components/meeting-tools-panel";
 import { MeetingWorkspace } from "@/components/meeting-workspace";
 import { ThemeSelector } from "@/components/theme-selector";
@@ -285,6 +284,7 @@ export default async function MeetingDetailPage({
     speakerId: turn.speakerKey === "unknown" ? null : turn.speakerKey,
     speakerName: turn.speakerName,
     words: buildPlaybackWords(turn.segments),
+    sourceSegmentIds: transcript?.kind === "live" ? turn.segments.map((segment) => segment.id) : undefined,
   }));
   const playbackChapters: PlaybackChapter[] = resolvePlaybackChapters(
     displayedAnalysis,
@@ -487,9 +487,10 @@ export default async function MeetingDetailPage({
       )}
 
       <section className={styles.transcriptSection}>
-        {archivedLiveMeeting && <LiveTranslationPanel meetingId={meeting.id} translation={liveSession?.translation} persisted={liveSession?.translations} />}
         <MeetingWorkspace
           meetingId={meeting.id}
+          transcriptTranslations={archivedLiveMeeting && transcript?.kind !== "final" ? liveSession?.translations : []}
+          realtimeTranslation={archivedLiveMeeting && transcript?.kind !== "final" ? liveSession?.translation : null}
           playback={{
             mediaUrl,
             downloadUrl: mediaDownloadUrl,
@@ -547,25 +548,39 @@ export default async function MeetingDetailPage({
             </>
           )}
           transcriptFooter={transcript?.kind === "final" ? (
-            <details key={`transcript-editor-${transcript.id}`} className={styles.transcriptEditor}>
-              <summary>文字起こしを修正する</summary>
-              <ol className={styles.editorSegments}>
-                {transcript.segments.map((segment) => (
-                  <li key={segment.id}>
-                    <div className={styles.segmentMeta}>
-                      <time>{formatTimestamp(segment.start_ms)}</time>
-                      <strong>{speakerName(segment)}</strong>
-                    </div>
-                    <form action={updateSegmentAction}>
-                      <input type="hidden" name="meeting_id" value={meeting.id} />
-                      <input type="hidden" name="segment_id" value={segment.id} />
-                      <textarea name="text" defaultValue={segment.text} required rows={2} />
-                      <button type="submit">修正を保存</button>
-                    </form>
-                  </li>
-                ))}
-              </ol>
-            </details>
+            <>
+              {archivedLiveMeeting && (liveSession?.translation || liveSession?.translations?.length) && (
+                <details className={styles.transcriptEditor}>
+                  <summary>リアルタイム原文と翻訳</summary>
+                  <LiveTranscriptStream
+                    meetingId={meeting.id}
+                    recording={false}
+                    persistedSegments={liveTranscript?.segments ?? []}
+                    translation={liveSession?.translation}
+                    persistedTranslations={liveSession?.translations}
+                  />
+                </details>
+              )}
+              <details key={`transcript-editor-${transcript.id}`} className={styles.transcriptEditor}>
+                <summary>文字起こしを修正する</summary>
+                <ol className={styles.editorSegments}>
+                  {transcript.segments.map((segment) => (
+                    <li key={segment.id}>
+                      <div className={styles.segmentMeta}>
+                        <time>{formatTimestamp(segment.start_ms)}</time>
+                        <strong>{speakerName(segment)}</strong>
+                      </div>
+                      <form action={updateSegmentAction}>
+                        <input type="hidden" name="meeting_id" value={meeting.id} />
+                        <input type="hidden" name="segment_id" value={segment.id} />
+                        <textarea name="text" defaultValue={segment.text} required rows={2} />
+                        <button type="submit">修正を保存</button>
+                      </form>
+                    </li>
+                  ))}
+                </ol>
+              </details>
+            </>
           ) : null}
           tools={(
             <MeetingToolsPanel

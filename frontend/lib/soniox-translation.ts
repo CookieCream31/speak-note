@@ -3,12 +3,17 @@ import type { SonioxResponse, SonioxToken } from "./soniox-speech-stream";
 export interface LiveTranslationResult {
   resultId: string; text: string; sourceLanguage: string; targetLanguage: string;
   speakerLabel: string;
+  sourceResultId?: string | null;
 }
 
 /** Translation tokens are ordered captions, without audio timestamps or evidence IDs. */
 export class SonioxTranslationAccumulator {
   private pending: SonioxToken[] = [];
   private sequence = 0;
+  private latestSourceResultId: string | null = null;
+  private latestSourceSpeaker: string | undefined;
+  private latestSourceLanguage: string | undefined;
+  private pendingSourceResultId: string | null = null;
   constructor(private prefix: string) {}
   get resultId() { return `${this.prefix}:translation:${this.sequence}`; }
   private result(tokens: SonioxToken[]): LiveTranslationResult | null {
@@ -17,15 +22,17 @@ export class SonioxTranslationAccumulator {
     if (!text || !first?.language || !first.source_language) return null;
     return { resultId: this.resultId, text, sourceLanguage: first.source_language,
       targetLanguage: first.language,
-      speakerLabel: first.speaker ? `SONIOX_${this.prefix}_${first.speaker}` : "SPEAKER_UNKNOWN" };
+      speakerLabel: first.speaker ? `SONIOX_${this.prefix}_${first.speaker}` : "SPEAKER_UNKNOWN",
+      sourceResultId: this.pendingSourceResultId };
   }
-  accept(response: SonioxResponse) {
+  accept(response: SonioxResponse, sourceResultId?: (token: SonioxToken) => string | undefined) {
     const finals: LiveTranslationResult[] = [];
     const drafts: SonioxToken[] = [];
     const flush = () => {
       const result = this.result(this.pending);
       if (result) { finals.push(result); this.sequence += 1; }
       this.pending = [];
+      this.pendingSourceResultId = null;
     };
     for (const token of response.tokens ?? []) {
       if (token.text === "<end>" || token.text === "<fin>") {
@@ -33,12 +40,22 @@ export class SonioxTranslationAccumulator {
         continue;
       }
       if (token.translation_status !== "translation") {
-        if (token.is_final) flush();
+        if (token.is_final) {
+          flush();
+          this.latestSourceResultId = sourceResultId?.(token) ?? null;
+          this.latestSourceSpeaker = token.speaker;
+          this.latestSourceLanguage = token.language;
+        }
         continue;
       }
       const first = this.pending[0] ?? drafts[0];
       if (first && (first.language !== token.language || first.source_language !== token.source_language || first.speaker !== token.speaker)) {
         flush(); drafts.length = 0;
+      }
+      if (!this.pending.length && !drafts.length) {
+        this.pendingSourceResultId = token.speaker === this.latestSourceSpeaker
+          && (!this.latestSourceLanguage || token.source_language === this.latestSourceLanguage)
+          ? this.latestSourceResultId : null;
       }
       if (token.is_final) this.pending.push(token);
       else drafts.push(token);

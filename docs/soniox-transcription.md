@@ -61,7 +61,7 @@ Full accessをOFFにし、用途別に以下を指定します。WriteはReadの
 
 ## 実装と検証
 
-主要な変更はBackendの`services/transcription/soniox.py`・設定API／モデル／schema・Job／Worker・Liveの結果保存と一時キー発行、Frontendの`soniox-speech-stream.ts`・`pcm-audio-input.ts`・録音UI・独立した設定フォームです。初回導入のMigrationは`20261012_0026`（0025の後）、現在のheadは会議言語設定とリアルタイム翻訳を追加した`20261012_0028`です。既存Azure PCM Workletを共有し、停止時の末尾flushを追加しました。恒久キーや音声をGitへ含めません。0027は[会議言語ガイド](meeting-transcription-languages.md#実装検証)、0028は[リアルタイム翻訳ガイド](realtime-translation.md)を参照してください。
+主要な変更はBackendの`services/transcription/soniox.py`・設定API／モデル／schema・Job／Worker・Liveの結果保存と一時キー発行、Frontendの`soniox-speech-stream.ts`・`pcm-audio-input.ts`・録音UI・独立した設定フォームです。初回導入のMigrationは`20261012_0026`（0025の後）、現在のheadは会議言語設定・リアルタイム翻訳・原文直下の表示用対応情報を追加した`20261012_0029`です。既存Azure PCM Workletを共有し、停止時の末尾flushを追加しました。恒久キーや音声をGitへ含めません。0027は[会議言語ガイド](meeting-transcription-languages.md#実装検証)、0028・0029は[リアルタイム翻訳ガイド](realtime-translation.md)を参照してください。
 
 テストはmock HTTP／WebSocketとSQLiteのAPIテストで、設定の独立・暗号化、Sonioxのtoken連結／時刻／話者、失敗時保護、初回FinalからのAI／テンプレート引継ぎ、処理ID再利用、曖昧な送信の再送停止、重複発話の防止、停止処理、UIの保存・処理中・エラーを確認します。PostgreSQL Migrationは運用DBへ接続せずoffline SQLで検証します。
 

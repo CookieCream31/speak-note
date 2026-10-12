@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, useEffect, useState } from "react";
+import type { LiveTranslation, RealtimeTranslationConfig } from "@/lib/api";
 
 import {
   SPEAKER_RENAMED_EVENT,
@@ -28,6 +29,8 @@ interface MeetingWorkspaceProps {
   transcriptHeader: ReactNode;
   transcriptFooter: ReactNode;
   tools: ReactNode;
+  transcriptTranslations?: LiveTranslation[];
+  realtimeTranslation?: RealtimeTranslationConfig | null;
 }
 
 const notesLabels: Record<NotesView, string> = {
@@ -95,6 +98,8 @@ export function MeetingWorkspace({
   transcriptHeader,
   transcriptFooter,
   tools,
+  transcriptTranslations,
+  realtimeTranslation,
 }: MeetingWorkspaceProps) {
   const chapters = orderChapters(playback.chapters ?? []);
   const [notesView, setNotesView] = useState<NotesView>("notes");
@@ -198,6 +203,8 @@ export function MeetingWorkspace({
               meetingId={meetingId}
               mediaUrl={visiblePlayback.mediaUrl}
               turns={visiblePlayback.turns}
+              translations={transcriptTranslations}
+              translation={realtimeTranslation}
             />
             {transcriptFooter}
           </div>

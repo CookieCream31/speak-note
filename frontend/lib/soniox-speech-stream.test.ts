@@ -79,6 +79,7 @@ describe("Soniox streaming lifecycle", () => {
     socket.close();
     expect(onResult.mock.calls[0][0].text).toBe("Hello");
     expect(onTranslation.mock.calls[0][0]).toMatchObject({ text: "こんにちは", speakerLabel: "話者 1" });
+    expect(onTranslation.mock.calls[0][0].sourceResultId).toBe(onResult.mock.calls[0][0].resultId);
     expect(onTranslation.mock.calls[0][0]).not.toHaveProperty("startMs");
     await vi.advanceTimersByTimeAsync(1000); await tick();
     const next = FakeSocket.instances[1]; next.open(); await tick();

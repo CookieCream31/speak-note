@@ -13,12 +13,15 @@ import {
 } from "react";
 
 import { getLiveTranscriptStore, type StreamingTranscriptSegment } from "@/lib/live-transcript-store";
-import { LiveTranslationPanel } from "./live-translation-panel";
+import { partitionLiveTranslations } from "@/lib/live-translation-store";
+import { InlineTranslations, TranslationRemainder, useLiveTranslations } from "./live-translation-panel";
 
 export type { StreamingTranscriptSegment } from "@/lib/live-transcript-store";
 import type {
   LiveSession,
+  LiveTranslation,
   MeetingTemplateSnapshot,
+  RealtimeTranslationConfig,
   RealtimeAnalysis,
   RealtimeAnalysisEvidence,
   TranscriptSegment,
@@ -37,6 +40,7 @@ interface RealtimeAnalysisPanelProps {
 }
 
 const EMPTY_PERSISTED_SEGMENTS: TranscriptSegment[] = [];
+const EMPTY_TRANSLATIONS: LiveTranslation[] = [];
 
 type RealtimeView = "summary" | "transcript";
 type ViewStatus = "waiting" | "queued" | "processing" | "completed" | "failed";
@@ -292,9 +296,11 @@ export function composeLiveTranscriptStream(
 const LiveTranscriptPhrase = memo(function LiveTranscriptPhrase({
   segment,
   continuation,
+  translations = EMPTY_TRANSLATIONS,
 }: {
   segment: StreamingTranscriptSegment;
   continuation: boolean;
+  translations?: LiveTranslation[];
 }) {
   const final = segment.isFinal ?? true;
   return (
@@ -313,6 +319,7 @@ const LiveTranscriptPhrase = memo(function LiveTranscriptPhrase({
         {segment.persistedId && <span id={"live-segment-" + segment.persistedId} />}
         {segment.text}
       </p>
+      <InlineTranslations rows={translations} />
     </article>
   );
 });
@@ -322,10 +329,14 @@ export const LiveTranscriptStream = memo(function LiveTranscriptStream({
   meetingId,
   recording,
   persistedSegments,
+  translation,
+  persistedTranslations = EMPTY_TRANSLATIONS,
 }: {
   meetingId: string;
   recording: boolean;
   persistedSegments: TranscriptSegment[];
+  translation?: RealtimeTranslationConfig | null;
+  persistedTranslations?: LiveTranslation[];
 }) {
   const store = getLiveTranscriptStore(meetingId);
   const snapshot = useSyncExternalStore(
@@ -341,16 +352,31 @@ export const LiveTranscriptStream = memo(function LiveTranscriptStream({
     [turns],
   );
   const visible = snapshot.interim ? [...history, snapshot.interim] : history;
-  if (!visible.length) return <LiveTranscriptDocument segments={[]} hideEmpty={recording} />;
+  const translations = useLiveTranslations(meetingId, persistedTranslations);
+  const interimId = snapshot.interim?.id;
+  const sources = useMemo(() => {
+    const anchors = history.map((segment) => {
+      const persistedId = (segment as StreamingTranscriptSegment).persistedId;
+      return { id: segment.id, aliases: persistedId ? [persistedId] : [] };
+    });
+    if (interimId) anchors.push({ id: interimId, aliases: [] });
+    return anchors;
+  }, [history, interimId]);
+  const { bySource, unmatched } = useMemo(
+    () => partitionLiveTranslations(translations, sources), [translations, sources],
+  );
   return (
     <div className={styles.transcriptDocument} aria-label="ライブ文字起こし">
+      {!visible.length && <LiveTranscriptDocument segments={[]} hideEmpty={recording} />}
       {visible.map((segment) => (
         <LiveTranscriptPhrase
           key={segment.id}
           segment={segment}
           continuation={(segment as StreamingTranscriptSegment).isFinal !== false && !starts.has(segment.id)}
+          translations={bySource.get(segment.id)}
         />
       ))}
+      <TranslationRemainder rows={unmatched} waiting={Boolean(translation) && !translations.length} />
     </div>
   );
 });
@@ -667,13 +693,15 @@ export function RealtimeAnalysisPanel({
     </>
   );
   const transcriptViewport = (
-    <><LiveTranscriptViewport>
+    <LiveTranscriptViewport>
       <LiveTranscriptStream
         meetingId={meetingId}
         recording={liveSession?.status === "recording"}
         persistedSegments={liveSession?.segments ?? EMPTY_PERSISTED_SEGMENTS}
+        translation={liveSession?.translation}
+        persistedTranslations={liveSession?.translations}
       />
-    </LiveTranscriptViewport><LiveTranslationPanel meetingId={meetingId} translation={liveSession?.translation} persisted={liveSession?.translations} /></>
+    </LiveTranscriptViewport>
   );
   const statusIndicator = (
     <div className={styles.status} data-status={viewStatus.key} aria-live="polite">

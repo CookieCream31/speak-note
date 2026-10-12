@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LiveTranscriptStream } from "./realtime-analysis-panel";
 import { getLiveTranscriptStore } from "@/lib/live-transcript-store";
+import { getLiveTranslationStore } from "@/lib/live-translation-store";
 import type { LiveTranscriptUpsertDetail } from "@/lib/live-transcript-events";
 import type { TranscriptSegment } from "@/lib/api";
 
@@ -39,6 +40,39 @@ afterEach(() => {
 });
 
 describe("mounted live transcript transitions", () => {
+  it("updates the translation directly below its original while retaining both original DOM nodes", () => {
+    render();
+    update("first", "Hello", true, "話者 1");
+    update("second", "Next speaker", true, "話者 2");
+    const first = container.querySelector('[data-result-id="first"]');
+    const second = container.querySelector('[data-result-id="second"]');
+    const translation = { resultId: "t", text: "こん", sourceLanguage: "en", targetLanguage: "ja", speakerLabel: "話者 1", sourceResultId: "first" };
+    act(() => getLiveTranslationStore(meetingId).accept(translation, false));
+    expect(first?.textContent).toContain("翻訳中");
+    expect(second?.textContent).not.toContain("こん");
+    const caption = first?.querySelector('li');
+    act(() => getLiveTranslationStore(meetingId).accept({ ...translation, text: "こんにちは" }, true));
+    act(() => getLiveTranslationStore(meetingId).markSaved("t"));
+    expect(first?.querySelector('li')).toBe(caption);
+    expect(first?.textContent).toContain("こんにちは");
+    expect(first?.textContent).toContain("保存済み");
+    expect(container.querySelector('[data-result-id="first"]')).toBe(first);
+    expect(container.querySelector('[data-result-id="second"]')).toBe(second);
+    expect(first?.querySelector('li [data-seek-ms]')).toBeNull();
+  });
+  it("places saved translations below saved originals after reload and keeps legacy captions in the same document", () => {
+    const segment: TranscriptSegment = { id: "db-source", text: "Stored original", start_ms: 0, end_ms: 1000, confidence: null, sequence: 0, speaker: null, provisional_speaker_label: "話者 1", words: [] };
+    act(() => root.render(<LiveTranscriptStream meetingId={meetingId} recording={false} persistedSegments={[segment]} persistedTranslations={[
+      { id: "db-t", result_id: "t", sequence: 1, text: "保存済み翻訳", source_language: "en", target_language: "ja", speaker_label: "話者 1", source_result_id: "socket:0", source_segment_id: "db-source" },
+      { id: "legacy", result_id: "old", sequence: 2, text: "以前の翻訳", source_language: "en", target_language: "ja", speaker_label: "話者 1" },
+    ]} />));
+    const source = container.querySelector('[data-result-id="db-source"]');
+    expect(source?.textContent).toContain("保存済み翻訳");
+    expect(source?.textContent).not.toContain("以前の翻訳");
+    const document = container.querySelector('[aria-label="ライブ文字起こし"]');
+    expect(document?.querySelector('[aria-label="翻訳履歴"]')?.textContent).toContain("以前の翻訳");
+    expect(document?.querySelectorAll('li')).toHaveLength(2);
+  });
   it("retains the actual phrase DOM node on finalization and same-speaker grouping", () => {
     render();
     update("first", "最初の発話。", true);

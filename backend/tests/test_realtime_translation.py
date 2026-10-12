@@ -2,6 +2,7 @@ import uuid
 
 import httpx
 import pytest
+from pydantic import ValidationError
 from sqlalchemy import func, select
 from test_meeting_transcription_languages import configured as configured
 
@@ -22,6 +23,62 @@ def create(client, config=ONE, source="audio_recording"):
         "/api/v1/meetings",
         json={"title": "翻訳の会議", "source_type": source, "realtime_translation": config},
     )
+
+
+@pytest.mark.parametrize("source", ["other:0", "connection:not-a-number", "", "x" * 201])
+def test_translation_source_rejects_invalid_or_different_connections(source):
+    with pytest.raises(ValidationError):
+        StreamingTranslation(
+            result_id="connection:translation:0",
+            source_result_id=source,
+            text="こんにちは",
+            source_language="en",
+            target_language="ja",
+        )
+
+
+def test_display_source_is_scoped_to_the_session_and_legacy_captions_have_no_anchor():
+    first, second = uuid.uuid4(), uuid.uuid4()
+    row = RealtimeTranslation(session_id=first, source_result_id="connection:0")
+    assert row.source_segment_id == uuid.uuid5(first, "soniox:connection:0")
+    row.session_id = second
+    assert row.source_segment_id != uuid.uuid5(first, "soniox:connection:0")
+    row.source_result_id = None
+    assert row.source_segment_id is None
+
+
+def test_invalid_source_does_not_stop_original_recording(client, configured, session_factory):
+    meeting = create(client).json()
+    with client.websocket_connect(f"/api/v1/meetings/{meeting['id']}/live/ws") as ws:
+        ws.send_json({"type": "start", "mime_type": "audio/webm", "has_system_audio": False})
+        assert ws.receive_json()["type"] == "started"
+        ws.send_json(
+            {
+                "type": "soniox_translation",
+                "result_id": "connection:translation:0",
+                "source_result_id": "other:0",
+                "text": "こんにちは",
+                "source_language": "en",
+                "target_language": "ja",
+            }
+        )
+        assert ws.receive_json()["type"] == "soniox_translation_error"
+        ws.send_json(
+            {
+                "type": "soniox_result",
+                "result_id": "connection:0",
+                "text": "Hello",
+                "start_ms": 0,
+                "end_ms": 100,
+            }
+        )
+        assert ws.receive_json()["type"] == "soniox_result_saved"
+        ws.send_json({"type": "chunk", "sequence": 0, "start_ms": 0, "end_ms": 1500})
+        ws.send_bytes(b"audio")
+        assert ws.receive_json()["type"] == "chunk_saved"
+    with session_factory() as db:
+        assert db.scalar(select(func.count()).select_from(RealtimeTranslation)) == 0
+        assert db.scalar(select(func.count()).select_from(TranscriptSegment)) == 1
 
 
 @pytest.mark.parametrize("config", [None, ONE, TWO])
@@ -96,6 +153,7 @@ def test_snapshot_tokens_and_separate_translation_history_survive_reconnect(
     payload = {
         "type": "soniox_translation",
         "result_id": "connection:translation:0",
+        "source_result_id": "connection:0",
         "text": "こんにちは",
         "source_language": "en",
         "target_language": "ja",
@@ -118,20 +176,23 @@ def test_snapshot_tokens_and_separate_translation_history_survive_reconnect(
         ws.send_json(
             {
                 "type": "soniox_result",
-                "result_id": "original:0",
+                "result_id": "connection:0",
                 "text": "Hello",
                 "start_ms": 100,
                 "end_ms": 500,
                 "speaker_label": "話者 1",
             }
         )
-        assert ws.receive_json()["type"] == "soniox_result_saved"
+        original_saved = ws.receive_json()
+        assert original_saved["type"] == "soniox_result_saved"
         ws.send_json({"type": "chunk", "sequence": 0, "start_ms": 0, "end_ms": 1500})
         ws.send_bytes(b"audio")
         assert ws.receive_json()["type"] == "chunk_saved"
     live = client.get(base).json()
     assert [row["text"] for row in live["segments"]] == ["Hello"]
     assert [row["text"] for row in live["translations"]] == ["こんにちは"]
+    assert live["translations"][0]["source_result_id"] == "connection:0"
+    assert live["translations"][0]["source_segment_id"] == original_saved["segment_id"]
     assert "start_ms" not in live["translations"][0]
     assert live["translation"] == ONE
     assert client.patch(url, json={"realtime_translation": None}).status_code == 409

@@ -1,6 +1,6 @@
 # Sonioxリアルタイム翻訳
 
-最終照合: 2026-10-12。[README](../README.md) · [会議言語](meeting-transcription-languages.md) · [反映手順](operations.md#realtime-translation)
+最終照合: 2026-10-12（原文直下の表示・表示用対応情報の保存・Migration 0029）。[README](../README.md) · [会議言語](meeting-transcription-languages.md) · [反映手順](operations.md#realtime-translation)
 
 ## 設定と操作
 
@@ -8,8 +8,8 @@
 2. 新しい画面共有・マイク会議の「会議で話す言語」を選び（英語の音声なら英語）、右側の「リアルタイム翻訳」をONにします。既定はOFFです。アップロード会議では表示しません。
 3. 一方向では翻訳先を1つ選びます（ON時の初期値は日本語）。双方向では異なる言語A／Bを選びます（初期値は英語／日本語）。原文の言語ヒントと翻訳先は独立しており、どちらを変更しても他方を自動変更しません。双方向でStrictを使う場合は両方の話す言語をヒントに含めます。含められない構成ではStrictをOFFにしてください。
 4. 作成前の会議ページでも「文字起こし設定」で選び直して保存できます。録音開始後は翻訳設定を変更できません。既存会議はOFFのままです。
-5. 録音中は原文の下に「リアルタイム翻訳」を表示します。翻訳中の仮説は置き換え、確定した翻訳は履歴へ追加します。保存応答前は「保存待ち」、保存後は「保存済み」、拒否・送信失敗時は「保存失敗」です。
-6. 録音停止後・ページ再読み込み後も、別に保存した翻訳を会議ページで確認できます。保存音声・Live原文・Final・要約・ユーザー編集済み情報は保持します。
+5. 録音中は同じ文字起こし枠で、原文の発話ブロック直下に「翻訳」を表示します。原文と翻訳は一緒にスクロールします。翻訳中の仮説は置き換え、確定した翻訳は履歴へ追加します。保存応答前は「保存待ち」、保存後は「保存済み」、拒否・送信失敗時は「保存失敗」です。
+6. 録音停止後・ページ再読み込み後も、翻訳をLive原文の下へ表示します。対応情報のない以前の翻訳や原文未到着の翻訳は、同じ枠内の「翻訳履歴」に残します。高精度版を選択している場合は、文字起こしの下で「リアルタイム原文と翻訳」を開きます。保存音声・Live原文・Final・要約・ユーザー編集済み情報は保持します。
 
 Sonioxへ送るのは既存のリアルタイム音声です。追加のLLMや音声合成サービスは使いません。API権限は従来のLiveと同じSpeech-to-text, real-time／Temporary API keys／Model listingのAccessです。[キー権限](soniox-transcription.md#モデル一覧とapiキーの権限)。文字起こし・翻訳の利用料金や残高はSoniox側で確認してください。
 
@@ -20,6 +20,8 @@ Sonioxへ送るのは既存のリアルタイム音声です。追加のLLMや�
 - WebSocketの設定に`translation`を追加します。一方向は`type: one_way`と`target_language`、双方向は`type: two_way`と`language_a`／`language_b`です。OFFでは送信しません。
 - 翻訳tokenは`translation_status: translation`で原文と分け、`language`を翻訳先、`source_language`を原言語として扱います。`is_final`がtrueのtokenだけ保存します。途中の仮説や制御tokenを本文へ保存しません。
 - 公式仕様で翻訳tokenには音声の時刻がなく、原文tokenと1対1の対応もありません。翻訳に時刻・Word・Evidence IDを作らず、再生位置のリンクも付けません。翻訳を原文やFinalへ混ぜず、AI解析・回答支援・会議後質問・要約再生成は従来の原文を根拠にします。
+- [公式の到着順](https://soniox.com/docs/translation/stt-translation/rt-translation#how-real-time-streaming-works)に基づき、先行する確定原文の表示ブロックを`source_result_id`で記録します。原文accumulatorの話者変更・10秒区切り・終了markerと同じ結果IDを使い、暫定翻訳から確定・遅延・再接続でも保持します。翻訳の話者や原言語と矛盾する原文には結び付けません。単語・文・時刻の厳密な対応を保証する情報ではありません。
+- 保存payloadは同じSoniox接続の表示IDだけを許可します。BackendはSession内のUUIDを使ってLive原文の`source_segment_id`を計算し、別Sessionの原文へ結び付けません。翻訳が原文の保存より先に届いても保存でき、対応する原文が表示されたときに直下へ移します。順番や同じ話者名だけで旧翻訳を推測して割り当てません。この表示用参照をAIのEvidence検証へ流用しません。
 - 翻訳の話者表示も接続単位の暫定ラベルです。恒久的な人物IDとして扱いません。「保存済み」はDBへの保存であり、ユーザーが内容を確認・確定した意味ではありません。
 - 翻訳の設定はMeetingへ保存し、録音開始時のRealtimeSessionの既存`transcription_request`へ固定します。一時キー更新・再接続は現在のMeetingではなく固定済み設定を使用します。非同期のJob設定には追加しません。
 - 接続前の公式モデル情報でモード・対応言語と`one_way_translation`／`two_way_translation`を検証します。現在の連携は`all_languages`を明示したモデルを受け付け、非対応・情報不足ならキー発行と音声送信を止めます。
@@ -29,9 +31,37 @@ Sonioxへ送るのは既存のリアルタイム音声です。追加のLLMや�
 
 Migration `20261012_0028`は0027に続き、Meetingのnullable JSONB設定と、Sessionへcascadeする翻訳履歴テーブルを追加します。既存会議の設定はnull（OFF）で、元音声・原文・Job・要約・認証情報を変更しません。環境変数・依存追加はありません。downgradeは翻訳設定と翻訳履歴を失うため、バックアップして処理停止後に行います。
 
-運用DBへの0028適用とDocker反映は未実施です。[反映手順](operations.md#realtime-translation)で、録音・録画・保存・実行中Jobを終了してから反映します。
+Migration `20261012_0029`は0028に続き、`realtime_translations.source_result_id`（nullable String(200)）だけ追加します。旧履歴はnullのまま保持し、本文・原文・音声・既存Jobを書き換えません。0029だけのdowngradeは表示用の対応情報を失いますが、翻訳本文は保持します。
 
-## 変更したファイル
+運用DBへの0028・0029適用とDocker反映はこの作業では実行していません。[反映手順](operations.md#realtime-translation)で、録音・録画・保存・実行中Jobを終了してから反映します。Frontendだけの再起動では新しいDB列を追加できません。
+
+<a id="変更したファイル"></a>
+## 原文直下の表示で変更したファイル（0029）
+
+| 役割 | ファイル |
+| --- | --- |
+| DB・保存payload・読取 | `backend/alembic/versions/20261012_0029_translation_source.py`、`backend/app/models/translation.py`、`backend/app/schemas/translation.py` |
+| tokenの表示用対応情報・Store | `frontend/lib/{api,soniox-speech-stream,soniox-translation,live-translation-store}.ts`、`frontend/components/live-meeting-recorder.tsx` |
+| 原文直下の表示・同じスクロール・停止後の履歴 | `frontend/components/{live-translation-panel,realtime-analysis-panel,transcript-player,meeting-workspace}.tsx`、`live-translation-panel.module.css`、`frontend/app/meetings/[meeting_id]/page.tsx` |
+| テスト | `backend/tests/test_realtime_translation.py`、`frontend/lib/{soniox-speech-stream,soniox-translation,live-translation-store}.test.ts`、`frontend/components/{live-transcript-dom,transcript-translation-dom}.test.tsx`、`frontend/app/meetings/[meeting_id]/page.test.tsx` |
+| 文書 | `README.md`、`DESIGN.md`、`docs/{realtime-translation,soniox-transcription,meeting-transcription-languages,usage,development,operations}.md` |
+
+確認手順: 英語→日本語の短い録音を行い、原文の発話ブロック直下で翻訳中→保存待ち→保存済みの遷移を確認します。次の話者の原文が届いてから前の翻訳が確定しても、前のブロックに残ることを確認します。停止・再読み込み後も並びを確認し、高精度版を作った後は「リアルタイム原文と翻訳」を開きます。既存翻訳の「翻訳履歴」、翻訳OFF・アップロード・要約再生成・回答支援・会議後質問も確認してください。
+
+| コマンド | 結果 |
+| --- | --- |
+| `pytest -q` | Backend全体303件成功、既存deprecation warning 7件 |
+| `ruff format --check`／`ruff check`（変更した4つのPython・テスト・Migration） | 成功 |
+| `mypy --follow-imports=silent app/models/translation.py app/schemas/translation.py` | 成功 |
+| `node node_modules/vitest/vitest.mjs run` | Frontend全体276件・49ファイル成功 |
+| `node node_modules/typescript/bin/tsc --noEmit`／`node node_modules/eslint/bin/eslint.js .` | 成功。Frontendは専用formatterなし |
+| `alembic history -r 20261012_0027:heads` | 0027→0028→0029、headは1つ |
+| `DATABASE_URL=postgresql+psycopg://dummy:dummy@localhost/dummy alembic upgrade 20261012_0028:head --sql` | nullable列追加のPostgreSQL用SQL生成成功。運用DB接続・適用なし |
+| Playwright Chromium（mock API＋実Component＋実CSS） | light／dark × 320・393・560・844・1280px × 録音中・Live再生・Finalの30条件で原文直下・同じ枠の旧履歴・暫定更新・保存失敗・RTL・横overflowなしを確認 |
+
+実Soniox音声・実スマートフォンSafari・運用PostgreSQLでの0029適用と同時要求は未検証です。mockの応答とSQLiteで、原文保存前の翻訳・同じ接続のID検証・Session分離・仮説から確定・遅延・再接続・同一発話内の区切り・再読み込み・旧履歴・Finalへの誤対応防止・既存結果の保持を検証しています。
+
+## 初回翻訳導入で変更したファイル（0028）
 
 | 役割 | ファイル |
 | --- | --- |
@@ -44,7 +74,7 @@ Migration `20261012_0028`は0027に続き、Meetingのnullable JSONB設定と、
 
 言語タグ内の削除ボタンが44pxで、タグの上下の枠を加えると46pxになる問題も修正しました。タグと「言語を選ぶ」の外枠を44pxに揃え、ライト／ダークの既存配色を維持しています。
 
-## 検証と残る確認
+## 初回翻訳導入の検証（0028）
 
 Backend・Frontendのテストは外部APIをmockし、APIテストのDBはSQLiteです。設定の独立・不正設定・原文と翻訳の分離・時刻を作らない保存・双方向の組み合わせ・重複と書換え拒否・再接続とACK・停止後の履歴・モデル能力の確認・UIの保存・処理中・エラー・取り込み方法変更中の操作禁止を検証します。
 
