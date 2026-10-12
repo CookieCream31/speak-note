@@ -410,7 +410,7 @@ export function TranscriptMediaPlayer({
                   <Play size={20} data-play-glyph />
                   <Pause size={20} data-pause-glyph />
                 </span>
-                <span data-play-label>再生</span>
+                <span className={styles.visuallyHidden} data-play-label>再生</span>
               </button>
               <button
                 type="button"

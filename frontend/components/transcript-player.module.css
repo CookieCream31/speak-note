@@ -847,17 +847,19 @@
 }
 .audioDownloadButton > span[aria-hidden="true"] { font-size: 17px; }
 .audioPlayButton {
-  min-width: 122px;
-  padding: 0 24px;
+  flex: 0 0 44px;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
   color: var(--on-primary);
   background: var(--primary-bg);
   border-radius: 999px;
-  font-size: 11px;
 }
+.audioPlayButton > [data-play-icon] { display: flex; }
 .audioPlayButton:hover { background: var(--primary-hover); }
 .audioUtilityButton:focus-visible,
 .audioPlayButton:focus-visible,
@@ -870,7 +872,6 @@
   .playbackRate { margin-right: 0; }
   .playbackRateButton { width: 54px; padding-right: 5px; padding-left: 8px; }
   .audioControlRow { gap: 3px; }
-  .audioPlayButton { min-width: 94px; padding: 0 16px; }
   .audioUtilityButton { min-width: 34px; padding: 0 5px; }
   :global([data-transcript-player][data-media-kind="audio"]) .resumeFollowButton { bottom: 122px; }
 }
@@ -911,7 +912,6 @@
   .document, .transcriptText { font-size: 16px; line-height: 1.75; }
   .player.audioPlayer { padding: 10px 9px 9px; }
   .audioControlRow { gap: 2px; }
-  .audioPlayButton { min-width: 76px; padding: 0 10px; }
   .audioUtilityButton { min-width: 32px; padding: 0 4px; }
   .playbackRateButton { width: 44px; padding: 0 4px; }
   .audioStatus { display: none; }

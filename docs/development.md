@@ -74,6 +74,8 @@ DESIGNの推奨ツリーにある `frontend/features/` は現状の配置では�
 FrontendのAPI型は [lib/api.ts](../frontend/lib/api.ts)、Backendの入口一覧は [api/router.py](../backend/app/api/router.py)です。
 HTTPの詳細は起動中の `/docs`、WebSocketのメッセージは `api/routes/realtime.py` と録音コンポーネントを対で確認します。
 
+2026-10-13の音声再生ボタン変更では`transcript-player.tsx`の操作ラベルを視覚的に隠し、CSSで44pxの円形を全画面幅に適用しました。Runtimeのラベル更新・アイコン切替・ショートカットは共用しています。`vitest run components/meeting-workspace.test.tsx lib/transcript-player-runtime.test.ts`は12件成功、変更ComponentのESLintと`tsc --noEmit`も成功しました。実Component・CSS・Runtimeとテスト用WAVを使うChromium検証は、ライト／ダーク×幅320・393・520・620・844・1280・1920pxの14条件で円形・再生／一時停止・読み上げラベル・Space／Enter・横はみ出しなしを確認しました。iPhone実機の確認は未実施です。DB・環境変数の変更はありません。
+
 ## 処理経路と守る境界
 
 ```text
