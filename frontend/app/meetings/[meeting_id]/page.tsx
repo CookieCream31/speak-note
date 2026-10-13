@@ -302,6 +302,7 @@ export default async function MeetingDetailPage({
     speakerName: turn.speakerName,
     words: buildPlaybackWords(turn.segments),
     sourceSegmentIds: transcript?.kind === "live" ? turn.segments.map((segment) => segment.id) : undefined,
+    provisionalSpeakerLabel: turn.segments[0].provisional_speaker_label,
     editableLiveSegmentIds: archivedLiveMeeting && transcript?.kind === "live" && transcript.status === "completed"
       ? turn.segments.map((segment) => segment.id) : undefined,
   }));

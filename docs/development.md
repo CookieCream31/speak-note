@@ -353,7 +353,7 @@ Soniox原文の時間による保存区切りは、単語の途中・句読点�
 <a id="live-speaker-names"></a>
 ## 保存済みリアルタイム版の話者表示名（2026-10-13）
 
-Liveラベルは正式SpeakerのUUIDではありません。会議ページで両者を分離し、保存済みLiveの連続発言を専用APIから編集します。元ラベルとは別のnullable列を0030で追加し、本文・単語時刻・正式話者・他の区間を変更しません。未判定の話者は個別のSegmentとして扱います。表示名の異なる隣接発言はまとめません。操作と制約は[話者名の変更](usage.md#speaker-names)、反映は[Migration 0030](operations.md#live-speaker-names)を参照してください。
+Liveラベルは正式SpeakerのUUIDではありません。会議ページで両者を分離し、保存済みLiveの表示名を専用APIから編集します。元ラベルとは別のnullable列を0030で追加し、本文・単語時刻・正式話者を変更しません。未判定の話者は個別のSegmentとして扱います。2026-10-14からは同じLive版の同じ番号全体へ一括反映します。別番号・別版・別会議へは反映しません。操作と制約は[話者名の変更](usage.md#speaker-names)、反映は[Migration 0030](operations.md#live-speaker-names)を参照してください。
 
 Backendの対象は`app/api/routes/transcripts.py`、`app/models/transcript.py`、`app/schemas/transcript.py`、`app/services/transcription/live_speaker_names.py`、`app/services/analysis/processor.py`、Migration 0030と新しい2テストファイルです。Frontendの対象は会議の`page.tsx`、`inline-speaker-name`、`transcript-player`、`realtime-analysis-panel`、`meeting-tools-panel`、API型・エラー整形・話者イベント・publicのPlayer Scriptと関連テストです。
 
@@ -381,3 +381,5 @@ node node_modules/typescript/bin/tsc --noEmit
 追加テストでFinalの既存名前編集、Liveの保存・空欄リセット・対象外拒否・録音中拒否・元データ保持・Job非生成、次の要約プロンプトの暫定表示名、Migrationの既存行保持を確認しました。Frontendでは連打・保存中・取消・構造化エラー・再試行・同じ正式話者の同期・Liveの区間限定・字幕更新を確認しました。隔離した実ComponentのChromium表示確認は幅320/393/760/1280px、ライト／ダーク、Live／Finalの32ケースが成功しました（ブラウザのAPIはmock）。
 
 運用DBへの適用と実データの名前保存、実PostgreSQLでの同時編集、実機Safari/iPhoneでの表示は未検証です。エージェントは稼働サービスを再起動していません。
+
+2026-10-14の番号全体への変更では、既存0030の列を使用し、追加Migrationはありません。上記の全体結果は2026-10-13の実装時点の記録です。今回の関連Backendテスト31件、Frontendテスト33件、対象のformat/lintとFrontend型チェックは成功しました。離れた同番号・以前の部分編集の一括更新、全体の空欄リセット、別番号・別版・別会議・高精度版の保護を追加検証しています。APIの返す全Segment IDをイベントで通知し、本文と字幕も一括更新します。

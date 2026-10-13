@@ -26,6 +26,7 @@ interface InlineSpeakerNameProps {
   meetingId: string;
   speakerId?: string | null;
   segmentIds?: string[];
+  provisionalSpeakerLabel?: string | null;
   speakerName: string;
 }
 
@@ -33,6 +34,7 @@ export function InlineSpeakerName({
   meetingId,
   speakerId,
   segmentIds,
+  provisionalSpeakerLabel,
   speakerName,
 }: InlineSpeakerNameProps) {
   const [editing, setEditing] = useState(false);
@@ -41,6 +43,7 @@ export function InlineSpeakerName({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const pending = useRef(false);
+  const unknownSpeaker = provisionalSpeakerLabel === null || provisionalSpeakerLabel === "SPEAKER_UNKNOWN";
 
   useEffect(() => {
     const syncSpeaker = (event: Event) => {
@@ -136,7 +139,8 @@ export function InlineSpeakerName({
         className={styles.nameButton}
         onClick={() => { setDraft(name); setError(""); setEditing(true); }}
         aria-label={`${name}の名前を変更`}
-        title={speakerId ? "クリックして話者名を変更" : "この発言の話者名を変更（暫定）"}
+        title={speakerId ? "クリックして話者名を変更" : unknownSpeaker
+          ? "この発言の話者名を変更（暫定）" : "同じ話者番号の名前を全体に反映（暫定）"}
       >
         {name}<span aria-hidden="true"><Pencil size={12} /></span>
       </button>
@@ -145,7 +149,8 @@ export function InlineSpeakerName({
 
   return (
     <form className={styles.form} onSubmit={(event) => void save(event)}>
-      {!speakerId && <span className={styles.scope}>この発言の話者名（暫定）</span>}
+      {!speakerId && <span className={styles.scope}>{unknownSpeaker
+        ? "この発言の話者名（暫定）" : "同じ話者番号を全体に反映（暫定）"}</span>}
       <input
         autoFocus
         disabled={busy}

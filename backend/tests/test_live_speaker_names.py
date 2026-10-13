@@ -100,18 +100,19 @@ def test_saved_live_name_preserves_original_labels_words_final_and_jobs(
     ids = saved_live["ids"]
     response = rename(client, saved_live, ids[:2], "  エージェント  ")
     assert response.status_code == 200
-    assert [row["provisional_speaker_name"] for row in response.json()] == ["エージェント"] * 2
+    assert [row["provisional_speaker_name"] for row in response.json()] == ["エージェント"] * 3
+    assert [row["id"] for row in response.json()] == [str(ids[index]) for index in [0, 1, 3]]
     assert all(row["speaker"] is None for row in response.json())
     transcript = client.get(f"/api/v1/meetings/{saved_live['meeting_id']}/transcript").json()
     assert [row["provisional_speaker_name"] for row in transcript["segments"]] == [
         "エージェント",
         "エージェント",
         None,
-        None,
+        "エージェント",
     ]
     download = client.get(f"/api/v1/meetings/{saved_live['meeting_id']}/transcript/download")
     assert download.status_code == 200
-    assert "エージェント" in download.text and "話者 1" in download.text
+    assert "エージェント" in download.text and "話者 2" in download.text
     with session_factory() as session:
         segment = session.get(TranscriptSegment, ids[0])
         assert segment.provisional_speaker_label == "話者 1"
@@ -139,8 +140,8 @@ def test_invalid_selection_does_not_partially_save(
         assert session.get(TranscriptSegment, ids[0]).provisional_speaker_name is None
 
 
-@pytest.mark.parametrize("selection", ["gap", "mixed_labels", "mixed_versions", "mixed_names"])
-def test_names_only_apply_to_one_contiguous_displayed_turn(
+@pytest.mark.parametrize("selection", ["mixed_labels", "mixed_versions"])
+def test_names_cannot_cross_labels_or_transcript_versions(
     client: TestClient,
     session_factory: sessionmaker[Session],
     saved_live: dict[str, object],
@@ -152,14 +153,36 @@ def test_names_only_apply_to_one_contiguous_displayed_turn(
         chosen = ids[:3]
     elif selection == "mixed_versions":
         chosen = [ids[0], saved_live["other_version_id"]]
-    elif selection == "mixed_names":
-        with session_factory() as session:
-            session.get(TranscriptSegment, ids[1]).provisional_speaker_name = "以前の編集"
-            session.commit()
-        chosen = ids[:2]
     assert rename(client, saved_live, chosen, "変更しない").status_code == 409
     with session_factory() as session:
         assert session.get(TranscriptSegment, ids[0]).provisional_speaker_name is None
+
+
+def test_same_number_is_renamed_throughout_the_saved_version_and_clear_is_global(
+    client: TestClient,
+    session_factory: sessionmaker[Session],
+    saved_live: dict[str, object],
+) -> None:
+    ids = saved_live["ids"]
+    with session_factory() as session:
+        session.get(TranscriptSegment, ids[1]).provisional_speaker_name = "以前の部分編集"
+        session.commit()
+    assert rename(client, saved_live, [ids[3]], "田中").status_code == 200
+    with session_factory() as session:
+        names = [session.get(TranscriptSegment, id_).provisional_speaker_name for id_ in ids]
+        assert names == ["田中", "田中", None, "田中"]
+        assert (
+            session.get(TranscriptSegment, saved_live["other_version_id"]).provisional_speaker_name
+            is None
+        )
+        assert (
+            session.get(TranscriptSegment, saved_live["other_id"]).provisional_speaker_name is None
+        )
+    assert rename(client, saved_live, [ids[0], ids[3]], None).status_code == 200
+    with session_factory() as session:
+        assert all(
+            session.get(TranscriptSegment, id_).provisional_speaker_name is None for id_ in ids
+        )
 
 
 @pytest.mark.parametrize("state", ["recording", "finalizing", "meeting_recording", "processing"])

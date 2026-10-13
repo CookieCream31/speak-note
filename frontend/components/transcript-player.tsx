@@ -28,6 +28,7 @@ export interface PlaybackTurn {
   words: PlaybackWord[];
   sourceSegmentIds?: string[];
   editableLiveSegmentIds?: string[];
+  provisionalSpeakerLabel?: string | null;
 }
 
 export interface PlaybackChapter {
@@ -513,6 +514,7 @@ export function TranscriptDocument({
                   meetingId={meetingId}
                   speakerId={turn.speakerId}
                   segmentIds={turn.editableLiveSegmentIds}
+                  provisionalSpeakerLabel={turn.provisionalSpeakerLabel}
                   speakerName={turn.speakerName}
                 />
               ) : (

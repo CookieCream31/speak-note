@@ -66,20 +66,33 @@ describe("speaker name editing", () => {
       { id: "s2", provisional_speaker_name: "エージェント", provisional_speaker_label: "話者 1" },
     ]) as Response);
     render(true); edit();
-    expect(host.textContent).toContain("この発言の話者名（暫定）");
+    expect(host.textContent).toContain("同じ話者番号を全体に反映（暫定）");
     enter("エージェント"); await submit();
     expect(fetch).toHaveBeenCalledWith("/api/v1/meetings/m/transcript/live-speaker-name", expect.objectContaining({
       method: "PATCH", body: JSON.stringify({ display_name: "エージェント", segment_ids: ["s1", "s2"] }),
     }));
     expect(host.querySelector('[aria-label="エージェントの名前を変更"]')).not.toBeNull();
   });
-  it("keeps Live edits scoped to their segments and independent of Final names", () => {
+  it("updates all returned Live segments while keeping Final names independent", () => {
     render(true);
     act(() => dispatchLiveSpeakerRenamed({ segmentIds: ["another-turn"], speakerName: "別の話者" }));
     act(() => dispatchSpeakerRenamed({ speakerId, displayName: "確定話者", speakerName: "確定話者" }));
     expect(host.textContent).toBe("話者 1");
     act(() => dispatchLiveSpeakerRenamed({ segmentIds: ["s2"], speakerName: "同じ発言" }));
     expect(host.textContent).toBe("同じ発言");
+  });
+  it("immediately renames separated occurrences returned by the saved-Live API", async () => {
+    act(() => root.render(<>
+      <InlineSpeakerName meetingId="m" segmentIds={["s1"]} speakerName="話者 1" />
+      <InlineSpeakerName meetingId="m" segmentIds={["s3"]} speakerName="以前の名前" />
+      <InlineSpeakerName meetingId="m" segmentIds={["s2"]} speakerName="話者 2" />
+    </>));
+    vi.mocked(fetch).mockResolvedValue(response(["s1", "s3"].map((id) => ({
+      id, provisional_speaker_name: "田中", provisional_speaker_label: "話者 1",
+    }))) as Response);
+    edit(); enter("田中"); await submit();
+    expect(host.querySelectorAll('[aria-label="田中の名前を変更"]')).toHaveLength(2);
+    expect(host.querySelector('[aria-label="話者 2の名前を変更"]')).not.toBeNull();
   });
   it.each([false, true])("clears a name and restores the stored label (Live=%s)", async (live) => {
     vi.mocked(fetch).mockResolvedValue(response(live

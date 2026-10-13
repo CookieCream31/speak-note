@@ -215,7 +215,7 @@ sudo docker compose restart frontend
 sudo docker compose ps backend frontend worker live-worker realtime-ai-worker answer-worker
 ```
 
-Backend起動時にMigrationを適用します。失敗した場合はWorkerを停止したままBackendのログを確認し、Volumeを削除しないでください。ブラウザ再読み込み後、[話者名の変更](usage.md#speaker-names)を試します。リアルタイム版の選択した発言だけが変わり、離れた同番号・高精度版が変わらないこと、保存がTXT出力と再読込後も残ることを確認してください。高精度版では同じ正式話者の他の発言と字幕へ反映すること、名前変更で文字起こし・解析Jobが増えないことも確認します。
+Backend起動時にMigrationを適用します。失敗した場合はWorkerを停止したままBackendのログを確認し、Volumeを削除しないでください。ブラウザ再読み込み後、[話者名の変更](usage.md#speaker-names)を試します。リアルタイム版全体の同じ話者番号が変わり、他の番号・別版・高精度版が変わらないこと、保存がTXT出力と再読込後も残ることを確認してください。高精度版では同じ正式話者の他の発言と字幕へ反映すること、名前変更で文字起こし・解析Jobが増えないことも確認します。2026-10-14の番号全体への変更は既存0030の列を使うため追加Migrationはありません。
 
 <a id="soniox-accuracy"></a>
 ## Sonioxの話者分離を精度優先にする変更の反映

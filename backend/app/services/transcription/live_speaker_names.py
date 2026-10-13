@@ -64,11 +64,27 @@ def update_live_speaker_name(
     if any(
         segment.transcript_version_id != first.transcript_version_id
         or segment.provisional_speaker_label != first.provisional_speaker_label
-        or segment.provisional_speaker_name != first.provisional_speaker_name
-        or segment.sequence != first.sequence + index
-        for index, segment in enumerate(segments)
+        for segment in segments
     ):
-        raise HTTPException(409, "話者名は連続した同じ話者の発言ごとに変更してください")
+        raise HTTPException(409, "同じリアルタイム版の同じ話者番号を選択してください")
+    if first.provisional_speaker_label not in (None, "SPEAKER_UNKNOWN"):
+        # The user assigns a display name to this number throughout the saved version.
+        # Keep the original label and do not infer identity across versions or meetings.
+        segments = list(
+            session.scalars(
+                select(TranscriptSegment)
+                .options(
+                    selectinload(TranscriptSegment.speaker),
+                    selectinload(TranscriptSegment.words),
+                )
+                .where(
+                    TranscriptSegment.transcript_version_id == first.transcript_version_id,
+                    TranscriptSegment.provisional_speaker_label == first.provisional_speaker_label,
+                )
+                .order_by(TranscriptSegment.sequence)
+                .with_for_update()
+            )
+        )
     name = (payload.display_name or "").strip() or None
     for segment in segments:
         segment.provisional_speaker_name = name
