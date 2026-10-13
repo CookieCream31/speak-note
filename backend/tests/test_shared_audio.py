@@ -11,6 +11,7 @@ from app.models.job import Job, JobType
 from app.models.media import Media, MediaKind
 from app.models.meeting import Meeting, MeetingSourceType
 from app.models.realtime import RealtimeVideoPart
+from app.models.transcription import RealtimeTranscriptionSettings
 from app.services.media import MediaStorage
 from app.services.realtime.capture import (
     RealtimeCaptureError,
@@ -56,6 +57,9 @@ def test_shared_audio_api_saves_only_sound_and_allows_manual_final_after_stoppin
 ) -> None:
     storage = MediaStorage(tmp_path, max_audio_upload_mb=1, max_video_upload_mb=10)
     app.dependency_overrides[get_storage] = lambda: storage
+    with session_factory() as db:
+        db.add(RealtimeTranscriptionSettings(id=1, soniox_encrypted_api_key="test-encrypted"))
+        db.commit()
     try:
         created = client.post(
             "/api/v1/meetings",

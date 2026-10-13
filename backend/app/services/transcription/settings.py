@@ -13,7 +13,7 @@ from app.models.transcription import (
     RealtimeTranscriptionSettings,
 )
 from app.services.llm import SecretCipher, SecretConfigurationError, SecretDecryptionError
-from app.services.transcription.azure import AzureSpeechClient, AzureSpeechError
+from app.services.transcription.azure import AzureSpeechClient
 from app.services.transcription.base import TranscriptionClient
 from app.services.transcription.client import WhisperXClient
 from app.services.transcription.languages import TranscriptionLanguageError, provider_language
@@ -120,40 +120,17 @@ def resolve_realtime_transcription(
     meeting: Meeting | None = None,
 ) -> tuple[RealtimeTranscriptionProvider, str, str, str | None]:
     settings = get_realtime_transcription_settings(db)
-    provider = RealtimeTranscriptionProvider(settings.provider)
-    if provider == RealtimeTranscriptionProvider.SONIOX:
-        if not settings.soniox_encrypted_api_key:
-            raise RealtimeTranscriptionConfigurationError(
-                "SonioxのリアルタイムAPI Keyを保存してください"
-            )
-        return (
-            provider,
-            settings.soniox_model,
-            _language(meeting, provider.value, settings.soniox_language),
-            None,
-        )
-    if provider == RealtimeTranscriptionProvider.AZURE_SPEECH:
-        if not settings.azure_region or settings.encrypted_api_key is None:
-            raise RealtimeTranscriptionConfigurationError(
-                "Azure AI SpeechのリージョンとAPI KeyをAI設定で保存してください"
-            )
-        try:
-            region = AzureSpeechClient(
-                region=settings.azure_region,
-                api_key="configuration-check",
-            ).region
-        except AzureSpeechError as exc:
-            raise RealtimeTranscriptionConfigurationError(str(exc)) from exc
-        return (
-            provider,
-            "azure-speech",
-            _language(meeting, provider.value, settings.azure_language),
-            region,
+    # New captures always use Soniox, including installations with old settings.
+    # The legacy worker client below remains available for already saved jobs.
+    provider = RealtimeTranscriptionProvider.SONIOX
+    if not settings.soniox_encrypted_api_key:
+        raise RealtimeTranscriptionConfigurationError(
+            "SonioxのリアルタイムAPI KeyをAI設定で保存してください"
         )
     return (
         provider,
-        application_settings.whisperx_model,
-        _language(meeting, provider.value, application_settings.whisperx_language),
+        settings.soniox_model,
+        _language(meeting, provider.value, settings.soniox_language),
         None,
     )
 

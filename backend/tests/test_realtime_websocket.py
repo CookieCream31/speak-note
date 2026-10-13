@@ -17,6 +17,7 @@ from app.models.job import Job, JobType
 from app.models.media import Media
 from app.models.meeting import Meeting, MeetingSourceType, MeetingStatus, utc_now
 from app.models.realtime import RealtimeSession, RealtimeVideoPart
+from app.models.transcription import RealtimeTranscriptionSettings
 from app.services.media import MediaStorage
 from app.services.realtime import finalize_stale_realtime_sessions
 
@@ -32,10 +33,15 @@ def storage(tmp_path: Path) -> Generator[MediaStorage, None, None]:
 def _create_meeting(
     session_factory: sessionmaker[Session],
     source: MeetingSourceType = MeetingSourceType.AUDIO_RECORDING,
+    configure_soniox: bool = True,
 ) -> uuid.UUID:
     with session_factory() as session:
         meeting = Meeting(title="WebSocket", source_type=source)
         session.add(meeting)
+        if configure_soniox and session.get(RealtimeTranscriptionSettings, 1) is None:
+            session.add(
+                RealtimeTranscriptionSettings(id=1, soniox_encrypted_api_key="test-encrypted")
+            )
         session.commit()
         return meeting.id
 
@@ -62,7 +68,7 @@ def test_websocket_records_chunks_and_finalizes(
     with client.websocket_connect(f"/api/v1/meetings/{meeting_id}/live/ws") as websocket:
         started = _start(websocket)
         assert started["type"] == "started"
-        assert started["transcription_provider"] == "whisperx"
+        assert started["transcription_provider"] == "soniox"
         assert started["transcription_language"] == "ja"
         for sequence, content in enumerate([b"first", b"second"]):
             websocket.send_json(
@@ -92,7 +98,24 @@ def test_websocket_records_chunks_and_finalizes(
         assert media is not None
         assert storage.absolute_path(media.storage_path).read_bytes() == b"firstsecond"
         live_jobs = session.scalars(select(Job).where(Job.type == JobType.TRANSCRIBE_LIVE))
-        assert len(list(live_jobs)) == 2
+        assert list(live_jobs) == []
+
+
+def test_new_capture_requires_soniox_and_does_not_fall_back_to_whisperx(
+    client: TestClient,
+    session_factory: sessionmaker[Session],
+    storage: MediaStorage,
+) -> None:
+    meeting_id = _create_meeting(session_factory, configure_soniox=False)
+    with session_factory() as session:
+        session.add(RealtimeTranscriptionSettings(id=1, provider="whisperx"))
+        session.commit()
+    with client.websocket_connect(f"/api/v1/meetings/{meeting_id}/live/ws") as websocket:
+        result = _start(websocket)
+    assert result["type"] == "error" and "Soniox" in result["message"]
+    with session_factory() as session:
+        assert session.scalar(select(RealtimeSession)) is None
+        assert session.scalar(select(Job)) is None
 
 
 def test_websocket_runs_blocking_storage_work_off_the_event_loop(
@@ -207,7 +230,7 @@ def test_websocket_resumes_after_network_loss_and_ignores_replayed_chunks(
         assert media is not None
         assert storage.absolute_path(media.storage_path).read_bytes() == b"firstsecond"
         live_jobs = session.scalars(select(Job).where(Job.type == JobType.TRANSCRIBE_LIVE))
-        assert len(list(live_jobs)) == 2
+        assert list(live_jobs) == []
 
 
 def test_websocket_rejects_resuming_a_finished_session(
@@ -239,6 +262,7 @@ def test_replayed_video_chunk_is_acknowledged_without_appending(
     with session_factory() as session:
         meeting = Meeting(title="Screen", source_type=MeetingSourceType.LIVE)
         session.add(meeting)
+        session.add(RealtimeTranscriptionSettings(id=1, soniox_encrypted_api_key="test-encrypted"))
         session.commit()
         meeting_id = meeting.id
 

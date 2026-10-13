@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 from app.models.transcription import AsyncTranscriptionProvider, RealtimeTranscriptionProvider
 
@@ -41,30 +41,14 @@ class AsyncTranscriptionSettingsRead(BaseModel):
 
 
 class RealtimeTranscriptionSettingsUpdate(SonioxSettingsUpdate):
-    provider: RealtimeTranscriptionProvider
-    azure_region: str | None = Field(default=None, max_length=100)
-    azure_language: str = Field(default="ja-JP", min_length=2, max_length=20)
-    api_key: str | None = Field(default=None, min_length=1, max_length=1000)
-    clear_api_key: bool = False
-
-    @field_validator("azure_region")
-    @classmethod
-    def normalize_region(cls, value: str | None) -> str | None:
-        return value.strip().lower() or None if value else None
-
-    @field_validator("azure_language")
-    @classmethod
-    def normalize_language(cls, value: str) -> str:
-        value = value.strip()
-        if len(value) < 2:
-            raise ValueError("認識言語を入力してください")
-        return value
+    model_config = ConfigDict(extra="forbid")
+    provider: Literal[RealtimeTranscriptionProvider.SONIOX] = RealtimeTranscriptionProvider.SONIOX
 
 
 class RealtimeTranscriptionSettingsRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    provider: RealtimeTranscriptionProvider
+    provider: Literal[RealtimeTranscriptionProvider.SONIOX]
     azure_region: str | None
     azure_language: str
     has_api_key: bool

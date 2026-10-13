@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 
 from app.models.meeting import Meeting, MeetingSourceType
 from app.models.realtime import RealtimeSession, RealtimeSessionStatus
-from app.models.transcription import RealtimeTranscriptionSettings
 from app.models.translation import RealtimeTranslation
 from app.schemas.translation import StreamingTranslation, parse_translation_config
 from app.services.realtime.capture import RealtimeCaptureError
@@ -25,9 +24,6 @@ def validate_meeting_translation(
         MeetingSourceType.AUDIO_RECORDING,
     }:
         raise ValueError("リアルタイム翻訳は画面共有・マイク録音の会議で利用できます")
-    settings = db.get(RealtimeTranscriptionSettings, 1)
-    if settings is None or settings.provider != "soniox":
-        raise ValueError("リアルタイム翻訳にはSonioxのリアルタイム文字起こしが必要です")
     if any(code not in LANGUAGES for key, code in parsed.items() if key != "type"):
         raise ValueError("翻訳の言語が対応していません")
 

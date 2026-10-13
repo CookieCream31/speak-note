@@ -3,7 +3,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.models.meeting import Meeting, MeetingSourceType
-from app.models.transcription import AsyncTranscriptionSettings, RealtimeTranscriptionSettings
+from app.models.transcription import AsyncTranscriptionSettings
 from app.schemas.transcription_language import TranscriptionLanguageOptionsRead
 
 # Soniox's documented ISO codes. The selected model is checked again before sending audio.
@@ -207,10 +207,8 @@ class TranscriptionLanguageError(ValueError):
 def language_options(db: Session, *, include_realtime: bool) -> TranscriptionLanguageOptionsRead:
     asynchronous = db.get(AsyncTranscriptionSettings, 1)
     providers = [asynchronous.provider if asynchronous else "whisperx"]
-    realtime = None
     if include_realtime:
-        realtime = db.get(RealtimeTranscriptionSettings, 1)
-        providers.append(realtime.provider if realtime else "whisperx")
+        providers.append("soniox")
     providers = list(dict.fromkeys(providers))
     return TranscriptionLanguageOptionsRead(
         languages=[
@@ -220,7 +218,7 @@ def language_options(db: Session, *, include_realtime: bool) -> TranscriptionLan
         supports_multiple=all(provider == "soniox" for provider in providers),
         supports_strict="soniox" in providers,
         providers=providers,
-        supports_translation=bool(include_realtime and realtime and realtime.provider == "soniox"),
+        supports_translation=include_realtime,
         translation_languages=LANGUAGES if include_realtime else [],
     )
 

@@ -4,7 +4,7 @@
 
 コマンドは `/home/llm/speak-note` で実行します。Docker操作はこのプロジェクトだけを対象にしてください。
 録音・録画中はページ更新やサービス再起動を行わず、まず録音を終了して保存完了を確認します。
-現行ソースのMigration headは`20261013_0030`です。最新変更の反映は[話者表示名を含む手順](#live-speaker-names)を使用してください。過去の機能の節にあるhead番号は、その機能を追加した時点のものです。
+現行ソースのMigration headは`20261014_0031`です。最新変更の反映は[Sonioxへの統一を含む手順](#soniox-realtime-only)を使用してください。過去の機能の節にあるhead番号は、その機能を追加した時点のものです。
 
 <a id="apply"></a>
 ## 変更の反映
@@ -90,7 +90,7 @@ sudo docker compose stop worker live-worker realtime-ai-worker answer-worker
 sudo docker compose restart backend
 sudo docker compose up -d --wait --no-deps backend
 sudo docker compose exec -T backend alembic current
-# 現行ソースは20261013_0030 (head)を確認してからWorkerを再開
+# 現行ソースは20261014_0031 (head)を確認してからWorkerを再開
 sudo docker compose up -d --no-deps worker live-worker realtime-ai-worker answer-worker
 sudo docker compose restart frontend
 sudo docker compose ps backend frontend worker live-worker realtime-ai-worker answer-worker
@@ -194,6 +194,28 @@ sudo docker compose ps backend frontend worker live-worker realtime-ai-worker an
 ```
 
 BackendのHealthyと各Workerの稼働を確認し、ブラウザを再読み込みします。AIをOFFにして録音した会議で、保存完了後にAIを選んで要約を生成し、解析だけが作られることを確認します。暫定要約の履歴表示、モデル／テンプレート変更でも原文を再処理しないことを確認してください。高精度版は要約の「その他」から別に作成し、完成後の要約はFinalを優先します。再生ボタンの中央と丸いシークマーカー、新しい会議の未選択＝自動判定も確認します。非対応エンジンでは言語を1つ選びます。エージェントは稼働サービスの再起動や運用DBへの適用を行っていません。
+
+<a id="soniox-realtime-only"></a>
+## リアルタイム認識をSonioxに統一（Migration 0031）
+
+0031はLiveのグローバルエンジン設定だけをSonioxへ切り替えます。Soniox・旧Azureの暗号化キー、過去のSession snapshot・録音・文字起こし・翻訳・要約・Job、非同期のエンジン・モデル・キーを保持します。新規作成のLive設定もSonioxです。新しい録音はSonioxキー未設定なら開始せず、設定を案内します。WhisperXへ自動で切り替えません。旧セッション用の互換処理は保持します。依存追加・環境変数追加はありません。
+
+**録音・録画・保存・実行中Jobをすべて終了してから**実行します。同じ環境でソース更新済みなら`git pull`は省略できます。
+
+```bash
+cd /home/llm/speak-note
+git pull --ff-only
+sudo docker compose stop worker live-worker realtime-ai-worker answer-worker
+sudo docker compose restart backend
+sudo docker compose up -d --wait --no-deps backend
+sudo docker compose exec -T backend alembic current
+# 20261014_0031 (head)とBackendのHealthyを確認してから再開
+sudo docker compose up -d --no-deps worker live-worker realtime-ai-worker answer-worker
+sudo docker compose restart frontend
+sudo docker compose ps backend frontend worker live-worker realtime-ai-worker answer-worker
+```
+
+Backend起動時にMigrationを適用します。失敗したらWorkerを停止したままBackendのログを確認し、Volumeを削除しないでください。ブラウザを再読み込みし、AI設定でリアルタイム用Sonioxキー・モデルを保存します。下の「アップロード・録音終了後の文字起こし」でWhisperX／Sonioxを独立して選び、片方の保存で他方が変わらないことを確認します。短い録音で途中認識・確定・保存・翻訳を確認し、停止後の要約が文字起こしJobを増やさないこと、詳細操作で全体処理を明示したときだけ選択した非同期エンジンを使うことを確認してください。[検証・制約](soniox-realtime-only.md)。エージェントは稼働サービスの再起動・運用DBへの適用を実行していません。
 
 <a id="live-speaker-names"></a>
 ## 保存済みリアルタイム版の話者名・保存エラー修正（Migration 0030）

@@ -136,12 +136,10 @@ def test_language_options_are_read_only_and_respect_capture_method(
     upload = client.get("/api/v1/transcription/language-options?include_realtime=false").json()
     assert upload["supports_auto"] and upload["supports_multiple"] and upload["supports_strict"]
     capture = client.get("/api/v1/transcription/language-options").json()
-    assert (
-        not capture["supports_auto"]
-        and not capture["supports_multiple"]
-        and capture["supports_strict"]
-    )
-    assert create(client, ["ja", "en"]).status_code == 422
+    assert capture["providers"] == ["soniox"]
+    assert capture["supports_auto"] and capture["supports_multiple"] and capture["supports_strict"]
+    assert capture["supports_translation"]
+    assert create(client, ["ja", "en"]).status_code == 201
     assert create(client, ["ja", "en"], source="media_upload").status_code == 201
     assert create(client, ["ja"], True).status_code == 201
     assert len(LANGUAGES) == len(set(LANGUAGES))
@@ -257,7 +255,7 @@ def test_live_language_snapshot_survives_global_changes_and_token_renewal(
     )
 
 
-def test_whisperx_live_and_azure_use_the_meeting_single_language(
+def test_new_live_uses_soniox_while_legacy_worker_keeps_the_meeting_single_language(
     client, session_factory, tmp_path, configured
 ):
     from app.services.realtime import start_realtime_session
@@ -273,7 +271,8 @@ def test_whisperx_live_and_azure_use_the_meeting_single_language(
         stored = db.get(RealtimeTranscriptionSettings, 1)
         stored.provider = "whisperx"
         db.commit()
-        assert resolve_realtime_transcription(db, configured, meeting)[2] == "en"
+        resolved = resolve_realtime_transcription(db, configured, meeting)
+        assert resolved[0] == "soniox" and resolved[2] == "en"
         live = start_realtime_session(
             db,
             meeting,
@@ -291,7 +290,8 @@ def test_whisperx_live_and_azure_use_the_meeting_single_language(
             "fake-encrypted",
         )
         db.commit()
-        assert resolve_realtime_transcription(db, configured, meeting)[2] == "en-US"
+        resolved = resolve_realtime_transcription(db, configured, meeting)
+        assert resolved[0] == "soniox" and resolved[2] == "en"
 
 
 def test_first_final_uses_frozen_language_and_passes_selected_ai_and_template(

@@ -63,7 +63,9 @@ describe("independent transcription settings forms", () => {
   it("saves realtime Soniox settings separately from the async form", async () => {
     await act(async () => root.render(<AISettingsManager initialProviders={[]} initialProfiles={[]} initialUsage={[]} initialTemplates={[]} initialTranscriptionSettings={{ provider: "whisperx", azure_region: null, azure_language: "ja-JP", has_api_key: false, api_key_masked: null, updated_at: "" }} initialAsyncTranscriptionSettings={initial} />));
     const form = host.querySelector<HTMLFormElement>("#stt form")!;
-    await act(async () => form.querySelector<HTMLInputElement>('[name="transcription_provider"][value="soniox"]')!.click());
+    expect(form.querySelector('[name="transcription_provider"]')).toBeNull();
+    expect(form.querySelector('[name="azure_region"]')).toBeNull();
+    expect(form.querySelector('[name="api_key"]')).toBeNull();
     field("soniox_api_key", form).value = "rt-key";
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) });
     await submit(form);

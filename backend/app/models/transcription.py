@@ -30,7 +30,7 @@ class RealtimeTranscriptionSettings(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
-    provider: Mapped[str] = mapped_column(String(20), default="whisperx")
+    provider: Mapped[str] = mapped_column(String(20), default="soniox")
     azure_region: Mapped[str | None] = mapped_column(String(100), nullable=True)
     azure_language: Mapped[str] = mapped_column(String(20), default="ja-JP")
     encrypted_api_key: Mapped[str | None] = mapped_column(Text, nullable=True)

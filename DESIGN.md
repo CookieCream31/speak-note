@@ -2,7 +2,7 @@
 
 ## 1. 概要
 
-`speak-note` は、会議の録音・録画・画面共有を取り込み、WhisperXまたはSoniox非同期APIで全体文字起こしと話者分離を行い、OllamaまたはGemini APIを利用して議事録を生成するWebアプリケーションである。LiveはWhisperX・Azure・SonioxリアルタイムAPIを独立選択できる。
+`speak-note` は、会議の録音・録画・画面共有を取り込み、WhisperXまたはSoniox非同期APIで全体文字起こしと話者分離を行い、OllamaまたはGemini APIを利用して議事録を生成するWebアプリケーションである。新しいLive認識はSonioxリアルタイムAPIに統一し、全体処理のエンジン・モデル・キーを独立して選択する。
 
 中心コンセプト:
 
@@ -223,6 +223,8 @@ speak-note/
 
 ### 6.1 画面共有・準リアルタイム
 
+2026-10-14から、新しい録音・録画のリアルタイム認識はSonioxのみとする。設定APIもSonioxだけを受け付け、キー未設定時にWhisperXへフォールバックしない。アップロード・停止後の全体処理はWhisperX／Sonioxを独立選択する。Migration 0031はグローバルLive設定のproviderだけをSonioxへ変更し、過去のSession snapshot・キー・Live Transcript・Jobを保持する。旧WhisperX／Azure用のClient・Worker処理は既存履歴と予約済みJobの互換性のため保持する。
+
 ブラウザから画面共有を開始し、MediaRecorderで記録する。
 
 取り込み方法の「画面共有」内に「映像を録画する」スイッチを提供する。初期値はONで`source_type=live`、OFFでは`source_type=shared_audio`として会議を作成する。新しい作成Dialogを開くとONへ戻る。切替時は選択済みの共有Streamとマイク設定を保持する。作成後は録画スイッチと取り込み方法を固定し、設定保存の再試行でも同じ会議・方式を使用する。音声のみの場合もBrowserの`getDisplayMedia({video:true,audio:true})`による許可を取得するが、映像Trackは共有の継続・終了確認にだけ使用し、映像Preview・映像MediaRecorder・映像Chunk送信・Video Part保存を行わない。共有音声とONのマイクを既存のAudioContext Destinationへ混合し、音声だけのMediaRecorderから`capture_mode=audio`・`chunk`を送信する。Backendは`original_audio`のみ保存し、音声の容量制限を適用する。動画変換Jobは作成しない。
@@ -234,14 +236,15 @@ speak-note/
 ```text
 保存: getDisplayMedia -> MediaRecorder -> Media Chunk -> WebSocket -> Backend
 
-WhisperX: Media Chunk -> Worker -> WhisperX -> Live Transcript
+旧WhisperXジョブ: Media Chunk -> Worker -> WhisperX -> Live Transcript
 
-Azure: MediaStream -> AudioWorklet状態保持変換 -> 16kHz・16bit・mono Raw PCM -> PushAudioInputStream -> Azure Speech SDK ConversationTranscriber（リアルタイム話者分離） -> WebSocket -> Live Transcript
+旧Azureセッション: MediaStream -> AudioWorklet状態保持変換 -> 16kHz・16bit・mono Raw PCM -> PushAudioInputStream -> Azure Speech SDK ConversationTranscriber -> WebSocket -> Live Transcript
 
 Soniox: MediaStream -> 同じPCM Worklet -> Raw PCM -> Soniox WebSocket -> 確定発話をアプリWebSocketで保存 -> Live Transcript
 ```
 
-WhisperX選択時は数十秒程度遅れる準リアルタイムとする。ブラウザ負荷やBackground化によって
+以下のWhisperX／Azure仕様は旧Liveセッション・旧Worker用の互換性仕様であり、新しい録音の選択肢には含めない。
+旧WhisperX Liveは数十秒程度遅れる準リアルタイムとする。ブラウザ負荷やBackground化によって
 Chunkの到着が遅れ、1つのChunkが設定Windowより長くなった場合は、Backend Workerで複数の
 Overlap Windowへ再分割し、新規区間をすべて文字起こしする。
 
@@ -276,7 +279,7 @@ Recognizerの終了・再接続時は公式APIの`stopTranscribingAsync()`完了
 ### 6.2 マイク録音・準リアルタイム
 
 画面共有を行わず、ブラウザの`getUserMedia`で取得したマイク音声だけをMediaRecorderで録音する。
-録音データは`original_audio`として保存し、画面共有と同じChunk保存と選択中Providerの
+録音データは`original_audio`として保存し、画面共有と同じChunk保存とSonioxの
 Live Transcript処理を使用する。マイクをミュートしても録音SessionとTimelineは継続する。
 
 赤い停止ボタンを押した時点で音声とLive Transcriptを確定して保存し、共通会議ノートで表示する。
@@ -406,6 +409,8 @@ Live Transcriptの両方へ適用し、文字起こし処理中はUIから変更
 WhisperX固有処理は `transcription` Service層へ隔離する。
 
 ### 7.2 Soniox（2026-10-12）
+
+現行仕様（2026-10-14）: LiveはSoniox固定。AI設定ではリアルタイム用Soniox設定と、WhisperX／Sonioxを選べる全体処理設定を別フォームにする。モデル一覧は用途をrealtime／asyncで区別し、既存の一時キー・途中結果・確定結果・精度優先の話者分離・翻訳処理を維持する。以下の初回導入時の選択仕様は旧設定・保存済みJobの履歴として扱う。現行headは0031。詳細は[Soniox統一ガイド](docs/soniox-realtime-only.md)。
 
 ユーザー指定によりSoniox公式仕様に基づくリアルタイム／非同期APIを追加する。既定のWhisperXと既存Azure設定を保持し、Live用singleton設定と非同期用singleton設定を分離する。Sonioxのモデル・暗号化API Keyを各用途で保存し、言語は7.3の会議単位設定を使う。既存のsingletonの言語は互換性のため保持する。新しい会議Session／Jobにだけ設定を適用する。Sonioxでは最小／最大話者数のAPIフィールドが提供されていないため、話者分離を有効にし、WhisperX専用の話者数指定は送らない。
 

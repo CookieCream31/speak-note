@@ -126,15 +126,16 @@ def test_invalid_settings_do_not_create_meetings(client, configured, session_fac
         assert db.scalar(select(func.count()).select_from(Job)) == 0
 
 
-def test_uploads_and_non_soniox_cannot_enable_translation(client, configured):
+def test_uploads_cannot_translate_and_retired_provider_requests_preserve_soniox(client, configured):
     assert create(client, ONE, "media_upload").status_code == 422
     assert (
         client.put(
             "/api/v1/transcription/realtime-settings", json={"provider": "whisperx"}
         ).status_code
-        == 200
+        == 422
     )
-    assert create(client).status_code == 422
+    assert client.get("/api/v1/transcription/realtime-settings").json()["provider"] == "soniox"
+    assert create(client).status_code == 201
     assert create(client, None).status_code == 201
 
 

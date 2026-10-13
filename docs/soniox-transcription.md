@@ -1,6 +1,6 @@
 # Soniox文字起こし
 
-最終照合: 2026-10-13（Live原文の単語境界・話者分離の精度優先・暫定話者の表示番号・WhisperX用人数指定）。[README](../README.md) · [操作ガイド](usage.md) · [Docker反映](operations.md#soniox)
+最終照合: 2026-10-14（LiveをSonioxに統一、全体処理はWhisperX／Soniox、キー・モデル・履歴・精度優先を維持）。[README](../README.md) · [操作ガイド](usage.md) · [現行構成・反映](soniox-realtime-only.md)
 
 ## 公式仕様と実装の境界
 
@@ -15,15 +15,15 @@ Soniox公式ドキュメントを読み、リアルタイムと非同期を独�
 
 ## 設定と操作
 
-1. 最新コードのMigration 0029まで反映します。録音・録画・保存・処理中Jobが終わってから[反映手順](operations.md#realtime-translation)を実行します。0029適用済みの精度優先変更は[Frontendのみの反映](operations.md#soniox-accuracy)です。
+1. 最新コードのMigration 0031まで反映します。録音・録画・保存・処理中Jobが終わってから[反映手順](operations.md#soniox-realtime-only)を実行します。
 2. `MASTER_ENCRYPTION_KEY`を設定済みであることを確認します。SonioxのAPI Keyは`.env`へ追加せず、画面からDBへ暗号化保存します。既存のGemini／Azureと同じ暗号化基盤です。
-3. AI設定 →「リアルタイム文字起こし」でSonioxを選び、API Keyを入力します。「モデル一覧を取得」を押してモデル（既定`stt-rt-v5`）を選び、「設定を保存」を押します。「接続テスト」はモデル取得と一時キー発行を確認し、音声を送信しません。必要な権限は下の表を参照してください。
-4. 確定版もSonioxにする場合は「非同期・確定版の文字起こし」でSonioxを選び、API Keyを入力してモデル一覧を取得します。モデル（既定`stt-async-v5`）とAPI Keyを別途保存し、接続テストします。同じキーを両方へ入力しても構いません。片方の保存はもう片方の選択やAzureキーを変更しません。
+3. AI設定 →「リアルタイム文字起こし」にSonioxのAPI Keyを入力します。「モデル一覧を取得」を押してモデル（既定`stt-rt-v5`）を選び、「設定を保存」を押します。「接続テスト」はモデル取得と一時キー発行を確認し、音声を送信しません。必要な権限は下の表を参照してください。
+4. 「アップロード・録音終了後の文字起こし」でWhisperXまたはSonioxを選びます。Sonioxの場合はAPI Keyを入力してモデル一覧を取得し、非同期モデル（既定`stt-async-v5`）とAPI Keyを別途保存し、接続テストします。同じキーを両方へ入力しても構いません。片方の保存はもう片方の選択や過去のAzureキーを変更しません。
 5. 新しい会議は言語未選択（自動判定）・Strict OFFで始まります。必要な場合だけ「会議で話す言語」を選び、録音・画面共有を開始します。途中認識の表示と発話確定後の保存を確認します。共有音声とマイクは従来どおり混合され、映像の保存ON/OFFは文字起こし設定と独立です。[会議言語・Language hints・Strictの詳細](meeting-transcription-languages.md)。
 6. 停止・保存完了後、「要約を再生成」でAIとテンプレートを選びます。保存済みFinalを優先し、なければ保存済みLiveから暫定要約を作ります。要約生成でSonioxへ音声を再送しません。全体処理は要約の「その他」から高精度版作成を明示して実行します。エンジン設定変更でも既存Final・生成履歴を自動更新しません。
 7. 音声・動画アップロードでも、アップロード時に選んだ非同期設定でFinalが自動生成されることを確認します。AIを使う会議では、その後の解析Jobと根拠・会議後質問も確認します。
 
-設定をWhisperXへ戻すと新しいSession／JobからWhisperXを使用します。Soniox恒久キーの削除はPUTの`clear_soniox_api_key`（WhisperXへ切り替える同じ要求で指定）に対応します。画面にはキーの全文を表示せず、マスクだけ返します。リアルタイム用と非同期用のキーは別々に管理します。
+全体処理をWhisperXへ戻すと、新しい全体文字起こしJobからWhisperXを使用します。LiveはSonioxのままです。非同期Sonioxキーの削除はPUTの`clear_soniox_api_key`（全体処理をWhisperXへ切り替える同じ要求で指定）に対応します。Liveでキーを削除して使用を続ける設定は拒否します。画面にはキーの全文を表示せず、マスクだけ返します。リアルタイム用と非同期用のキーは別々に管理します。
 
 <a id="diarization-accuracy"></a>
 ## 話者分離の精度優先（2026-10-13）
@@ -105,7 +105,7 @@ Full accessをOFFにし、用途別に以下を指定します。WriteはReadの
 
 ## 実装と検証
 
-主要な変更はBackendの`services/transcription/soniox.py`・設定API／モデル／schema・Job／Worker・Liveの結果保存と一時キー発行、Frontendの`soniox-speech-stream.ts`・`pcm-audio-input.ts`・録音UI・独立した設定フォームです。初回導入のMigrationは`20261012_0026`（0025の後）、現在のheadは会議言語設定・リアルタイム翻訳・原文直下の表示用対応情報を追加した`20261012_0029`です。既存Azure PCM Workletを共有し、停止時の末尾flushを追加しました。恒久キーや音声をGitへ含めません。0027は[会議言語ガイド](meeting-transcription-languages.md#実装検証)、0028・0029は[リアルタイム翻訳ガイド](realtime-translation.md)を参照してください。
+主要な変更はBackendの`services/transcription/soniox.py`・設定API／モデル／schema・Job／Worker・Liveの結果保存と一時キー発行、Frontendの`soniox-speech-stream.ts`・`pcm-audio-input.ts`・録音UI・独立した設定フォームです。初回導入のMigrationは`20261012_0026`（0025の後）、現在のheadはLiveをSonioxへ統一する`20261014_0031`です。既存Azure PCM Workletを共有し、停止時の末尾flushを追加しました。恒久キーや音声をGitへ含めません。0027は[会議言語ガイド](meeting-transcription-languages.md#実装検証)、0028・0029は[リアルタイム翻訳ガイド](realtime-translation.md)、0030・0031と全体処理との使い分けは[現行構成](soniox-realtime-only.md)を参照してください。
 
 テストはmock HTTP／WebSocketとSQLiteのAPIテストで、設定の独立・暗号化、Sonioxのtoken連結／時刻／話者、失敗時保護、初回FinalからのAI／テンプレート引継ぎ、処理ID再利用、曖昧な送信の再送停止、重複発話の防止、停止処理、UIの保存・処理中・エラーを確認します。PostgreSQL Migrationは運用DBへ接続せずoffline SQLで検証します。
 

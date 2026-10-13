@@ -4,6 +4,8 @@
 
 ## 作業前の確認
 
+現行のリアルタイム認識はSonioxのみ、アップロード・録音終了後の全体処理はWhisperX／Sonioxです。[現行構成と検証・Migration 0031](soniox-realtime-only.md)を確認してください。過去のWhisperX／Azure Liveの節は互換コード・履歴の実装記録です。
+
 1. [AGENTS.md](../AGENTS.md) → [DESIGN.md](../DESIGN.md)の対象節 → 対象コード → 既存テストの順に読む。
 2. 依頼の範囲と既存の変更を確認する。Gitがある環境では `git status --short` を確認し、他者の変更を戻さない。
 3. Gitの `main` で管理する。もしGit情報がないコピーで作業する場合は履歴や差分を推測せず、変更対象と変更前の内容を把握する。
