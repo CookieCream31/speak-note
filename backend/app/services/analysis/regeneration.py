@@ -1,4 +1,4 @@
-"""Reserve a final-only generation with immutable settings and a meeting lock."""
+"""Reserve a generation from completed transcripts with immutable settings and a lock."""
 
 import uuid
 from copy import deepcopy
@@ -21,6 +21,7 @@ from app.services.analysis.processor import (
     AnalysisProcessingError,
     create_analysis_job,
     find_completed_final,
+    find_completed_live,
     resolve_analysis_profile,
 )
 
@@ -132,8 +133,18 @@ def regenerate_summary(
     request = build_analysis_request(
         session, meeting, payload.profile_id, payload.template_id, payload.template_revision
     )
-    if find_completed_final(session, meeting) is not None:
-        analysis, job = create_analysis_job(session, meeting, frozen_request=request, commit=False)
+    transcript = find_completed_final(session, meeting)
+    if payload.reuse_saved_transcript:
+        request["reuse_saved_transcript"] = True
+        transcript = transcript or find_completed_live(session, meeting)
+        if transcript is None:
+            raise AnalysisProcessingError(
+                "保存済みの文字起こしがありません。録音と文字起こしの保存完了を待ってください"
+            )
+    if transcript is not None:
+        analysis, job = create_analysis_job(
+            session, meeting, frozen_request=request, transcript_id=transcript.id, commit=False
+        )
     else:
         audio = session.scalar(
             select(Media.id)

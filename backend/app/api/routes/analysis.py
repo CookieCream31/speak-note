@@ -52,7 +52,10 @@ def _load_analysis(
 ) -> AnalysisVersion | None:
     return session.scalar(
         select(AnalysisVersion)
-        .options(selectinload(AnalysisVersion.items).selectinload(AnalysisItem.evidence))
+        .options(
+            selectinload(AnalysisVersion.items).selectinload(AnalysisItem.evidence),
+            selectinload(AnalysisVersion.transcript_version),
+        )
         .where(
             AnalysisVersion.id == analysis_id,
             AnalysisVersion.meeting_id == meeting_id,
@@ -87,6 +90,7 @@ def list_analyses(meeting: MeetingDep, session: DbSession) -> list[AnalysisVersi
         session.scalars(
             select(AnalysisVersion)
             .where(AnalysisVersion.meeting_id == meeting.id)
+            .options(selectinload(AnalysisVersion.transcript_version))
             .order_by(AnalysisVersion.version.desc())
         )
     )

@@ -278,6 +278,7 @@ export interface AnalysisVersion {
   id: string;
   meeting_id: string;
   transcript_version_id: string;
+  transcript_kind?: "live" | "final";
   provider_id: string | null;
   profile_id: string | null;
   job_id: string | null;
@@ -297,6 +298,7 @@ export interface AnalysisVersion {
 export interface AnalysisVersionSummary {
   id: string;
   version: number;
+  transcript_kind?: "live" | "final";
   model: string;
   status: AnalysisStatus;
   created_at: string;
@@ -383,6 +385,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export interface SummaryRegenerationRequest {
+  reuse_saved_transcript?: boolean;
   profile_id: string | null;
   template_id: string | null;
   template_revision: number | null;
@@ -395,6 +398,10 @@ export const analysisApi = {
       `/meetings/${meetingId}/analyses`,
       { method: "POST", body: JSON.stringify(options) },
     ),
+};
+
+export const transcriptsApi = {
+  createFinal: (meetingId: string) => request<Job>(`/meetings/${meetingId}/transcript`, { method: "POST" }),
 };
 
 export const meetingsApi = {

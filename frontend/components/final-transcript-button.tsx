@@ -25,11 +25,12 @@ export interface SummaryRegenerationProps {
   currentTemplate: MeetingTemplateSnapshot | null;
   aiDisabled?: boolean;
   hasFinal?: boolean;
+  hasSavedLive?: boolean;
 }
 
 export function SummaryRegenerationButton({
   meetingId, ready, processing, profiles, templates, currentProfileId, currentTemplate,
-  aiDisabled = false, hasFinal = false,
+  aiDisabled = false, hasFinal = false, hasSavedLive = false,
 }: SummaryRegenerationProps) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -67,6 +68,7 @@ export function SummaryRegenerationButton({
         template_id: templateId || null,
         template_revision: templates.find((template) => template.id === templateId)?.revision ?? null,
         request_id: requestId.current ?? newRequestId(),
+        ...((hasFinal || hasSavedLive) ? { reuse_saved_transcript: true } : {}),
       });
       setSubmitted(true);
       dialog.current?.close();
@@ -106,7 +108,7 @@ export function SummaryRegenerationButton({
             </select>
           </label>
           <p className={styles.hint}>テンプレートの「確定後」の構成と指示を使用します。会議やリアルタイム解析の設定は変更しません。</p>
-          <p className={styles.notice}><Info size={16} aria-hidden="true" />{hasFinal ? "保存済みの全体文字起こしを使い、要約だけを生成します。" : "初回は非同期・確定版の設定で全体文字起こしを保存してから生成します。次回から文字起こしを再利用します。"}</p>
+          <p className={styles.notice}><Info size={16} aria-hidden="true" />{hasFinal ? "保存済みの全体文字起こしを使い、要約だけを生成します。" : hasSavedLive ? "保存済みリアルタイム文字起こしを使い、要約だけを生成します。文字起こし・話者・要約は暫定版です。" : "初回は非同期・確定版の設定で全体文字起こしを保存してから生成します。次回から文字起こしを再利用します。"}</p>
           {error && <p role="alert" className={styles.error}>{error}</p>}
         </div>
         <footer>

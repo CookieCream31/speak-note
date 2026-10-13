@@ -14,6 +14,7 @@ import { REALTIME_ANALYSIS_HISTORY_ID } from "@/lib/realtime-analysis-history";
 
 import { SummaryRegenerationButton, type SummaryRegenerationProps } from "./final-transcript-button";
 import { ManualAIImport } from "./manual-ai-import";
+import { FinalTranscriptAction } from "./final-transcript-action";
 import { TemplateAnalysisCards, type TemplateDisplayValue } from "./template-analysis-cards";
 import styles from "./meeting-review-panel.module.css";
 
@@ -35,6 +36,7 @@ interface MeetingReviewPanelProps {
   evidenceSegments: EvidenceSegment[];
   playerAvailable: boolean;
   finalTranscriptAvailable?: boolean;
+  finalTranscription?: { ready: boolean; processing: boolean; jobKey: string };
 }
 
 const sectionLabels: Partial<Record<AnalysisItemKind, string>> = {
@@ -110,6 +112,7 @@ export function MeetingReviewPanel({
   evidenceSegments,
   playerAvailable,
   finalTranscriptAvailable = true,
+  finalTranscription,
 }: MeetingReviewPanelProps) {
   const router = useRouter();
   const [analysis, setAnalysis] = useState(initialAnalysis);
@@ -319,7 +322,9 @@ export function MeetingReviewPanel({
                 aria-label="履歴"
                 value={analysis?.id ?? ""}
                 onChange={(event) => {
-                  router.push(`/meetings/${meetingId}?analysis_id=${event.target.value}&transcript_kind=${event.target.value === REALTIME_ANALYSIS_HISTORY_ID ? "live" : "final"}`);
+                  const kind = event.target.value === REALTIME_ANALYSIS_HISTORY_ID ? "live"
+                    : versions.find((version) => version.id === event.target.value)?.transcript_kind ?? "final";
+                  router.push(`/meetings/${meetingId}?analysis_id=${event.target.value}&transcript_kind=${kind}`);
                 }}
               >
                 {!analysis && <option value="">Versionを選択</option>}
@@ -330,14 +335,14 @@ export function MeetingReviewPanel({
                 )}
                 {versions.map((version) => (
                   <option key={version.id} value={version.id}>
-                    確定版 v{version.version} · {version.model} · {version.status}
+                    {version.transcript_kind === "live" ? "リアルタイム原文からの要約（暫定）" : "確定版"} v{version.version} · {version.model} · {version.status}
                   </option>
                 ))}
               </select>
             </label>
           ) : analysis && (
             <span className={styles.versionLabel}>
-              {readOnly ? "リアルタイム解析" : `確定版 v${analysis.version}`} · {analysis.model}
+              {readOnly ? "リアルタイム解析" : `${analysis.transcript_kind === "live" ? "リアルタイム原文からの要約（暫定）" : "確定版"} v${analysis.version}`} · {analysis.model}
             </span>
           )}
           <details className={styles.moreMenu}>
@@ -346,6 +351,7 @@ export function MeetingReviewPanel({
             </summary>
             <div>
               <ManualAIImport meetingId={meetingId} available={finalTranscriptAvailable && evidenceSegments.length > 0} />
+              {!finalTranscriptAvailable && finalTranscription && <FinalTranscriptAction key={finalTranscription.jobKey} meetingId={meetingId} ready={finalTranscription.ready} processing={finalTranscription.processing} />}
             </div>
           </details>
         </div>
@@ -357,7 +363,7 @@ export function MeetingReviewPanel({
         </p>
       )}
 
-      {!finalTranscriptAvailable && <p className={styles.notice}>リアルタイム版は暫定結果です。要約の再生成で全体文字起こしを作成すると、編集や会議への質問も利用できます。</p>}
+      {analysis?.transcript_kind === "live" || !finalTranscriptAvailable ? <p className={styles.notice}>リアルタイム文字起こしに基づく要約は暫定版です。文字起こしの編集・会議への質問には高精度版が必要です。</p> : null}
 
       {regeneration && <SummaryRegenerationButton key={regenerationKey} {...regeneration} />}
 

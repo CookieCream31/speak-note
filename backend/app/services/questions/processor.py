@@ -13,9 +13,15 @@ from app.models.question import (
     MeetingQuestionEvidence,
     MeetingQuestionStatus,
 )
-from app.models.transcript import TranscriptSegment, TranscriptStatus, TranscriptVersion
+from app.models.transcript import (
+    TranscriptKind,
+    TranscriptSegment,
+    TranscriptStatus,
+    TranscriptVersion,
+)
 from app.schemas.question import MeetingAnswerOutput
 from app.services.analysis import AnalysisProcessingError, resolve_analysis_profile
+from app.services.analysis.processor import find_completed_final
 from app.services.llm import LLMProvider, SecretCipher, build_llm_provider
 
 MAX_HISTORY_ITEMS = 8
@@ -34,15 +40,15 @@ def create_meeting_question_job(
     question = question_text.strip()
     if not question:
         raise MeetingQuestionError("質問を入力してください")
-    if meeting.active_transcript_version_id is None:
-        raise MeetingQuestionError("確定文字起こしがありません")
-    transcript = session.get(TranscriptVersion, meeting.active_transcript_version_id)
-    if transcript is None or transcript.status != TranscriptStatus.COMPLETED:
+    transcript = find_completed_final(session, meeting)
+    if (
+        transcript is None
+        or transcript.kind != TranscriptKind.FINAL
+        or transcript.status != TranscriptStatus.COMPLETED
+    ):
         raise MeetingQuestionError("確定文字起こしが完了していません")
 
-    session.scalar(
-        select(Meeting.id).where(Meeting.id == meeting.id).with_for_update()
-    )
+    session.scalar(select(Meeting.id).where(Meeting.id == meeting.id).with_for_update())
     pending = session.scalar(
         select(MeetingQuestion.id)
         .where(
@@ -160,10 +166,7 @@ def _user_prompt(
         else ""
     )
     return (
-        f"{history_block}"
-        f"質問:\n{question_text}\n\n"
-        "確定文字起こし:\n"
-        f"{_transcript_prompt(segments)}"
+        f"{history_block}質問:\n{question_text}\n\n確定文字起こし:\n{_transcript_prompt(segments)}"
     )
 
 
@@ -172,9 +175,7 @@ def _resolve_evidence(
     segments: list[TranscriptSegment],
 ) -> list[uuid.UUID]:
     actual_ids = {segment.id for segment in segments}
-    alias_to_actual = {
-        _evidence_alias(index): segment.id for index, segment in enumerate(segments)
-    }
+    alias_to_actual = {_evidence_alias(index): segment.id for index, segment in enumerate(segments)}
     resolved: list[uuid.UUID] = []
     for value in result.evidence_segment_ids:
         segment_id = value if value in actual_ids else alias_to_actual.get(value, value)
@@ -195,9 +196,7 @@ def process_meeting_question_job(
     *,
     provider_override: LLMProvider | None = None,
 ) -> None:
-    question = session.scalar(
-        select(MeetingQuestion).where(MeetingQuestion.job_id == job.id)
-    )
+    question = session.scalar(select(MeetingQuestion).where(MeetingQuestion.job_id == job.id))
     if question is None:
         raise MeetingQuestionError("質問データが見つかりません")
     profile = session.get(AIProfile, question.profile_id)
@@ -259,9 +258,7 @@ def process_meeting_question_job(
 
 
 def mark_meeting_question_failed(session: Session, job: Job, message: str) -> None:
-    question = session.scalar(
-        select(MeetingQuestion).where(MeetingQuestion.job_id == job.id)
-    )
+    question = session.scalar(select(MeetingQuestion).where(MeetingQuestion.job_id == job.id))
     if question is None:
         return
     question.status = MeetingQuestionStatus.FAILED

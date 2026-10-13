@@ -74,7 +74,7 @@ describe("summary regeneration dialog", () => {
     await act(async () => { container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); });
     expect(analysisApi.regenerate).toHaveBeenCalledTimes(1);
     expect(analysisApi.regenerate).toHaveBeenCalledWith("meeting-1", {
-      profile_id: other.id, template_id: template.id, template_revision: 4, request_id: expect.any(String),
+      profile_id: other.id, template_id: template.id, template_revision: 4, request_id: expect.any(String), reuse_saved_transcript: true,
     });
     await act(async () => resolve({ analysis: null, job_id: "job-1" }));
     expect(container.querySelector("dialog")?.open).toBe(false);
@@ -94,6 +94,19 @@ describe("summary regeneration dialog", () => {
     await click(button("再生成を開始"));
     expect(vi.mocked(analysisApi.regenerate).mock.calls[1][1]).toEqual(firstRequest);
     expect(refresh).toHaveBeenCalledOnce();
+  });
+  it("reuses saved realtime text for an AI-disabled meeting and clearly marks the result provisional", async () => {
+    await act(async () => root.render(<SummaryRegenerationButton {...props} aiDisabled hasFinal={false} hasSavedLive currentProfileId={null} />));
+    await click(button("要約を再生成"));
+    expect(container.textContent).toContain("要約だけを生成します。文字起こし・話者・要約は暫定版です");
+    expect(container.textContent).not.toContain("全体文字起こしを保存してから");
+    expect(button("再生成を開始").disabled).toBe(true);
+    await select("AIプロファイル", other.id);
+    await click(button("再生成を開始"));
+    expect(analysisApi.regenerate).toHaveBeenCalledWith("meeting-1", {
+      profile_id: other.id, template_id: null, template_revision: null,
+      request_id: expect.any(String), reuse_saved_transcript: true,
+    });
   });
   it("disables regeneration during ongoing processing and keeps saved notes available", async () => {
     await act(async () => root.render(<SummaryRegenerationButton {...props} processing />));

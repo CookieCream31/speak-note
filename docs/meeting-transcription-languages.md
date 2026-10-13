@@ -39,7 +39,7 @@ Sonioxではリアルタイム／非同期の両APIへ同じ形式の設定を�
 - Live開始時にモデル・単一言語の表示値をTranscriptVersionへ、配列・StrictをRealtimeSessionの`transcription_request`へ固定します。再開・短期キー更新・再接続でも同じ設定を使います。WhisperXのLive Workerも保存済みLive版の言語・モデルを使用します。
 - 非同期処理は予約時のエンジン・モデル・言語・配列・StrictをJobの既存`transcription_request`へ保存し、動画変換から文字起こし・AI解析への引き継ぎと再試行で維持します。現在のMeetingや共通言語をWorkerで読み直しません。checkpointに認証情報を保存しません。
 - 更新・録音開始・全体処理予約はMeetingのrow lockを使います。録音／finalizing Session、保存／処理中状態、queued／runningの関連Job、完成済みFinalを確認して言語変更を拒否します。
-- 過去のLive／Final／要約、ユーザーの編集・確認済み情報を変更・削除しません。Finalがなければ保存音声を全体処理し、リアルタイム文字起こしをFinalの入力へ置き換えません。外部障害時のJob失敗・同じ処理IDでの再試行・Evidence検証は従来どおりです。
+- 過去のLive／Final／要約、ユーザーの編集・確認済み情報を変更・削除しません。要約は保存済みFinal、なければ保存済みLiveから暫定版を作ります。LiveをFinalへ昇格させません。全体処理は高精度版作成の詳細操作から明示して開始します。外部障害時のJob失敗・同じ処理IDでの再試行・Evidence検証は従来どおりです。
 
 Migration `20261012_0027`は0026に続きMeetingの2カラムとRealtimeSessionのnullable JSONBを追加します。既存Meetingの配列とSession snapshotはnull、Strictはfalseとし、既存TranscriptとJobを変更しません。downgradeは今回の設定・Live snapshotを失うため、処理を止めてバックアップした上で行います。運用DBへの適用は[利用者の提示ログ](#deployment-confirmation)で確認しました。
 
@@ -47,8 +47,8 @@ Migration `20261012_0027`は0026に続きMeetingの2カラムとRealtimeSession�
 
 1. リアルタイム・非同期を両方Sonioxにし、新しいマイク会議で英語・Strict ONを選んで短い英語音声を録音します。別の日本語会議の言語が変わらないことも確認します。
 2. 録音中は会議ページの言語が無効で、AI設定の共通モデルを変更しても開始済みLiveの設定が変わらないことを確認します。録音中にページを更新・Dockerを再起動しないでください。
-3. 停止・保存完了後、初回「要約を再生成」でAI・テンプレートを選びます。Finalと要約が保存され、Live版も残ることを確認します。
-4. もう一度AI／テンプレートを変えて再生成し、文字起こしJobが増えずFinalを再利用することを確認します。Final作成後は言語変更できません。
+3. 停止・保存完了後、「要約を再生成」でAI・テンプレートを選びます。保存済みLiveから暫定要約を作り、文字起こしJobが増えないことを確認します。
+4. AI／テンプレートを変えて再生成し、文字起こしJobが増えないことを確認します。高精度版は「その他」から作成し、完成後の要約はFinalを優先します。Final作成後は言語変更できません。
 5. 新しい会議で自動、日英の複数言語、WhisperXの単一言語、アップロードでも確認します。モデルがStrict非対応なら音声送信前にエラーになることを確認します。
 
 ## 実装・検証

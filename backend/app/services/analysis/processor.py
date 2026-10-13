@@ -20,6 +20,7 @@ from app.models.analysis import (
 )
 from app.models.job import Job, JobType
 from app.models.meeting import Meeting, MeetingStatus, utc_now
+from app.models.realtime import RealtimeSession, RealtimeSessionStatus
 from app.models.transcript import (
     TranscriptKind,
     TranscriptSegment,
@@ -108,12 +109,17 @@ def create_analysis_job(
     requested_profile_id: uuid.UUID | None = None,
     *,
     frozen_request: dict[str, Any] | None = None,
+    transcript_id: uuid.UUID | None = None,
     commit: bool = True,
 ) -> tuple[AnalysisVersion, Job]:
     from app.services.analysis.regeneration import build_analysis_request, lock_meeting
 
     meeting = lock_meeting(session, meeting)
-    transcript = find_completed_final(session, meeting)
+    transcript = (
+        session.get(TranscriptVersion, transcript_id)
+        if transcript_id
+        else find_completed_final(session, meeting)
+    )
     if transcript is None:
         raise AnalysisProcessingError("確定文字起こしがありません")
     request = (
@@ -121,6 +127,9 @@ def create_analysis_job(
         if frozen_request is not None
         else build_analysis_request(session, meeting, requested_profile_id)
     )
+    validate_analysis_transcript(session, meeting, transcript, request)
+    request["transcript_version_id"] = str(transcript.id)
+    request["transcript_kind"] = transcript.kind.value
     profile = session.get(AIProfile, uuid.UUID(request["profile_id"]))
     provider = session.get(AIProviderConfig, uuid.UUID(request["provider_id"]))
     if profile is None or provider is None or not provider.enabled:
@@ -155,6 +164,41 @@ def create_analysis_job(
     return analysis, job
 
 
+def find_completed_live(session: Session, meeting: Meeting) -> TranscriptVersion | None:
+    return session.scalar(
+        select(TranscriptVersion)
+        .join(RealtimeSession, RealtimeSession.transcript_version_id == TranscriptVersion.id)
+        .where(
+            TranscriptVersion.meeting_id == meeting.id,
+            TranscriptVersion.kind == TranscriptKind.LIVE,
+            TranscriptVersion.status == TranscriptStatus.COMPLETED,
+            RealtimeSession.meeting_id == meeting.id,
+            RealtimeSession.status == RealtimeSessionStatus.COMPLETED,
+        )
+        .order_by(TranscriptVersion.version.desc())
+        .limit(1)
+    )
+
+
+def validate_analysis_transcript(
+    session: Session, meeting: Meeting, transcript: TranscriptVersion, request: dict[str, Any]
+) -> None:
+    if transcript.meeting_id != meeting.id or transcript.status != TranscriptStatus.COMPLETED:
+        raise AnalysisProcessingError("解析対象の保存済みTranscriptがありません")
+    if transcript.kind == TranscriptKind.LIVE:
+        if not request.get("reuse_saved_transcript"):
+            raise AnalysisProcessingError("解析対象の確定Transcriptがありません")
+        capture = session.scalar(
+            select(RealtimeSession.id).where(
+                RealtimeSession.meeting_id == meeting.id,
+                RealtimeSession.transcript_version_id == transcript.id,
+                RealtimeSession.status == RealtimeSessionStatus.COMPLETED,
+            )
+        )
+        if capture is None or not transcript.segments:
+            raise AnalysisProcessingError("保存済みリアルタイム文字起こしを使用できません")
+
+
 def _format_timestamp(milliseconds: int) -> str:
     seconds = milliseconds // 1000
     hours, remainder = divmod(seconds, 3600)
@@ -174,6 +218,8 @@ def _transcript_prompt(segments: list[TranscriptSegment]) -> str:
         speaker = "話者不明"
         if segment.speaker is not None:
             speaker = segment.speaker.display_name or segment.speaker.internal_name
+        elif segment.provisional_speaker_label:
+            speaker = f"{segment.provisional_speaker_label}（暫定）"
         rows.append(
             f"[segment_id={segment.id} evidence_id={_evidence_alias(index)} "
             f"start={_format_timestamp(segment.start_ms)} start_ms={segment.start_ms} "
@@ -202,6 +248,7 @@ def _user_prompt(
     meeting: Meeting,
     segments: list[TranscriptSegment],
     template_snapshot: dict[str, Any] | None = None,
+    transcript_kind: TranscriptKind = TranscriptKind.FINAL,
 ) -> str:
     summary_instruction = SUMMARY_FORMAT_INSTRUCTIONS.get(
         meeting.summary_format, SUMMARY_FORMAT_INSTRUCTIONS["standard"]
@@ -210,9 +257,20 @@ def _user_prompt(
     template_instructions = template_instruction(template_snapshot, "final")
     if template_snapshot:
         summary_instruction = "選択された議事録テンプレートの確定後の構成・項目に従ってください。"
+    source = (
+        "保存済みリアルタイム文字起こし（暫定）"
+        if transcript_kind == TranscriptKind.LIVE
+        else "確定文字起こし"
+    )
+    provisional = (
+        "話者ラベルと時刻は暫定です。人物の同一性や不明な事実を推測しないでください。\n"
+        if transcript_kind == TranscriptKind.LIVE
+        else ""
+    )
     return (
-        "以下の確定文字起こしから、要約、決定事項、Action Item、未解決事項、"
+        f"以下の{source}から、要約、決定事項、Action Item、未解決事項、"
         "重要点、チャプター、次に確認すべき質問、重要再生区間を作成してください。\n"
+        f"{provisional}"
         f"会議タイトル: {meeting.title}\n"
         f"要約形式: {summary_instruction}\n"
         "会議の補助情報（文字起こしにない事実の根拠にはしない）:\n"
@@ -234,10 +292,19 @@ def _chapter_system_prompt() -> str:
     )
 
 
-def _chapter_user_prompt(meeting: Meeting, segments: list[TranscriptSegment]) -> str:
+def _chapter_user_prompt(
+    meeting: Meeting,
+    segments: list[TranscriptSegment],
+    transcript_kind: TranscriptKind = TranscriptKind.FINAL,
+) -> str:
     meeting_context = meeting.meeting_context or "指定なし"
+    source = (
+        "保存済みリアルタイム文字起こし（暫定）"
+        if transcript_kind == TranscriptKind.LIVE
+        else "確定文字起こし"
+    )
     return (
-        "以下の確定文字起こしを話題ごとのチャプターに分け、時系列順に返してください。"
+        f"以下の{source}を話題ごとのチャプターに分け、時系列順に返してください。"
         "各チャプターには根拠となるevidence_idを含めてください。\n"
         f"会議タイトル: {meeting.title}\n"
         "会議の補助情報（文字起こしにない事実の根拠にはしない）:\n"
@@ -263,10 +330,11 @@ async def _generate_minutes(
     segments: list[TranscriptSegment],
     template_snapshot: dict[str, Any] | None = None,
     correction: str = "",
+    transcript_kind: TranscriptKind = TranscriptKind.FINAL,
 ) -> StructuredMinutesOutput:
     result = await runtime.generate_structured(
         _system_prompt(),
-        _user_prompt(meeting, segments, template_snapshot) + correction,
+        _user_prompt(meeting, segments, template_snapshot, transcript_kind) + correction,
         StructuredMinutesOutput,
     )
     if provider_type != AIProviderType.OLLAMA or result.chapters:
@@ -274,7 +342,7 @@ async def _generate_minutes(
 
     chapter_result = await runtime.generate_structured(
         _chapter_system_prompt(),
-        _chapter_user_prompt(meeting, segments) + correction,
+        _chapter_user_prompt(meeting, segments, transcript_kind) + correction,
         StructuredChaptersOutput,
     )
     result.chapters = chapter_result.chapters
@@ -523,16 +591,22 @@ def process_analysis_job(
     )
     if (
         transcript is None
-        or transcript.kind != TranscriptKind.FINAL
         or transcript.status != TranscriptStatus.COMPLETED
         or transcript.meeting_id != meeting.id
         or not transcript.segments
     ):
-        raise AnalysisProcessingError("解析対象の確定Transcriptがありません")
+        raise AnalysisProcessingError("解析対象の保存済みTranscriptがありません")
     from app.services.analysis.regeneration import ensure_capture_stopped
 
     ensure_capture_stopped(session, meeting)
     request = job.analysis_request
+    validate_analysis_transcript(session, meeting, transcript, request or {})
+    if transcript.kind == TranscriptKind.LIVE and (
+        not request
+        or request.get("transcript_version_id") != str(transcript.id)
+        or request.get("transcript_kind") != "live"
+    ):
+        raise AnalysisProcessingError("解析対象のリアルタイムTranscriptが生成予約と一致しません")
     if request and (
         request["provider_type"] != provider_config.provider_type.value
         or request["base_url"] != provider_config.base_url
@@ -577,6 +651,7 @@ def process_analysis_job(
                 segments,
                 analysis.template_snapshot,
                 correction,
+                transcript_kind=transcript.kind,
             )
         )
         result = _resolve_evidence_aliases(result, segments)

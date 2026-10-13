@@ -185,6 +185,7 @@ export default async function MeetingDetailPage({
   let realtimeAnalysis: RealtimeAnalysis | null;
   let liveSession: LiveSession | null;
   let liveTranscript: TranscriptVersion | null;
+  let finalTranscript: TranscriptVersion | null;
 
   let meetingResult: Meeting | null;
   try {
@@ -217,6 +218,7 @@ export default async function MeetingDetailPage({
     realtimeAnalysis,
     liveSession,
     liveTranscript,
+    finalTranscript,
   ] = await Promise.all([
       loadOptional<Media[]>(`/meetings/${meetingId}/media`, []),
       loadOptional<Job[]>(`/meetings/${meetingId}/jobs`, []),
@@ -247,6 +249,7 @@ export default async function MeetingDetailPage({
         : Promise.resolve(null),
       isRealtimeCapture ? loadOptional<LiveSession | null>(`/meetings/${meetingId}/live`, null, true) : Promise.resolve(null),
       isRealtimeCapture ? loadOptional<TranscriptVersion | null>(`/meetings/${meetingId}/transcript?kind=live`, null, true) : Promise.resolve(null),
+      loadOptional<TranscriptVersion | null>(`/meetings/${meetingId}/transcript?kind=final`, null, true),
     ]);
 
   const archivedLiveMeeting = isCompletedLiveMeetingNotes(
@@ -258,11 +261,21 @@ export default async function MeetingDetailPage({
   const realtimeHistory = archivedLiveMeeting && realtimeAnalysis
     ? realtimeAnalysisToHistoryVersion(meeting.id, realtimeAnalysis, meeting.template_snapshot)
     : null;
-  const finalTranscript = transcript?.kind === "final" ? transcript : null;
+  if (!selectedAnalysisId && selectedTranscriptKind === "final" && analysis?.transcript_kind === "live") {
+    analysis = null;
+    transcript = finalTranscript;
+  }
+  const hasCompletedNotes = analysis?.status === "completed"
+    && Boolean(analysis.transcript_kind === "live" ? liveTranscript : finalTranscript);
   const useRealtime = selectedAnalysisId === REALTIME_ANALYSIS_HISTORY_ID
-    || (!selectedAnalysisId && (selectedTranscriptKind === "live"
-      || (selectedTranscriptKind !== "final" && (!finalTranscript || !analysis || analysis.status !== "completed"))));
+    || (!selectedAnalysisId && ((selectedTranscriptKind === "live" && analysis?.transcript_kind !== "live")
+      || (selectedTranscriptKind !== "final" && !hasCompletedNotes)));
   if (archivedLiveMeeting && useRealtime && liveTranscript) transcript = liveTranscript;
+  else if (analysis?.transcript_version_id && transcript?.id !== analysis.transcript_version_id) {
+    transcript = await loadOptional<TranscriptVersion | null>(
+      `/meetings/${meetingId}/transcript?version_id=${analysis.transcript_version_id}`, null, true,
+    );
+  }
   const displayedAnalysis = useRealtime && archivedLiveMeeting ? realtimeHistory : analysis;
 
   const originalAudio = media.find((item) => item.kind === "original_audio");
@@ -303,9 +316,10 @@ export default async function MeetingDetailPage({
     speakerName: speakerName(segment),
   }));
 
+  const hasSavedLive = Boolean(archivedLiveMeeting && liveTranscript?.status === "completed" && liveTranscript.segments.length > 0);
   const regeneration: SummaryRegenerationProps = {
     meetingId: meeting.id,
-    ready: Boolean(finalTranscript) || (archivedLiveMeeting && Boolean(isAudioCapture ? originalAudio : transcriptionAudio)),
+    ready: Boolean(finalTranscript) || hasSavedLive,
     processing: jobs.some((job) => ["preprocess_media", "transcribe", "analyze"].includes(job.type) && ["queued", "running"].includes(job.status))
       || liveSession?.status === "recording" || liveSession?.status === "finalizing",
     profiles: aiProfiles,
@@ -314,6 +328,7 @@ export default async function MeetingDetailPage({
     currentTemplate: meeting.template_snapshot,
     aiDisabled: meeting.ai_disabled,
     hasFinal: Boolean(finalTranscript),
+    hasSavedLive,
   };
   const regenerationKey = jobs.filter((job) => ["preprocess_media", "transcribe", "analyze"].includes(job.type)).map((job) => `${job.id}:${job.status}:${job.attempts}`).join("|");
   const showCapturePanel = !isRealtimeCapture && !uploadedOriginal;
@@ -507,6 +522,7 @@ export default async function MeetingDetailPage({
               key={displayedAnalysis ? `${displayedAnalysis.id}:${displayedAnalysis.status}:${displayedAnalysis.completed_at}` : "no-analysis"}
               meetingId={meeting.id}
               analysis={displayedAnalysis}
+              finalTranscription={isRealtimeCapture ? { ready: archivedLiveMeeting && Boolean(isAudioCapture ? originalAudio : transcriptionAudio), processing: regeneration.processing, jobKey: regenerationKey } : undefined}
               versions={analysisVersions}
               realtimeHistory={realtimeHistory}
               evidenceSegments={evidenceSegments}
@@ -529,7 +545,7 @@ export default async function MeetingDetailPage({
                     <strong>文字起こし</strong>
                     <span>{transcript.kind === "live" ? "リアルタイム版（暫定）" : "高精度版"} · v{transcript.version} · {transcript.model} · {transcript.language}</span>
                   </div>
-                  {archivedLiveMeeting && liveTranscript && <Link href={`/meetings/${meeting.id}?analysis_id=realtime&transcript_kind=live`}>リアルタイム版</Link>}
+                  {archivedLiveMeeting && liveTranscript && <Link href={`/meetings/${meeting.id}?${realtimeHistory ? "analysis_id=realtime&" : ""}transcript_kind=live`}>リアルタイム版</Link>}
                   {archivedLiveMeeting && finalTranscript && <Link href={`/meetings/${meeting.id}?transcript_kind=final`}>高精度版</Link>}
                 </div>
               )}
@@ -539,8 +555,8 @@ export default async function MeetingDetailPage({
                   <p>
                     {meeting.status === "failed"
                       ? "文字起こしに失敗しました。処理状況から再試行できます。"
-                      : meeting.source_type === "live" && transcriptionAudio
-                        ? "録画カードのボタンから確定版の文字起こしを開始できます。"
+                      : archivedLiveMeeting && (transcriptionAudio || originalAudio)
+                        ? "要約の「その他」から高精度版の文字起こしを作成できます。"
                       : "文字起こしの完了後、ここに発言が表示されます。"}
                   </p>
                 </div>

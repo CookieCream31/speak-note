@@ -176,6 +176,24 @@ sudo docker compose ps frontend
 
 反映後にブラウザを再読み込みし、同じ言語・話者の短い翻訳断片がカードを積まず一つの文章になること、原文と訳文の左端・本文幅・文字サイズが揃うこと、PCとスマートフォンで読み進められることを確認します。停止後のLive履歴と、高精度版の「リアルタイム原文と翻訳」でも同じ表示を確認します。[変更・検証記録](realtime-translation.md#translation-paragraphs)。
 
+<a id="saved-transcript-summary"></a>
+## 保存済みLiveからの要約生成・再生UI・言語初期値の反映（2026-10-13）
+
+保存済み原文からの要約生成はBackend・Worker・Frontendの変更です。Frontendだけの再起動では新しいAPIパラメータとLive入力の解析を反映できません。追加Migration・依存・環境変数はなく、現行headは0029です。既存の録音・録画、保存、実行中Jobがすべて終了してから実行してください。同じ環境でソース更新済みなら`git pull`は省略できます。
+
+```bash
+cd /home/llm/speak-note
+git pull --ff-only
+sudo docker compose stop worker live-worker realtime-ai-worker answer-worker
+sudo docker compose restart backend
+sudo docker compose up -d --wait --no-deps backend
+sudo docker compose up -d --no-deps worker live-worker realtime-ai-worker answer-worker
+sudo docker compose restart frontend
+sudo docker compose ps backend frontend worker live-worker realtime-ai-worker answer-worker
+```
+
+BackendのHealthyと各Workerの稼働を確認し、ブラウザを再読み込みします。AIをOFFにして録音した会議で、保存完了後にAIを選んで要約を生成し、解析だけが作られることを確認します。暫定要約の履歴表示、モデル／テンプレート変更でも原文を再処理しないことを確認してください。高精度版は要約の「その他」から別に作成し、完成後の要約はFinalを優先します。再生ボタンの中央と丸いシークマーカー、新しい会議の未選択＝自動判定も確認します。非対応エンジンでは言語を1つ選びます。エージェントは稼働サービスの再起動や運用DBへの適用を行っていません。
+
 <a id="soniox-accuracy"></a>
 ## Sonioxの話者分離を精度優先にする変更の反映
 

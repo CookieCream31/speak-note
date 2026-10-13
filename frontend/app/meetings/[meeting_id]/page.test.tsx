@@ -12,7 +12,7 @@ vi.mock("@/components/meeting-review-panel", () => ({ MeetingReviewPanel: () => 
 vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("Not found"); } }));
 type ReviewProps = ComponentProps<typeof MeetingReviewPanel>;
 type RegenerationProps = ComponentProps<typeof SummaryRegenerationButton>;
-const finalTranscript = { id: "final", kind: "final", model: "whisperx", segments: [{
+const finalTranscript = { id: "final", kind: "final", status: "completed", model: "whisperx", segments: [{
   id: "final-segment", text: "確定発言", start_ms: 0, end_ms: 1000, speaker: null, words: [],
 }] };
 const liveTranscript = { ...finalTranscript, id: "live", kind: "live", segments: [{
@@ -25,6 +25,7 @@ const realtime = { status: "completed", model: "live-ai", updated_at: "2026-09-2
 let finalAnalysis: Record<string, unknown> | null;
 let sharedAudio = false;
 let translationsEnabled = false;
+let liveReady = true;
 function workspace(node: ReactNode): ReactElement<ComponentProps<typeof MeetingWorkspace>> | undefined {
   if (Array.isArray(node)) {
     for (const child of node) { const found = workspace(child); if (found) return found; }
@@ -61,6 +62,7 @@ async function page(search: { analysis_id?: string; transcript_kind?: string } =
 }
 beforeEach(() => {
   translationsEnabled = false;
+  liveReady = true;
   finalAnalysis = null;
   sharedAudio = false;
   vi.stubGlobal("fetch", vi.fn(async (url: string) => {
@@ -70,9 +72,12 @@ beforeEach(() => {
     if (path === "/api/v1/meetings/m") data = { id: "m", title: "Test", source_type: sharedAudio ? "shared_audio" : "audio_recording",
       status: "analyzing", created_at: "2026-09-27T00:00:00Z", ai_profile_id: null,
       template_snapshot: null, ai_disabled: false, tags: [], duration_ms: 1000 };
-    else if (path === "/api/v1/meetings/m/transcript") data = sharedAudio ? liveTranscript : finalTranscript;
+    else if (path === "/api/v1/meetings/m/transcript") { data = sharedAudio ? (liveReady ? liveTranscript : null) : finalTranscript; status = data ? 200 : 404; }
     else if (path.endsWith("/media") && sharedAudio) data = [{ id: "audio", kind: "original_audio", mime_type: "audio/webm" }];
-    else if (path.endsWith("/transcript?kind=live")) data = liveTranscript;
+    else if (path.endsWith("/transcript?kind=live")) { data = liveReady ? liveTranscript : null; status = data ? 200 : 404; }
+    else if (path.endsWith("/transcript?kind=final")) { data = sharedAudio ? null : finalTranscript; status = data ? 200 : 404; }
+    else if (path.endsWith("/transcript?version_id=live")) data = liveTranscript;
+    else if (path.endsWith("/transcript?version_id=final")) data = finalTranscript;
     else if (path.endsWith("/live/analysis")) data = realtime;
     else if (path.endsWith("/live")) data = { status: "completed", translation: translationsEnabled ? { type: "one_way", target_language: "ja" } : null,
       translations: translationsEnabled ? [{ id: "caption", result_id: "caption", text: "翻訳", sequence: 0, source_language: "en", target_language: "ja", source_segment_id: "live-segment", speaker_label: null }] : [] };
@@ -85,6 +90,43 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("meeting summary regeneration presentation", () => {
+  it("waits for saved realtime text and offers whole transcription only as a separate detail action", async () => {
+    sharedAudio = true;
+    liveReady = false;
+    const element = await MeetingDetailPage({ params: Promise.resolve({ meeting_id: "m" }), searchParams: Promise.resolve({}) });
+    expect(regenerationButton(element)!.props.ready).toBe(false);
+    expect(regenerationButton(element)!.props.hasSavedLive).toBe(false);
+    expect(review(element)!.props.finalTranscription?.ready).toBe(true);
+  });
+  it("displays a saved realtime summary by default and enables summary-only regeneration", async () => {
+    sharedAudio = true;
+    finalAnalysis = { id: "a", transcript_version_id: "live", transcript_kind: "live", status: "completed", version: 1, model: "selected-ai", items: [] };
+    const element = await MeetingDetailPage({ params: Promise.resolve({ meeting_id: "m" }), searchParams: Promise.resolve({}) });
+    const panel = review(element)!;
+    expect(panel.props.analysis?.id).toBe("a");
+    expect(panel.props.analysis?.transcript_kind).toBe("live");
+    expect(panel.props.evidenceSegments[0].id).toBe("live-segment");
+    expect(panel.props.finalTranscriptAvailable).toBe(false);
+    const regeneration = regenerationButton(element)!;
+    expect(regeneration.props.ready).toBe(true);
+    expect(regeneration.props.hasSavedLive).toBe(true);
+    expect(regeneration.props.hasFinal).toBe(false);
+  });
+  it("loads the source version of a selected provisional summary even after Final exists", async () => {
+    finalAnalysis = { id: "a", transcript_version_id: "live", transcript_kind: "live", status: "completed", version: 1, model: "selected-ai", items: [] };
+    const panel = await page({ analysis_id: "a" });
+    expect(panel.props.evidenceSegments[0].id).toBe("live-segment");
+    expect(panel.props.analysis?.id).toBe("a");
+    expect(panel.props.finalTranscriptAvailable).toBe(true);
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("transcript?version_id=live"))).toBe(true);
+  });
+  it("honors an explicit Final view even if the active summary is still based on Live", async () => {
+    finalAnalysis = { id: "a", transcript_version_id: "live", transcript_kind: "live", status: "completed", version: 1, model: "selected-ai", items: [] };
+    const panel = await page({ transcript_kind: "final" });
+    expect(panel.props.analysis).toBeNull();
+    expect(panel.props.evidenceSegments[0].id).toBe("final-segment");
+    expect(panel.props.finalTranscriptAvailable).toBe(true);
+  });
   it("passes saved translations and original segment anchors into the Live transcript workspace", async () => {
     translationsEnabled = true;
     const element = await MeetingDetailPage({ params: Promise.resolve({ meeting_id: "m" }), searchParams: Promise.resolve({ transcript_kind: "live" }) });

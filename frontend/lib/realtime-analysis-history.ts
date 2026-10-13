@@ -145,6 +145,7 @@ export function realtimeAnalysisToHistoryVersion(
     id: REALTIME_ANALYSIS_HISTORY_ID,
     meeting_id: meetingId,
     transcript_version_id: "",
+    transcript_kind: "live",
     provider_id: null,
     profile_id: null,
     job_id: null,

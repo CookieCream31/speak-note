@@ -229,7 +229,7 @@ speak-note/
 
 `shared_audio`はMeetingに保存し、再読み込みや録音接続の復旧後も録画方式へ切り替えない。共有音声が取得できない場合は開始前に案内し、Backendも共有音声なし・動画MIME・分離録画を拒否する。共有先の変更時は同じAudio DestinationとRecorderを維持し、音声なし・選択キャンセルの場合は以前の共有を維持する。共有または共有音声Trackが終了した場合、マイク・Timeline・録音は継続し、共有音声停止の案内と共有再選択を表示する。マイクの初期ミュート・途中追加・回り込み防止は従来方式と共通。Browser・OS・共有元による音声共有の制約を説明し、非対応端末では既存のマイク録音やUploadを使用する。
 
-停止後はマイク録音と同様にリアルタイム版を共通会議ノートへ表示し、「要約を再生成」の初回だけ選択した非同期エンジンで全体処理とFinal保存を行う。保存済みFinalを再利用する既存の再生成、Evidence検証、編集保護を維持する。DB変更はAlembic `20261010_0025`（0024の後）で`meeting_source_type`へ値を追加する。downgradeで既存会議や音声を失わないようenum値は保持する。
+停止後はマイク録音と同様にリアルタイム版を共通会議ノートへ表示し、「要約を再生成」で保存済みFinal、なければ保存済みLiveを使う。Live入力の要約は暫定版とし、全体文字起こしとFinal保存は詳細操作に分離する。Evidence検証、編集保護を維持する。DB変更はAlembic `20261010_0025`（0024の後）で`meeting_source_type`へ値を追加する。downgradeで既存会議や音声を失わないようenum値は保持する。
 
 ```text
 保存: getDisplayMedia -> MediaRecorder -> Media Chunk -> WebSocket -> Backend
@@ -281,7 +281,7 @@ Live Transcript処理を使用する。マイクをミュートしても録音Se
 
 赤い停止ボタンを押した時点で音声とLive Transcriptを確定して保存し、共通会議ノートで表示する。
 停止時に全体文字起こしJobを自動作成しない。「要約を再生成」からAIとテンプレートを選び、
-保存済みFinalがない初回だけ選択した非同期エンジンで全体処理を行う。保存済み音声は通常のAudio Playerで再生・Downloadできる。
+保存済みFinal、なければ停止・保存済みのLiveを使って要約だけを生成する。全体処理は「その他」の高精度版作成操作で明示して開始する。保存済み音声は通常のAudio Playerで再生・Downloadできる。
 
 ### 6.3 ファイルアップロード
 
@@ -1497,8 +1497,8 @@ Live Transcriptへ保存しない。WhisperXのRaw Responseは診断用に変更
 AIは差分ではなく現時点の完全なSnapshotをStructured Outputで返す。BackendはPydantic Schema、
 入力Revision、Evidenceの存在を検証し、古い応答や存在しないEvidenceを保存しない。失敗時は前回の
 Snapshotを維持して更新Errorを表示し、録音・文字起こしは継続する。Realtime結果を正式版として
-確定しない。録画終了後の正式なAI議事録は「要約を再生成」から生成する。
-Final Transcriptがなければ初回だけ全体文字起こしを作成し、以後の要約生成は保存済みFinalを使う。
+確定しない。録画終了後の「要約を再生成」は保存済みFinalを優先し、なければ保存済みLiveから暫定要約を生成する。
+Finalを必要とする全体文字起こしは詳細操作から明示して開始し、以後の要約生成は保存済みFinalを優先する。
 
 GeminiのHTTP 429および一時的な5xx、通信失敗は指数バックオフで最大5回再試行する。
 決定事項、Action Item、確認ポイント、重要情報は前回Snapshotを履歴として維持する。
@@ -1527,10 +1527,8 @@ Playback MP4・文字起こし用WAV生成
 保存済みLive版を共通会議ノートで閲覧（高精度処理は任意）
 ↓ ユーザーが「要約を再生成」でAIプロファイル・議事録テンプレートを選択
 選択した接続先・モデル・Temperature・テンプレート定義と版をJobへ固定
-↓ 保存済みFinalがない初回だけ
-Final Transcription Job → 選択した非同期エンジンで全体処理 → final TranscriptVersionを保存
-↓ 保存済みFinalがあれば直接ここへ
-Final AI Analysis Job（固定した選択設定を使用）
+↓ 保存済みFinalを優先、なければ停止・保存済みLiveを選択
+AI Analysis Job（原文の版と選択設定を固定。Liveからの要約は暫定）
 ↓
 新しいAnalysisVersionを保存（過去の要約・Live版は保持）
 ```
@@ -1578,8 +1576,8 @@ Final AI Analysis Job（固定した選択設定を使用）
 - 外部AI取り込みは狭いペイン内へ展開せず、4段階のModalでプロンプト作成、回答貼り付け、検証、保存を行う。
 - Desktop、Tablet、Mobileのすべてで同じTab順序と初期表示を使用する。
 - 配色、Card、Header、ButtonはHome Dashboardと同じ表示テーマ（ライト・ダーク）へ統一する。43節を参照する。
-- 画面共有・マイク録音のSessionが停止済みなら、Final TranscriptやAI議事録の有無によらず録画操作CardとRealtime専用Panelを表示しない。保存したLive TranscriptとRealtime Snapshotを通常の会議ノートへ表示する。暫定版と明示し、編集・会議後質問は高精度版に限定する。「要約を再生成」に入口を統合し、Finalがない初回だけ選択した非同期エンジンで全体処理を開始する。完成後もLive版を保持し、版切替で文字起こしと要約を対応させる。マイク録音停止時は全体処理Jobを自動予約しない。
-- 完了後のAI議事録の「履歴」では「リアルタイム解析」と各確定版Versionを選択できる。Realtime SnapshotもAI議事録と同じCard一覧UIへ変換して表示するが、暫定結果の履歴なので編集・確認済み操作は提供しない。
+- 画面共有・マイク録音のSessionが停止済みなら、Final TranscriptやAI議事録の有無によらず録画操作CardとRealtime専用Panelを表示しない。保存したLive TranscriptとRealtime Snapshotを通常の会議ノートへ表示する。暫定版と明示し、文字起こし編集・会議後質問は高精度版に限定する。「要約を再生成」は保存済みFinal、なければ保存済みLiveから要約だけを生成する。高精度版の文字起こしは「その他」の詳細操作から明示して作成する。完成後もLive版を保持し、版切替で文字起こしと要約を対応させる。マイク録音停止時は全体処理Jobを自動予約しない。
+- 完了後のAI議事録の「履歴」では「リアルタイム解析」、保存済みLive原文から生成した暫定要約、各確定版Versionを選択できる。Realtime SnapshotもAI議事録と同じCard一覧UIへ変換して表示するが、録音中解析の履歴は閲覧用として編集・確認済み操作を提供しない。停止後に生成した暫定要約は通常の編集・確認済み操作を使用でき、次の生成でも保護する。いずれもLive原文・話者を正式確定した意味ではない。
 - Realtime履歴の「これまでの要約」には時刻を表示しない。決定事項、Action Item、確認ポイント、重要情報はEvidence全体の開始〜終了時刻を1つの範囲として表示する。
 
 ---
@@ -1817,13 +1815,16 @@ AI値は根拠となるTranscript Segment IDを持ち、Segmentの存在をBacke
 
 「高精度版を作成」と要約画面の「生成」は、共通会議ノートの「要約を再生成」へ統合する。設定ダイアログでAIプロファイルと議事録テンプレートを選び、初期値は会議の設定と保存済みテンプレートsnapshotとする。新しく選び直す場合はその時点のテンプレート版を使用する。選択は今回の生成だけに適用し、会議のAI・テンプレートやリアルタイム解析設定を変更しない。テンプレートを使用する生成ではsummary_formatの指示を重ねない。旧テンプレート未使用会議ではsummary_formatを後方互換として使用する。
 
-要約の入力は同じ会議のcompleted Final Transcriptに限定する。activeがFinalなら優先し、なければ保存済みの最新completed Finalを使用する。Live Transcriptは入力にしない。Finalがない初回だけ、保存・動画変換完了を確認してTRANSCRIBE Jobを作成する。Final保存後にANALYZE Jobへ進み、以後のモデル・テンプレート変更は解析だけ行う。
+2026-10-13のユーザー指定により、要約再生成は保存済み原文の再利用を選ぶ。入力は同じ会議のcompleted Finalを優先し、activeがFinalならその版、なければ保存済み最新Finalを使う。FinalがなければCOMPLETEDの録音Sessionに属するcompleted Liveを使用し、空の原文・録音中・保存中は拒否する。Live入力の要約は暫定版として履歴・表示・AI指示で明示し、LiveをFinalへ昇格させない。いずれもANALYZE Jobだけを作成し、TRANSCRIBE Jobや音声の再送は行わない。保存済み原文がない場合は再生成を無効にし、高精度版の全体文字起こしを「その他」の独立した詳細操作へ分離する。
+
+APIの`reuse_saved_transcript=true`がこの再利用を明示する。省略／falseの旧API要求はFinal限定と初回のTRANSCRIBE→ANALYZE経路を後方互換で保持する。生成予約時に原文のIDとkindをJobへ固定し、Workerは予約した原文の完了・Session保存・会議一致を再検証する。生成履歴は既存のtranscript_version_idで原文へ結び付け、APIのtranscript_kindは関連原文から計算する。履歴を選ぶとその原文の版を表示し、後からFinalを作成しても暫定要約の参照を変えない。既存のtemplate_snapshotを指示・検証・表示で共用する。
 
 Job.analysis_requestへ接続先・プロファイルID・モデル・Temperature・テンプレート内容とrevisionを保存する。Final待ちや再試行でもこの設定を引き継ぐ。解析履歴のtemplate_snapshotをAI指示・出力検証・表示で共通使用し、後のテンプレート編集を過去の履歴へ反映しない。選択画面のrevisionが更新されていた場合は競合を返す。予約後にモデル設定が変わっても保存したモデルを使い、接続先が変わった場合は送信せずfailedとする。Secretはsnapshotへ含めない。
 
 受付と再試行は会議行ロックで直列化する。処理中の全体Jobがあれば新規要求を409で拒否し、同一request_idの再送には既存Jobを返す。TRANSCRIBE Jobの再開は保存済みFinalと解析継続JobのIDを確認し、WhisperXと後続解析を重複実行しない。録音・録画中および保存中には開始しない。外部API・Evidence・設定のエラーでは既存active解析を維持する。ユーザー編集・確認済み項目の保護を維持する。
 
 DB変更は20260927_0022に続く20260927_0023でjobs.analysis_request（JSONB）とrequest_id（nullable UUID、unique）を追加する。POST /meetings/{id}/analysesはprofile_id、template_id、template_revision、request_idを受け、Final待ちの応答ではanalysisをnullとする。既存POST /meetings/{id}/transcriptは文字起こしを明示的に再処理する詳細APIとして残すが、再生成UIからは呼ばない。アップロード会議の自動処理、Live解析、会議後質問を維持する。
+保存済みLive入力の追加は既存のJob JSONと原文のFKを使用するため、新しいDB変更は不要で現行headは0029。新規APIパラメータはreuse_saved_transcript、原文GETのversion_idを追加する。要約の「その他」に高精度版の全体文字起こし作成を提供する。生成済み暫定要約は通常の項目編集・確認済み操作と保護を使い、録音中Realtime Snapshotの閲覧用表示とは分ける。会議後質問はcompleted Finalを使う。
 
 
 ---

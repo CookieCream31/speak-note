@@ -297,7 +297,9 @@ npm run lint
 npm run typecheck
 ```
 
-テストではFinalがない初回、Finalの再利用、モデル・テンプレート編集後の固定設定、snapshotによる指示・検証、Liveの拒否、連打・処理中・録音中の拒否、API失敗、Final保存後の再開、編集済み項目の保護を確認します。UIは選択・送信・キャンセル・連打・処理中・エラー再送を確認します。本番DBへのMigration、PostgreSQLでの同時要求、実WhisperX/AI接続、端末表示は別途実機確認が必要です。
+旧APIのテストではFinalがない初回、Finalの再利用、モデル・テンプレート編集後の固定設定、snapshotによる指示・検証、無許可のLive入力拒否、連打・処理中・録音中の拒否、API失敗、Final保存後の再開、編集済み項目の保護を確認します。UIは選択・送信・キャンセル・連打・処理中・エラー再送を確認します。本番DBへのMigration、PostgreSQLでの同時要求、実WhisperX/AI接続、端末表示は別途実機確認が必要です。
+
+2026-10-13の保存済み原文再利用では`reuse_saved_transcript=true`を明示し、completed Finalを優先、なければ保存を完了したSessionのcompleted Liveを使用します。原文ID・kindとAI／テンプレートを既存Jobへ固定し、Workerで再検証します。AnalysisVersionの既存FKを使うためDB変更はありません。APIの計算`transcript_kind`で暫定を区別し、履歴表示は原文GETの`version_id`で元の版へ対応させます。全体文字起こしは「その他」の独立操作です。`test_saved_transcript_summary.py`はAIなしのLive要約、原文再処理なし、設定固定、原文の版維持、停止・完了条件、Evidence、二重送信、障害・再試行、ユーザー確認内容の保護、Finalの優先と明示作成を検証します。[最新の変更・検証](summary-regeneration.md#saved-transcript-summary)。
 
 
 ## 会議ごとの文字起こし言語

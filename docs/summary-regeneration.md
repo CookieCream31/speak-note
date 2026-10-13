@@ -1,14 +1,44 @@
 # 要約再生成の実装・検証記録
 
-最終照合: 2026-10-12。[README](../README.md) · [操作手順](usage.md#summary-regeneration) · [Docker反映](operations.md#summary-regeneration)
+最終照合: 2026-10-13（保存済みLiveからの暫定要約・原文の版固定・独立した高精度版作成）。[README](../README.md) · [操作手順](usage.md#summary-regeneration) · [Docker反映](operations.md#saved-transcript-summary)
 
-この文書のテスト件数は要約再生成の実装完了時点の記録です。その後に追加した表示テーマと最新のFrontend検証は[表示テーマガイド](dark-mode.md)を参照してください。
+後半のテスト件数は初回実装時点の記録です。最新の保存済み原文の再利用は[今回の実装・検証](#saved-transcript-summary)を参照してください。
 
 ## 実装した動作
 
 共通の「要約を再生成」に入口を統合しました（リデザイン後は会議画面右上のタイトル横に配置）。AIプロファイルと議事録テンプレートを設定ダイアログで選び、今回の生成だけに適用します。初期値は会議のAI設定と保存済みテンプレートsnapshotです。テンプレートの「確定後」のカード・項目・AIへの指示を使い、従来のsummary_formatの指示を重ねません。テンプレート未使用の旧会議は従来形式を維持します。録音停止直後のRecorderに残っていた旧全体再処理ボタンも除きました。
 
-保存済みcompleted Finalがあれば解析だけを予約します。なければ初回だけ非同期・確定版の設定（WhisperX / Soniox）で全体文字起こしをJob + Workerで実行し、Final保存後に選択AIで解析します。Liveは入力にしません。Jobへ固定した接続先・プロファイル・モデル・Temperature・テンプレート内容と版を、初回の待ち時間と再試行でも引き継ぎます。生成履歴のsnapshotを指示・検証・表示に使用します。Sonioxの設定・処理IDの再利用・制約は[Sonioxガイド](soniox-transcription.md)を参照してください。
+保存済みcompleted Finalを優先し、なければ保存を完了したSessionのcompleted Liveから解析だけを予約します。Live入力の結果は暫定版として表示し、Finalへ昇格させません。AIなしで録音した会議でも、今回使うAIを明示すれば生成できます。旧API要求（reuse_saved_transcriptの省略／false）はFinal限定と初回の全体文字起こし経路を保持します。Jobへ固定した接続先・プロファイル・モデル・Temperature・テンプレート内容と版を、再試行でも引き継ぎます。生成履歴のsnapshotを指示・検証・表示に使用します。Sonioxの設定・処理IDの再利用・制約は[Sonioxガイド](soniox-transcription.md)を参照してください。
+
+<a id="saved-transcript-summary"></a>
+## 保存済み原文から要約だけを作る変更（2026-10-13）
+
+`reuse_saved_transcript=true`は保存済みFinalを優先し、なければ同じ会議の保存済みLiveを使います。原文が空・未完了、録音／保存中の場合は409で拒否し、文字起こしJobへ切り替えません。画面は再利用できる原文が保存されるまで再生成を無効にします。モデル・テンプレートの変更、外部AI障害と再試行でも原文を再処理しません。
+
+原文のIDとkindを既存Job JSONに固定し、AnalysisVersionの既存FKを使って生成履歴へ結び付けます。APIは関連原文から計算した`transcript_kind`を返し、Live入力はAI指示・履歴・表示で暫定と明示します。履歴選択では`GET /transcript?version_id=...`で元の版を読取り、会議一致・完了状態を検証します。後からFinalを作っても、以前の要約が参照する原文・テンプレートは変わりません。翻訳は入力に含めず、EvidenceのIDと時刻検証、ユーザー編集・確認済み情報の保護を維持します。
+
+全体文字起こしは要約の「その他」→「全体文字起こしを作成（高精度版）」に分離しました。既存の明示APIでJobを予約し、録音／保存中・処理中・二重送信を拒否します。Jobの状態が変わると操作を更新し、失敗後も再試行できます。原文の編集と会議後質問はFinalを使用します。アップロードのFinal自動作成、録音中解析、回答支援、テンプレートの「確定後」構成は維持します。
+
+新しいDBカラム・依存・環境変数はありません。現行Alembic headは`20261012_0029`です。Modelの変更は関係と計算property・型注釈だけで、DBの構造は変更しません。Backend・通常Worker・Frontendへの反映が必要です。[録音停止後の反映コマンド](operations.md#saved-transcript-summary)。
+
+変更ファイルはBackendの`api/routes/{analysis,transcripts}.py`、`models/analysis.py`、`schemas/analysis.py`、`services/analysis/{regeneration,processor}.py`、`services/questions/processor.py`と`tests/test_saved_transcript_summary.py`。Frontendは会議ページと同テスト、`final-transcript-button.tsx`、`meeting-review-panel.tsx`と同テスト、`summary-regeneration.test.tsx`、`final-transcript-action.tsx`・CSS・同テスト、`lib/{api,realtime-analysis-history}.ts`です。README・DESIGNと関連する操作／開発／反映ガイドも更新しています。
+
+| 検証コマンド | 結果 |
+| --- | --- |
+| Backend: `pytest -q` | 全体316件成功。既存の非推奨警告7件 |
+| Backend: `pytest tests/test_saved_transcript_summary.py -q` | 新しい保存済み原文の再利用13件成功 |
+| Backend: `ruff format --check`（変更8ファイル）、`ruff check`（同じファイル） | 成功 |
+| Backend: `mypy --follow-imports=silent --cache-dir /tmp/speak-note-saved-summary-mypy-direct`（変更したappの7ファイル） | 成功 |
+| Backend: `ruff check app` | 未変更ファイルに既存エラー8件。テンプレートRoute／Model、手動AI、Realtime解析、Azure |
+| Backend: `mypy --cache-dir /tmp/speak-note-saved-summary-mypy-all app` | 未変更4ファイルに既存エラー7件。Azure、Realtime解析／テンプレート、テンプレートRoute |
+| Frontend: `node node_modules/vitest/vitest.mjs run` | 全体312件・51ファイル成功 |
+| Frontend: `node node_modules/eslint/bin/eslint.js .`、`node node_modules/typescript/bin/tsc --noEmit` | 成功 |
+| `alembic heads`／`git diff --check` | headは0029。差分チェック成功 |
+| Chromium: 要約設定・履歴・高精度版の詳細操作 | 2テーマ×6幅の12条件成功。暫定表示、AI選択、エラー再試行と同じ要求ID、原文再利用の送信、履歴のLive／Final切替、独立した全体処理、横はみ出しなし |
+
+専用Frontend formatterは未設定です。Backendの既定mypy cacheで一度内部エラーが起きましたが、別の一時cacheで再検証できました。これは型エラーと区別し、検査を無効化していません。全体に残る既存lint／型エラーは上記のとおりです。ブラウザ検証は実Component・CSSを一時bundleし、APIはmockです。実PostgreSQLの同時要求、実WhisperX／Soniox／AI接続、iPhone実機、Docker反映は未検証で、稼働サービスは再起動していません。
+
+確認手順: AIをOFFにして録音し、停止・保存後にAIとテンプレートを選んで要約を作成します。解析Jobだけが追加され、暫定表示と原文への根拠があることを確認します。モデル・テンプレート変更でも原文を再処理せず、過去の履歴が残ることを確認してください。「その他」から高精度版を追加した後も古い暫定要約はLive原文を参照し、高精度版を明示して開けばFinal原文を表示します。
 
 会議行ロック、処理中Jobの確認、unique request_idで重複を防ぎます。Final保存後の再開では全体文字起こしを再実行せず、後続解析も重複予約しません。録音・保存中の開始と再試行を拒否し、不正な設定・存在しないEvidence・外部API失敗時に既存結果を維持します。編集・確認済み項目を保護します。過去の要約とLive版を保持し、要約完成前の既定表示はRealtime版を維持します。明示したFinalへの切替は尊重し、処理中の履歴を選んでいた場合も完成後に表示を更新します。
 

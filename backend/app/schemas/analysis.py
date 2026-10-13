@@ -5,6 +5,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.analysis import AnalysisItemKind, AnalysisItemState, AnalysisStatus
+from app.models.transcript import TranscriptKind
 
 
 class EvidenceOutput(BaseModel):
@@ -126,6 +127,7 @@ class AnalysisVersionRead(BaseModel):
     id: uuid.UUID
     meeting_id: uuid.UUID
     transcript_version_id: uuid.UUID
+    transcript_kind: TranscriptKind
     provider_id: uuid.UUID | None
     profile_id: uuid.UUID | None
     job_id: uuid.UUID | None
@@ -147,6 +149,7 @@ class AnalysisVersionRead(BaseModel):
 class AnalysisVersionSummaryRead(BaseModel):
     id: uuid.UUID
     version: int
+    transcript_kind: TranscriptKind
     model: str
     status: AnalysisStatus
     created_at: datetime
@@ -160,6 +163,7 @@ class AnalysisGenerateRequest(BaseModel):
     template_id: uuid.UUID | None = None
     template_revision: int | None = Field(default=None, ge=1)
     request_id: uuid.UUID | None = None
+    reuse_saved_transcript: bool = False
 
     model_config = ConfigDict(extra="forbid")
 

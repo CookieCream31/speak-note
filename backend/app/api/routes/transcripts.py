@@ -87,7 +87,10 @@ def select_view_transcript(
         if active is not None and (kind is None or active.kind == kind):
             return active
     if kind == TranscriptKind.FINAL:
-        return None
+        from app.services.analysis.processor import find_completed_final
+
+        final = find_completed_final(session, meeting)
+        return load_active_transcript(meeting.id, final.id, session) if final else None
     capture = session.scalar(
         select(RealtimeSession)
         .where(RealtimeSession.meeting_id == meeting.id)
@@ -101,10 +104,17 @@ def select_view_transcript(
 
 @router.get("/{meeting_id}/transcript", response_model=TranscriptVersionRead)
 def get_active_transcript(
-    meeting: MeetingDep, session: DbSession, kind: TranscriptKind | None = None
+    meeting: MeetingDep,
+    session: DbSession,
+    kind: TranscriptKind | None = None,
+    version_id: uuid.UUID | None = None,
 ) -> TranscriptVersion:
-    transcript = select_view_transcript(meeting, session, kind)
-    if transcript is None:
+    transcript = (
+        load_active_transcript(meeting.id, version_id, session)
+        if version_id
+        else select_view_transcript(meeting, session, kind)
+    )
+    if transcript is None or (kind is not None and transcript.kind != kind):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transcript not found")
     return transcript
 

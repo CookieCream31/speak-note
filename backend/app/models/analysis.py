@@ -1,9 +1,10 @@
 import enum
 import uuid
-from typing import Any
 from datetime import date, datetime
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
     CheckConstraint,
     Date,
@@ -13,7 +14,6 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
-    JSON,
     String,
     Text,
     UniqueConstraint,
@@ -24,6 +24,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.models.meeting import utc_now
+
+if TYPE_CHECKING:
+    from app.models.transcript import TranscriptKind, TranscriptVersion
 
 
 class AnalysisStatus(enum.StrEnum):
@@ -87,8 +90,12 @@ class AnalysisVersion(Base):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    template_snapshot: Mapped[dict | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
-    template_values: Mapped[list[dict[str, Any]]] = mapped_column(JSON().with_variant(JSONB, "postgresql"), nullable=False, default=list)
+    template_snapshot: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON().with_variant(JSONB, "postgresql"), nullable=True
+    )
+    template_values: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON().with_variant(JSONB, "postgresql"), nullable=False, default=list
+    )
 
     items: Mapped[list["AnalysisItem"]] = relationship(
         back_populates="analysis_version",
@@ -96,6 +103,11 @@ class AnalysisVersion(Base):
         passive_deletes=True,
         order_by="AnalysisItem.sequence",
     )
+    transcript_version: Mapped["TranscriptVersion"] = relationship()
+
+    @property
+    def transcript_kind(self) -> "TranscriptKind":
+        return self.transcript_version.kind
 
 
 class AnalysisItem(Base):
