@@ -304,7 +304,7 @@ npm run typecheck
 
 新規会議は言語配列とStrictを保存し、Live Session開始時／Final Job予約時に固定します。既存会議のnull配列は従来の用途別設定を保持します。`services/transcription/languages.py`が各エンジンの対応条件、`settings.py`がsnapshotとClient構築、Soniox Clientが音声送信前のモデル能力検証を担当します。WhisperXの自動判定のために他サービスを変更しません。
 
-Frontendの`MeetingLanguageFields`は会議作成・詳細で共通の検索一覧と選択済みタグを表示します。日本語・英語を先頭にし、複数対応時は追加・解除、単一言語時は置換します。最後の1言語・nullの互換設定は暗黙に自動へ変えません。エンジンによる制限理由、折りたたんだ詳細設定のStrict ON／OFF、親フォームを送信しない検索Enter、Escapeとフォーカスの復帰もこのComponentで扱います。表示改善ではAPI・DB・Jobを変更しません。
+Frontendの`MeetingLanguageFields`は会議作成・詳細で共通の検索一覧と選択済みタグを表示します。新しいDialogは空配列（自動判定）・Strict OFFで始まり、未選択時はタグを表示しません。日本語・英語を先頭にし、複数対応時は最後のタグも解除でき、空配列とStrict OFFへ戻ります。単一言語時は置換し最後の1言語を残します。nullの互換設定は明示選択まで維持します。エンジンによる制限理由、折りたたんだ詳細設定のStrict ON／OFF、親フォームを送信しない検索Enter、Escapeとフォーカスの復帰もこのComponentで扱います。API・DB・Jobの設定仕様は変更しません。[初期値の変更・検証](meeting-transcription-languages.md#実装検証)。
 
 ```bash
 cd /home/llm/speak-note/backend

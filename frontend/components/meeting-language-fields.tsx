@@ -81,7 +81,7 @@ export function MeetingLanguageFields({ value, onChange, includeRealtime, disabl
   const autoReason = `${blockedProviders || "現在のエンジン"}を使用しているため、自動判定は利用できません。`;
   function changeHints(next: string[]) { onChange({ ...value, hints: next, strict: next.length > 0 && value.strict }); }
   function removeLanguage(code: string) {
-    if (controlsDisabled || !hints || hints.length < 2) return;
+    if (controlsDisabled || !hints?.length || (hints.length === 1 && !options?.supports_auto)) return;
     changeHints(hints.filter((item) => item !== code));
     trigger.current?.focus();
   }
@@ -92,7 +92,7 @@ export function MeetingLanguageFields({ value, onChange, includeRealtime, disabl
       changeHints([code]);
       closePicker();
     } else if (hints?.includes(code)) {
-      if (hints.length > 1) changeHints(hints.filter((item) => item !== code));
+      if (hints.length > 1 || options.supports_auto) changeHints(hints.filter((item) => item !== code));
     } else {
       changeHints([...(hints ?? []), code]);
     }
@@ -127,10 +127,9 @@ export function MeetingLanguageFields({ value, onChange, includeRealtime, disabl
     <legend>会議で話す言語</legend>
     <div className={styles.selected} role="group" aria-label="文字起こし言語">
       {hints == null ? <span className={styles.chip}>従来の設定を維持</span>
-        : hints.length === 0 ? <span className={styles.chip}><Check size={15} aria-hidden="true" />自動判定</span>
-          : hints.map((code) => <span key={code} className={styles.chip}>
+        : hints.map((code) => <span key={code} className={styles.chip}>
             <span>{names.of(code) ?? code}</span>
-            {hints.length > 1 && <button type="button" disabled={controlsDisabled} aria-label={`${names.of(code) ?? code}を外す`} onClick={() => removeLanguage(code)}><X size={15} aria-hidden="true" /></button>}
+            {(hints.length > 1 || options?.supports_auto) && <button type="button" disabled={controlsDisabled} aria-label={`${names.of(code) ?? code}を外す`} onClick={() => removeLanguage(code)}><X size={15} aria-hidden="true" /></button>}
           </span>)}
       <button ref={trigger} type="button" className={styles.pickerButton} aria-label="言語を選ぶ" aria-expanded={open} aria-controls={`${id}-picker`} disabled={controlsDisabled} onClick={() => { setSearch(""); setOpen((previous) => !previous); }}>
         <Plus size={16} aria-hidden="true" /><span>言語を選ぶ</span>
@@ -153,12 +152,12 @@ export function MeetingLanguageFields({ value, onChange, includeRealtime, disabl
         {options && !loading && languages.length === 0 && <p role="status">該当する言語がありません。別の名前やコードで検索してください。</p>}
       </div>
       <div className={styles.pickerFooter}>
-        <p>{options?.supports_multiple ? "複数選択できます。選択中の言語を押すと外せます。最後の1つは残ります。" : "言語を選ぶと、現在の言語と入れ替わります。"}</p>
+        <p>{options?.supports_multiple ? "複数選択できます。選択中の言語を押すと外せます。すべて外すと自動判定になります。" : "言語を選ぶと、現在の言語と入れ替わります。"}</p>
         <button type="button" className={styles.closeButton} onClick={closePicker}>閉じる</button>
       </div>
     </div>
     {options && !options.supports_auto && <p id={`${id}-auto-reason`}>{autoReason} {includeRealtime ? "リアルタイム・確定版の両方" : "確定版"}をSonioxにすると、自動判定と複数言語を使えます。</p>}
-    <p id={`${id}-hint`}>選択した言語を認識のヒントに使います。Sonioxでは他の言語も認識できます。</p>
+    <p id={`${id}-hint`}>{options?.supports_auto && hints?.length === 0 ? "言語を選択しない場合は自動判定します。" : "選択した言語を認識のヒントに使います。Sonioxでは他の言語も認識できます。"}</p>
     <details className={styles.advanced}>
       <summary><ChevronDown size={16} aria-hidden="true" /><span>詳細設定</span><span className={styles.strictStatus} data-active={value.strict}>Strict {value.strict ? "ON" : "OFF"}</span></summary>
       <div className={styles.advancedContent}>

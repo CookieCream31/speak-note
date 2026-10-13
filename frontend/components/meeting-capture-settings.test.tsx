@@ -89,6 +89,14 @@ afterEach(() => {
 });
 
 describe("screen sharing recording setting", () => {
+  it("starts without language hints and saves automatic detection with strict OFF", async () => {
+    await selectMethod("audio_recording");
+    const languages = host.querySelector('[aria-label="文字起こし言語"]')!;
+    expect(languages.textContent).not.toContain("日本語");
+    expect(languages.textContent).not.toContain("自動判定");
+    await submit();
+    expect(meetingsApi.create).toHaveBeenCalledWith(expect.any(String), "audio_recording", expect.objectContaining({ transcription_language_hints: [], transcription_language_hints_strict: false }));
+  });
   it("persists the optional live translation on a microphone meeting", async () => {
     await selectMethod("audio_recording");
     await act(async () => host.querySelector<HTMLInputElement>('[aria-label="リアルタイム翻訳を使う"]')!.click());
@@ -99,7 +107,6 @@ describe("screen sharing recording setting", () => {
     await selectMethod("audio_recording");
     await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="言語を選ぶ"]')!.click());
     await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="英語を選択"]')!.click());
-    await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="日本語を外す"]')!.click());
     await act(async () => host.querySelector<HTMLElement>("fieldset details summary")!.click());
     await act(async () => host.querySelector<HTMLInputElement>('[role="switch"][aria-label="選択した言語に限定する"]')!.click());
     await submit();
@@ -168,9 +175,14 @@ describe("screen sharing recording setting", () => {
 
   it("restores video ON when a new dialog is opened", async () => {
     await selectMethod("live"); await toggleVideo();
+    await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="言語を選ぶ"]')!.click());
+    await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="日本語を選択"]')!.click());
+    expect(host.querySelector('[aria-label="文字起こし言語"]')!.textContent).toContain("日本語");
     await act(async () => Array.from(host.querySelectorAll("button")).find((button) => button.textContent === "キャンセル")!.click());
     await act(async () => Array.from(host.querySelectorAll("button")).find((button) => button.textContent === "新しい会議")!.click());
     await selectMethod("live");
     expect(videoSwitch().checked).toBe(true);
+    expect(host.querySelector('[aria-label="文字起こし言語"]')!.textContent).not.toContain("日本語");
+    expect(host.querySelector('[aria-label="文字起こし言語"]')!.textContent).not.toContain("自動判定");
   });
 });

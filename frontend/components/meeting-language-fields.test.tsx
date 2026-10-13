@@ -53,12 +53,18 @@ beforeEach(() => {
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); });
 
 describe("meeting language selection", () => {
-  it("defaults to Japanese with strict OFF and turns strict off when choosing automatic", async () => {
-    await act(async () => root.render(<Harness />));
-    expect(selected().textContent).toContain("日本語"); expect(toggle().checked).toBe(false);
+  it("shows only explicitly selected languages and turns strict off when returning to automatic", async () => {
+    await act(async () => root.render(<Harness initial={{ hints: [], strict: false }} />));
+    expect(selected().textContent).not.toContain("日本語");
+    expect(selected().textContent).not.toContain("自動判定");
+    expect(host.textContent).toContain("言語を選択しない場合は自動判定します");
+    expect(toggle().checked).toBe(false);
+    expect(toggle().disabled).toBe(true);
     expect(host.querySelector<HTMLDetailsElement>("fieldset details")?.open).toBe(false);
     expect(host.querySelector("summary")?.textContent).toContain("Strict OFF");
     expect(toggle().parentElement?.lastElementChild).toBe(toggle());
+    await choose("ja");
+    expect(selected().textContent).toContain("日本語");
     await openAdvanced();
     await act(async () => toggle().click()); expect(toggle().checked).toBe(true);
     expect(host.querySelector("summary")?.textContent).toContain("Strict ON");
@@ -81,10 +87,17 @@ describe("meeting language selection", () => {
     expect(document.activeElement).toBe(pickerTrigger());
     await clickLanguage("en");
     expect(host.querySelector("output")?.textContent).toBe('{"hints":["fr"],"strict":true}');
-    await clickLanguage("fr"); // Clicking the last checked row cannot silently enable automatic.
-    expect(host.querySelector("output")?.textContent).toBe('{"hints":["fr"],"strict":true}');
+    await clickLanguage("fr");
+    expect(host.querySelector("output")?.textContent).toBe('{"hints":[],"strict":false}');
     expect(selected().querySelector('[aria-label="フランス語を外す"]')).toBeNull();
     expect(languageButton("fr").disabled).toBe(false);
+  });
+  it("returns to automatic when removing the last tag and preserves translation settings", async () => {
+    await act(async () => root.render(<Harness initial={{ hints: ["en"], strict: true, translation: { type: "one_way", target_language: "ja" } }} />));
+    await act(async () => selected().querySelector<HTMLButtonElement>('[aria-label="英語を外す"]')!.click());
+    expect(host.querySelector("output")?.textContent).toBe('{"hints":[],"strict":false,"translation":{"type":"one_way","target_language":"ja"}}');
+    expect(selected().textContent).not.toContain("英語");
+    expect(selected().textContent).not.toContain("自動判定");
   });
   it("shows provider limits and restricts single-language engines without applying strict", async () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ ...soniox, supports_auto: false, supports_multiple: false, supports_strict: false, providers: ["whisperx"] }) });

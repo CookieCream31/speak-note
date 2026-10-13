@@ -184,7 +184,7 @@ export function MeetingsManager({
   const [createOpen, setCreateOpen] = useState(initialCreateOpen);
   const [createSource, setCreateSource] = useState<MeetingSourceType>("media_upload");
   const [recordVideo, setRecordVideo] = useState(true);
-  const [meetingLanguage, setMeetingLanguage] = useState<MeetingLanguageSelection>({ hints: ["ja"], strict: false });
+  const [meetingLanguage, setMeetingLanguage] = useState<MeetingLanguageSelection>({ hints: [], strict: false });
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
   const [createFile, setCreateFile] = useState<File | null>(null);
@@ -453,7 +453,7 @@ export function MeetingsManager({
     setCreateUploadSession(null);
     setPendingMeetingId(null);
     setAutoAnalyze(true);
-    setMeetingLanguage({ hints: ["ja"], strict: false });
+    setMeetingLanguage({ hints: [], strict: false });
     setSelectedAIProfile("default");
     setCreateError("");
     setCreateOpen(true);
@@ -572,7 +572,7 @@ export function MeetingsManager({
       if (!meetingId) {
         setCreateStatus("会議を作成しています…");
         const meeting = await meetingsApi.create(title, sourceType, {
-          transcription_language_hints: meetingLanguage.hints ?? ["ja"],
+          transcription_language_hints: meetingLanguage.hints ?? [],
           transcription_language_hints_strict: meetingLanguage.strict,
           realtime_translation: createSource === "media_upload" ? null : meetingLanguage.translation ?? null,
           min_speakers: minSpeakers,
