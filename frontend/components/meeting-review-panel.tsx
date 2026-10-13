@@ -363,7 +363,7 @@ export function MeetingReviewPanel({
         </p>
       )}
 
-      {analysis?.transcript_kind === "live" || !finalTranscriptAvailable ? <p className={styles.notice}>リアルタイム文字起こしに基づく要約は暫定版です。文字起こしの編集・会議への質問には高精度版が必要です。</p> : null}
+      {analysis?.transcript_kind === "live" || !finalTranscriptAvailable ? <p className={styles.notice}>リアルタイム文字起こしに基づく要約は暫定版です。本文の編集・会議への質問には高精度版が必要です。</p> : null}
 
       {regeneration && <SummaryRegenerationButton key={regenerationKey} {...regeneration} />}
 

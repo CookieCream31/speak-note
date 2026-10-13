@@ -864,7 +864,7 @@ export function LiveMeetingRecorder({
             </span>
             <strong>画面共有が停止しました</strong>
             <span>
-              {captureLabel}は継続中です。下の「共有画面を選んで再開」から共有する画面を選び直してください。
+              {captureLabel}は継続中です。共有ボタンで画面を選び直せます。
             </span>
           </div>
         )}
@@ -950,9 +950,6 @@ export function LiveMeetingRecorder({
               onClick={() => void changeDisplay()}
             >
               <ChangeDisplayIcon />
-              <span className={styles.controlLabel}>
-                {switchingDisplay ? "選択中…" : displayInterrupted ? "共有画面を選んで再開" : "共有画面を変更"}
-              </span>
             </button>
           )}
           <button
@@ -975,7 +972,6 @@ export function LiveMeetingRecorder({
             onClick={() => void toggleMicrophone()}
           >
             <MicrophoneIcon muted={microphoneMuted} />
-            <span className={styles.controlLabel}>{microphoneMuted ? "マイク：ミュート中" : "マイク：ON"}</span>
           </button>
           <button
             className={`${styles.iconButton} ${styles.stopIconButton}`}
@@ -985,7 +981,6 @@ export function LiveMeetingRecorder({
             onClick={() => void stopRecording()}
           >
             <StopRecordingIcon />
-            <span className={styles.controlLabel}>{captureLabel}を終了して確定</span>
           </button>
         </div>
       ) : (

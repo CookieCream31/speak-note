@@ -7,7 +7,7 @@ import { LiveMeetingRecorder } from "./live-meeting-recorder";
 
 const mocks = vi.hoisted(() => ({
   router: { refresh: vi.fn() }, createMixer: vi.fn(), pending: vi.fn(),
-  start: vi.fn(), send: vi.fn(), stop: vi.fn(), close: vi.fn(), azure: vi.fn(),
+  start: vi.fn(), send: vi.fn(), stop: vi.fn(), close: vi.fn(), azure: vi.fn(), soniox: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => mocks.router }));
 vi.mock("@/lib/live-capture", async (original) => ({
@@ -20,6 +20,7 @@ vi.mock("@/lib/display-capture", async (original) => ({
   detectDisplayCaptureSupport: () => "supported",
 }));
 vi.mock("@/lib/azure-speech-stream", () => ({ startAzureSpeechStream: mocks.azure }));
+vi.mock("@/lib/soniox-speech-stream", () => ({ startSonioxSpeechStream: mocks.soniox }));
 vi.mock("@/lib/recording-connection", () => ({ RecordingConnection: class {
   start = mocks.start; send = mocks.send; stop = mocks.stop; close = mocks.close;
 } }));
@@ -29,6 +30,7 @@ class Track extends EventTarget {
   readyState = "live";
   stop = vi.fn(() => { this.readyState = "ended"; });
   constructor(readonly kind: "audio" | "video") { super(); }
+  getSettings() { return { width: 3840, height: 2160 }; }
 }
 class Stream {
   constructor(readonly tracks: Track[]) {}
@@ -47,7 +49,7 @@ class Recorder extends EventTarget {
     this.state = "inactive";
     this.dispatchEvent(new Event("stop"));
   });
-  constructor(readonly stream: Stream, options: MediaRecorderOptions) {
+  constructor(readonly stream: Stream, readonly options: MediaRecorderOptions) {
     super(); this.mimeType = options.mimeType!; Recorder.instances.push(this);
   }
   chunk() {
@@ -69,8 +71,8 @@ let mixer: {
   isCurrentDisplay: (stream: Stream) => boolean; handleDisplayEnded: ReturnType<typeof vi.fn>;
   setMicrophoneMuted: ReturnType<typeof vi.fn>; attachMicrophone: ReturnType<typeof vi.fn>;
 };
-async function render(includeMicrophone = true, resumePendingCapture = false) {
-  await act(async () => root.render(<LiveMeetingRecorder meetingId="m" captureMode="shared_audio"
+async function render(includeMicrophone = true, resumePendingCapture = false, captureMode: "shared_audio" | "display" = "shared_audio") {
+  await act(async () => root.render(<LiveMeetingRecorder meetingId="m" captureMode={captureMode}
     existingRecording={false} transcriptionReady={false} hasFinalTranscript={false}
     finalProcessing={false} aiDisabled={false} initialIncludeMicrophone={includeMicrophone}
     resumePendingCapture={resumePendingCapture} />));
@@ -110,6 +112,7 @@ beforeEach(() => {
   mocks.pending.mockReturnValue(null);
   mocks.start.mockResolvedValue({ chunk_ms: 15000, transcription_provider: "whisperx" });
   mocks.azure.mockResolvedValue({ stop: vi.fn(), close: vi.fn() });
+  mocks.soniox.mockResolvedValue({ stop: vi.fn(), close: vi.fn() });
   host = document.createElement("div"); document.body.append(host);
   root = createRoot(host);
 });
@@ -118,6 +121,32 @@ afterEach(() => {
 });
 
 describe("shared audio recording", () => {
+  it.each(["shared_audio", "display"] as const)("uses named icon-only controls during %s capture and keeps original recording quality", async (mode) => {
+    mocks.start.mockResolvedValue({ chunk_ms: 15000, transcription_provider: "soniox" });
+    await render(true, false, mode); await click("画面共有を開始");
+    const toolbar = host.querySelector('[role="toolbar"]')!;
+    const buttons = Array.from(toolbar.querySelectorAll("button"));
+    expect(buttons).toHaveLength(3);
+    for (const button of buttons) {
+      expect(button.textContent).toBe("");
+      expect(button.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+      expect(button.getAttribute("aria-label")).toBeTruthy();
+      expect(button.getAttribute("title")).toBe(button.getAttribute("aria-label"));
+    }
+    expect(mocks.soniox).toHaveBeenCalledOnce();
+    if (mode === "display") {
+      const videoRecorder = Recorder.instances.find((item) => item.stream.getVideoTracks().length)!;
+      expect(videoRecorder.stream.getVideoTracks()[0]).toBe(display.getVideoTracks()[0]);
+      expect(videoRecorder.options.videoBitsPerSecond).toBe(24_000_000);
+      expect(host.querySelector("video")?.closest('[data-audio-only="false"]')).not.toBeNull();
+    }
+    await click("マイクをミュート");
+    expect(toolbar.querySelector('[data-control="microphone"]')?.getAttribute("aria-pressed")).toBe("true");
+    await click("マイクのミュートを解除");
+    await click(mode === "display" ? "録画を終了して確定" : "録音を終了して確定");
+    expect(mocks.stop).toHaveBeenCalledOnce();
+    expect(Recorder.instances.every((item) => item.state === "inactive")).toBe(true);
+  });
   it.each(["whisperx", "azure_speech"])("sends only mixed audio using %s and preserves sharing when muted", async (provider) => {
     mocks.start.mockResolvedValue({ chunk_ms: 15000, transcription_provider: provider });
     await render(); await click("画面共有を開始");

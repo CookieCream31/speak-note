@@ -1,18 +1,19 @@
 .recorder { display: flex; flex-direction: column; gap: 14px; }
 .microphoneOption { display: flex !important; align-items: center; gap: 8px; margin: 0 !important; }
 .microphoneHint { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
-.previewFrame { position: relative; overflow: hidden; width: 100%; background: var(--media-surface); }
-.preview { display: block; width: 100%; max-height: 220px; background: var(--media-surface); }
+.previewFrame { position: relative; overflow: hidden; width: 100%; border-radius: 12px; background: var(--media-surface); }
+.previewFrame[data-audio-only="false"] { width: min(100%, 280px); margin-inline: auto; }
+.preview { display: block; width: 100%; max-height: min(158px, 20dvh); background: var(--media-surface); }
 .elapsed { position: absolute; top: 10px; left: 10px; display: flex; align-items: center; gap: 7px; min-height: 30px; padding: 5px 10px; color: var(--media-text); background: var(--media-badge); border: 1px solid var(--media-line); border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; box-shadow: 0 2px 8px var(--shadow); backdrop-filter: blur(6px); }
 .elapsed i { width: 8px; height: 8px; flex: 0 0 8px; background: var(--danger-solid); border-radius: 50%; box-shadow: 0 0 0 4px var(--danger-ring); }
 .elapsed[data-stopping="true"] i { background: var(--warning-solid); box-shadow: 0 0 0 4px var(--warning-ring); }
 .elapsed[data-display-interrupted="true"] i { background: var(--warning-solid); box-shadow: 0 0 0 4px var(--warning-ring); }
-.elapsed time { min-width: 3.6em; text-align: right; }
-.displayStopped { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 8px; padding: 54px 24px 22px; color: var(--media-text); text-align: center; background: var(--media-blocker); backdrop-filter: blur(5px); }
-.displayStoppedIcon { width: 42px; height: 42px; display: grid; place-items: center; color: var(--on-primary); background: var(--primary-bg); border-radius: 50%; }
+.elapsed time { min-width: 3.6em; text-align: right; font-family: var(--font-mono); font-size: 14px; }
+.displayStopped { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 4px; padding: 8px 12px; overflow: auto; color: var(--media-text); text-align: center; background: var(--media-blocker); backdrop-filter: blur(5px); }
+.displayStoppedIcon { width: 28px; height: 28px; display: grid; place-items: center; color: var(--on-primary); background: var(--primary-bg); border-radius: 50%; }
 .displayStoppedIcon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.displayStopped strong { font-size: 15px; }
-.displayStopped > span:last-child { max-width: 390px; color: var(--media-muted); font-size: 12px; line-height: 1.6; }
+.displayStopped strong { font-size: 12px; }
+.displayStopped > span:last-child { max-width: 390px; color: var(--media-muted); font-size: 11px; line-height: 1.4; }
 .recordingControls { width: 100%; display: flex; align-items: center; justify-content: center; gap: 14px; padding: 5px 0 3px; }
 .recordingControls button { min-height: 48px; margin-top: 0 !important; }
 button.iconButton { width: 48px !important; height: 48px; flex: 0 0 48px; display: grid; place-items: center; padding: 0 !important; color: var(--text-secondary) !important; background: var(--surface-hover) !important; border: 1px solid var(--line); border-radius: 50% !important; transition: color .15s ease, background-color .15s ease, border-color .15s ease, transform .15s ease; }
@@ -65,10 +66,7 @@ button.stopIconButton:hover { color: var(--on-primary) !important; background: v
 
 @media (max-width: 520px) {
   .recorder { gap: 11px; }
-  .preview { max-height: min(42dvh, 260px); }
   .elapsed { top: 8px; left: 8px; font-size: 12px; }
-  .displayStopped { gap: 6px; padding: 46px 15px 16px; }
-  .displayStopped > span:last-child { font-size: 12px; }
   .finalProcessing button,
   .recorder > button { min-height: 44px; }
   .message, .warning, .error, .compatibility { overflow-wrap: anywhere; }
@@ -82,24 +80,4 @@ button.stopIconButton:hover { color: var(--on-primary) !important; background: v
 .audioPreview > span:last-child { color: var(--media-muted); font-size: 11px; }
 @media (max-width: 520px) {
   .previewFrame[data-audio-only="true"], .audioPreview { min-height: 180px; }
-}
-
-/* Redesign 3-4: preview with rounded corners and a labelled control bar below it. */
-.previewFrame { border-radius: 12px; }
-.preview { max-height: min(349px, 40dvh); }
-.recordingControls { justify-content: flex-start; gap: 10px; padding: 10px 0 0; }
-.recordingControls button.iconButton { width: auto !important; height: 40px; flex: 0 0 auto; display: inline-flex; gap: 8px; padding: 0 14px !important; border-radius: 10px !important; font-size: 13px; }
-.recordingControls button.iconButton svg { width: 18px; height: 18px; }
-.recordingControls button.stopIconButton { margin-left: auto; font-weight: 500; }
-.controlLabel { white-space: nowrap; }
-@media (max-width: 560px) {
-  /* Narrow screens keep round icon buttons; labels stay as accessible names via aria-label. */
-  .recordingControls { justify-content: center; gap: 14px; }
-  .recordingControls button.iconButton { width: 60px !important; height: 60px; justify-content: center; padding: 0 !important; border-radius: 50% !important; }
-  .recordingControls button.iconButton svg { width: 24px; height: 24px; }
-  /* Large elapsed time so the recording state reads at a glance. */
-  .elapsed { font-size: 16px; }
-  .elapsed time { font-family: var(--font-mono); font-size: 20px; }
-  .recordingControls button.stopIconButton { margin-left: 0; }
-  .controlLabel { display: none; }
 }
