@@ -48,6 +48,7 @@
     const turnElements = Array.from(root.querySelectorAll("[data-transcript-turn]"));
     const chapterOutput = root.querySelector("[data-current-chapter]");
     const chapterElements = Array.from(root.querySelectorAll("[data-chapter-segment]"));
+    const seekThumb = root.querySelector("[data-seek-thumb]");
     const chapterListItems = Array.from(root.querySelectorAll("[data-chapter-list-item]"));
     const customControls = root.querySelector("[data-custom-media-controls]");
     const mediaStage = root.querySelector("[data-media-stage]");
@@ -428,6 +429,11 @@
     }
 
     function renderChapters(currentMs) {
+      if (seekThumb instanceof HTMLElement) {
+        const durationMs = mediaDurationMs();
+        seekThumb.hidden = durationMs <= 0;
+        seekThumb.style.left = `${durationMs > 0 ? Math.min(1, Math.max(0, currentMs / durationMs)) * 100 : 0}%`;
+      }
       if (chapters.length === 0) return;
       if (chapters[0].timelineEndMs <= 0) layoutChapters();
 

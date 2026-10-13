@@ -16,6 +16,7 @@ beforeEach(() => {
     <section data-transcript-player data-media-kind="video">
       <div data-meeting-player><div data-media-stage><video data-meeting-media></video>
         <div data-custom-media-controls>
+          <div data-chapter-track><span data-seek-thumb hidden></span></div>
           <button data-play-toggle>再生</button>
           <button data-fullscreen-toggle>全画面</button>
           <div data-player-settings><button data-settings-trigger>設定</button></div>
@@ -78,6 +79,24 @@ function advance(time: number, top: number) {
 }
 
 describe("transcript playback runtime", () => {
+  it("shows the seek marker only with a known duration and tracks playback and seeks", () => {
+    const thumb = document.querySelector<HTMLElement>("[data-seek-thumb]")!;
+    expect(thumb.hidden).toBe(true);
+    Object.defineProperty(media, "duration", { configurable: true, value: 120 });
+    media.dispatchEvent(new Event("loadedmetadata"));
+    expect(thumb.hidden).toBe(false);
+    for (const [seconds, percentage] of [[0, "0%"], [60, "50%"], [120, "100%"], [180, "100%"]]) {
+      media.currentTime = seconds as number;
+      media.dispatchEvent(new Event("timeupdate"));
+      expect(thumb.style.left).toBe(percentage);
+    }
+    media.currentTime = 30;
+    media.dispatchEvent(new Event("seeked"));
+    expect(thumb.style.left).toBe("25%");
+    Object.defineProperty(media, "duration", { configurable: true, value: Number.NaN });
+    media.dispatchEvent(new Event("timeupdate"));
+    expect(thumb.hidden).toBe(true);
+  });
   it("changes menu rates with Shift shortcuts and preserves the playback position", () => {
     const shortcut = (code: string) => document.body.dispatchEvent(
       new KeyboardEvent("keydown", { code, shiftKey: true, bubbles: true, cancelable: true }),

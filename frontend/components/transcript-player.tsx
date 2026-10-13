@@ -234,6 +234,7 @@ function ChapterTrack({ chapters, durationMs }: ChapterTrackProps) {
           </span>
         </button>
       ))}
+      <span className={styles.seekThumb} data-seek-thumb aria-hidden="true" hidden />
     </div>
   );
 }
@@ -396,15 +397,17 @@ export function TranscriptMediaPlayer({
               )}
             </div>
             <div className={styles.audioControlRow}>
-              <PlaybackRateControl />
-              <button
-                type="button"
-                className={styles.audioUtilityButton}
-                data-skip-seconds="-10"
-                aria-label="10秒戻る"
-              >
-                <RotateCcw size={16} aria-hidden="true" /> <span>10</span>
-              </button>
+              <div className={`${styles.audioControlGroup} ${styles.audioControlsLeft}`}>
+                <PlaybackRateControl />
+                <button
+                  type="button"
+                  className={styles.audioUtilityButton}
+                  data-skip-seconds="-10"
+                  aria-label="10秒戻る"
+                >
+                  <RotateCcw size={16} aria-hidden="true" /> <span>10</span>
+                </button>
+              </div>
               <button type="button" className={styles.audioPlayButton} data-play-toggle>
                 <span data-play-icon data-vector-play-icon aria-hidden="true">
                   <Play size={20} data-play-glyph />
@@ -412,37 +415,39 @@ export function TranscriptMediaPlayer({
                 </span>
                 <span className={styles.visuallyHidden} data-play-label>再生</span>
               </button>
-              <button
-                type="button"
-                className={styles.audioUtilityButton}
-                data-skip-seconds="10"
-                aria-label="10秒進む"
-              >
-                <RotateCw size={16} aria-hidden="true" /> <span>10</span>
-              </button>
-              <button
-                type="button"
-                className={styles.audioUtilityButton}
-                data-volume-toggle
-                aria-label="ミュート"
-              >
-                <span data-volume-icon data-vector-volume-icon aria-hidden="true">
-                  <Volume2 size={18} data-volume-on />
-                  <VolumeX size={18} data-volume-off />
-                </span>
-              </button>
-              {downloadUrl && (
-                <a
-                  className={`${styles.audioUtilityButton} ${styles.audioDownloadButton}`}
-                  href={downloadUrl}
-                  download
-                  title="この音声をダウンロード"
-                  aria-label="この音声をダウンロード"
+              <div className={styles.audioControlGroup}>
+                <button
+                  type="button"
+                  className={styles.audioUtilityButton}
+                  data-skip-seconds="10"
+                  aria-label="10秒進む"
                 >
-                  <span aria-hidden="true"><Download size={16} /></span>
-                  <span className={styles.visuallyHidden}>音声をダウンロード</span>
-                </a>
-              )}
+                  <RotateCw size={16} aria-hidden="true" /> <span>10</span>
+                </button>
+                <button
+                  type="button"
+                  className={styles.audioUtilityButton}
+                  data-volume-toggle
+                  aria-label="ミュート"
+                >
+                  <span data-volume-icon data-vector-volume-icon aria-hidden="true">
+                    <Volume2 size={18} data-volume-on />
+                    <VolumeX size={18} data-volume-off />
+                  </span>
+                </button>
+                {downloadUrl && (
+                  <a
+                    className={`${styles.audioUtilityButton} ${styles.audioDownloadButton}`}
+                    href={downloadUrl}
+                    download
+                    title="この音声をダウンロード"
+                    aria-label="この音声をダウンロード"
+                  >
+                    <span aria-hidden="true"><Download size={16} /></span>
+                    <span className={styles.visuallyHidden}>音声をダウンロード</span>
+                  </a>
+                )}
+              </div>
             </div>
           </div>
         </>
@@ -549,7 +554,7 @@ export function TranscriptRuntime({ turns }: Pick<TranscriptPlayerProps, "turns"
         data-transcript-timeline
         dangerouslySetInnerHTML={{ __html: compactTimeline }}
       />
-      <Script src="/transcript-player.js?v=20261007-1" strategy="afterInteractive" />
+      <Script src="/transcript-player.js?v=20261013-1" strategy="afterInteractive" />
     </>
   );
 }

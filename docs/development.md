@@ -76,6 +76,8 @@ HTTPの詳細は起動中の `/docs`、WebSocketのメッセージは `api/route
 
 2026-10-13の音声再生ボタン変更では`transcript-player.tsx`の操作ラベルを視覚的に隠し、CSSで44pxの円形を全画面幅に適用しました。Runtimeのラベル更新・アイコン切替・ショートカットは共用しています。`vitest run components/meeting-workspace.test.tsx lib/transcript-player-runtime.test.ts`は12件成功、変更ComponentのESLintと`tsc --noEmit`も成功しました。実Component・CSS・Runtimeとテスト用WAVを使うChromium検証は、ライト／ダーク×幅320・393・520・620・844・1280・1920pxの14条件で円形・再生／一時停止・読み上げラベル・Space／Enter・横はみ出しなしを確認しました。iPhone実機の確認は未実施です。DB・環境変数の変更はありません。
 
+同日の中央配置・シークマーカー修正では音声操作部を左右対称のGridにし、音声・動画に丸い現在位置マーカーを追加しました。`vitest run components/meeting-workspace.test.tsx lib/transcript-player-runtime.test.ts lib/theme-styles.test.ts`は19件成功、対象ファイルのESLint・型チェック・差分チェックも成功しました。Chromiumでは同じ7幅×2テーマで音声（ダウンロードあり／なし）・動画の42条件を検証し、再生ボタンと状態の中央、0秒・10秒・30秒・60秒のマーカー位置、色、横はみ出しなしを確認しました。メディアのRange配信に対応するテスト用WAVを使用しています。Runtimeのキャッシュを更新するためScript URLを`20261013-1`へ変更しました。実機SafariとDocker反映は未確認です。
+
 ## 処理経路と守る境界
 
 ```text

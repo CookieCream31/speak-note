@@ -509,6 +509,19 @@
   background: var(--media-track);
   border-radius: 2px;
 }
+.seekThumb {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  z-index: 2;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--media-accent);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.videoControls .chapterSegment > [data-chapter-progress] { background: var(--media-accent); }
 .videoControls .chapterTrack {
   height: 5px;
   background: var(--media-track-overlay);
@@ -729,18 +742,21 @@
 .audioControls .chapterTrack { height: 10px; overflow: visible; background: transparent; }
 .audioControls .chapterSegment { background: var(--blue-soft); border-left: 4px solid var(--line-soft); border-radius: 2px; }
 .audioControls .chapterSegment:nth-child(even) { background: var(--blue-soft); }
-.audioControls .chapterSegment > [data-chapter-progress] { background: var(--primary-bg); }
-.audioControls .chapterSegment[aria-current="true"] { z-index: 1; transform: scaleY(1.3); box-shadow: 0 0 0 1px var(--focus-ring); }
+.audioControls .chapterSegment > [data-chapter-progress] { background: var(--blue); }
+.audioControls .seekThumb { background: var(--blue); }
+.audioControls .chapterSegment[aria-current="true"] { z-index: 1; transform: none; }
+.audioControls .chapterSegment:hover { transform: none; }
 .audioTimeRow {
   min-width: 0;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 14px;
 }
 .audioTimeRow .mediaTime { color: var(--muted); font-size: 12px; text-shadow: none; }
-.audioStatus { flex: 1; overflow: hidden; color: var(--muted); font-size: 12px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.audioStatus { grid-column: 2; min-width: 0; overflow: hidden; color: var(--muted); font-size: 12px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .audioChapterStatus {
+  grid-column: 3;
   min-width: 0;
   display: flex;
   align-items: baseline;
@@ -759,11 +775,13 @@
 }
 .audioControlRow {
   min-height: 38px;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr);
   align-items: center;
-  justify-content: center;
   gap: 9px;
 }
+.audioControlGroup { min-width: 0; display: flex; align-items: center; gap: inherit; }
+.audioControlsLeft { justify-content: flex-end; }
 .playbackRate { display: flex; margin-right: 12px; }
 .videoRateContainer { margin-right: 0; }
 .audioRateContainer { position: relative; }
