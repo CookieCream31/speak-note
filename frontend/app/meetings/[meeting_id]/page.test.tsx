@@ -13,10 +13,12 @@ vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("Not found
 type ReviewProps = ComponentProps<typeof MeetingReviewPanel>;
 type RegenerationProps = ComponentProps<typeof SummaryRegenerationButton>;
 const finalTranscript = { id: "final", kind: "final", status: "completed", model: "whisperx", segments: [{
-  id: "final-segment", text: "確定発言", start_ms: 0, end_ms: 1000, speaker: null, words: [],
+  id: "final-segment", text: "確定発言", start_ms: 0, end_ms: 1000,
+  speaker: null as { id: string; internal_name: string; display_name: string | null } | null, words: [],
 }] };
 const liveTranscript = { ...finalTranscript, id: "live", kind: "live", segments: [{
   ...finalTranscript.segments[0], id: "live-segment", text: "Realtimeの発言",
+  provisional_speaker_label: "話者 1", provisional_speaker_name: null as string | null,
 }] };
 const realtime = { status: "completed", model: "live-ai", updated_at: "2026-09-27T00:00:00Z",
   completed_at: "2026-09-27T00:00:00Z", evidence: [], snapshot: { summary: {
@@ -61,6 +63,9 @@ async function page(search: { analysis_id?: string; transcript_kind?: string } =
   return panel;
 }
 beforeEach(() => {
+  finalTranscript.segments[0].speaker = null;
+  liveTranscript.segments.splice(1);
+  liveTranscript.segments[0].provisional_speaker_name = null;
   translationsEnabled = false;
   liveReady = true;
   finalAnalysis = null;
@@ -90,6 +95,38 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("meeting summary regeneration presentation", () => {
+  it("never sends a provisional label as a Speaker ID and edits saved Live by segment", async () => {
+    sharedAudio = true;
+    liveTranscript.segments[0].provisional_speaker_name = "エージェント";
+    const element = await MeetingDetailPage({ params: Promise.resolve({ meeting_id: "m" }), searchParams: Promise.resolve({}) });
+    expect(workspace(element)?.props.playback.turns[0]).toMatchObject({
+      speakerId: null, speakerName: "エージェント", editableLiveSegmentIds: ["live-segment"],
+    });
+  });
+  it("only makes actual Final Speaker IDs editable in the Final view", async () => {
+    finalTranscript.segments[0].speaker = { id: "actual-speaker-uuid", internal_name: "SPEAKER_00", display_name: "確定話者" };
+    const element = await MeetingDetailPage({ params: Promise.resolve({ meeting_id: "m" }), searchParams: Promise.resolve({ transcript_kind: "final" }) });
+    expect(workspace(element)?.props.playback.turns[0].editableLiveSegmentIds).toBeUndefined();
+    expect(workspace(element)?.props.playback.turns[0].speakerId).toBe("actual-speaker-uuid");
+  });
+  it("keeps adjacent provisional labels separate when their saved display names differ", async () => {
+    sharedAudio = true;
+    liveTranscript.segments[0].provisional_speaker_name = "エージェント";
+    liveTranscript.segments.push({ ...liveTranscript.segments[0], id: "next-segment", provisional_speaker_name: null });
+    const element = await MeetingDetailPage({ params: Promise.resolve({ meeting_id: "m" }), searchParams: Promise.resolve({}) });
+    expect(workspace(element)?.props.playback.turns).toHaveLength(2);
+    expect(workspace(element)?.props.playback.turns.map((turn) => turn.speakerName)).toEqual(["エージェント", "話者 1"]);
+  });
+  it("does not treat adjacent unknown speakers as the same person", async () => {
+    sharedAudio = true;
+    liveTranscript.segments.push(
+      { ...liveTranscript.segments[0], id: "unknown-1", provisional_speaker_label: "SPEAKER_UNKNOWN" },
+      { ...liveTranscript.segments[0], id: "unknown-2", provisional_speaker_label: "SPEAKER_UNKNOWN" },
+    );
+    const element = await MeetingDetailPage({ params: Promise.resolve({ meeting_id: "m" }), searchParams: Promise.resolve({}) });
+    expect(workspace(element)?.props.playback.turns).toHaveLength(3);
+    expect(workspace(element)?.props.playback.turns[1].editableLiveSegmentIds).toEqual(["unknown-1"]);
+  });
   it("waits for saved realtime text and offers whole transcription only as a separate detail action", async () => {
     sharedAudio = true;
     liveReady = false;

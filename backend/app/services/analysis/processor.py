@@ -218,8 +218,9 @@ def _transcript_prompt(segments: list[TranscriptSegment]) -> str:
         speaker = "話者不明"
         if segment.speaker is not None:
             speaker = segment.speaker.display_name or segment.speaker.internal_name
-        elif segment.provisional_speaker_label:
-            speaker = f"{segment.provisional_speaker_label}（暫定）"
+        elif segment.provisional_speaker_name or segment.provisional_speaker_label:
+            name = segment.provisional_speaker_name or segment.provisional_speaker_label
+            speaker = f"{name}（暫定）"
         rows.append(
             f"[segment_id={segment.id} evidence_id={_evidence_alias(index)} "
             f"start={_format_timestamp(segment.start_ms)} start_ms={segment.start_ms} "

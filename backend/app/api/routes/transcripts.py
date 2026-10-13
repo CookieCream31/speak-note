@@ -21,6 +21,7 @@ from app.models.transcript import (
 )
 from app.schemas.job import JobRead
 from app.schemas.transcript import (
+    LiveSpeakerNameUpdate,
     SpeakerRead,
     SpeakerUpdate,
     TranscriptSegmentRead,
@@ -28,6 +29,7 @@ from app.schemas.transcript import (
     TranscriptVersionRead,
 )
 from app.services.transcription import create_final_transcript_from_result
+from app.services.transcription.live_speaker_names import update_live_speaker_name
 from app.services.transcription.schemas import WhisperXResult
 from app.services.transcription.settings import (
     RealtimeTranscriptionConfigurationError,
@@ -67,8 +69,10 @@ def _render_transcript_text(title: str, transcript: TranscriptVersion) -> str:
         speaker = "話者不明"
         if segment.speaker is not None:
             speaker = segment.speaker.display_name or segment.speaker.internal_name
-        elif segment.provisional_speaker_label:
-            speaker = segment.provisional_speaker_label
+        elif segment.provisional_speaker_name or segment.provisional_speaker_label:
+            speaker = (
+                segment.provisional_speaker_name or segment.provisional_speaker_label or speaker
+            )
         lines.extend(
             [
                 f"[{_format_download_timestamp(segment.start_ms)}] {speaker}",
@@ -296,6 +300,15 @@ def update_speaker(
     session.commit()
     session.refresh(speaker)
     return speaker
+
+
+@router.patch(
+    "/{meeting_id}/transcript/live-speaker-name", response_model=list[TranscriptSegmentRead]
+)
+def rename_live_speaker(
+    payload: LiveSpeakerNameUpdate, meeting: MeetingDep, session: DbSession
+) -> list[TranscriptSegment]:
+    return update_live_speaker_name(session, meeting, payload)
 
 
 @router.patch(

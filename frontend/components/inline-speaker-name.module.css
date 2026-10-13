@@ -48,6 +48,7 @@
 .actions button[type="button"] { color: var(--muted); background: var(--surface-hover); }
 .actions button:disabled { cursor: wait; opacity: .6; }
 .error { color: var(--danger); font-size: 12px; line-height: 1.4; }
+.scope { color: var(--muted); font-size: 12px; line-height: 1.4; }
 
 @media (max-width: 520px) {
   .nameButton { min-height: 44px; padding: 7px 5px; }

@@ -117,7 +117,7 @@ describe("MeetingWorkspace", () => {
     const runtime = TranscriptRuntime({ turns: [] });
     const children = Children.toArray(runtime.props.children) as ReactElement<{ src?: string }>[];
 
-    expect(children[1]?.props.src).toBe("/transcript-player.js?v=20261013-1");
+    expect(children[1]?.props.src).toBe("/transcript-player.js?v=20261013-2");
   });
 
   it("renders audio playback as a persistent custom control bar", () => {

@@ -20,6 +20,10 @@ class SpeakerUpdate(BaseModel):
     display_name: str | None = Field(default=None, max_length=200)
 
 
+class LiveSpeakerNameUpdate(SpeakerUpdate):
+    segment_ids: list[uuid.UUID] = Field(min_length=1, max_length=10_000)
+
+
 class TranscriptWordRead(BaseModel):
     id: uuid.UUID
     start_ms: int
@@ -41,6 +45,7 @@ class TranscriptSegmentRead(BaseModel):
     sequence: int
     speaker: SpeakerRead | None
     provisional_speaker_label: str | None
+    provisional_speaker_name: str | None
     words: list[TranscriptWordRead]
 
     model_config = ConfigDict(from_attributes=True)

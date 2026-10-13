@@ -111,6 +111,7 @@ function speakerName(segment: TranscriptSegment): string {
   return (
     segment.speaker?.display_name
     ?? segment.speaker?.internal_name
+    ?? segment.provisional_speaker_name
     ?? segment.provisional_speaker_label
     ?? "話者不明"
   );
@@ -135,7 +136,7 @@ export function groupLiveTranscriptSegments(
     // Unknown final labels also stay separate because they do not prove identity.
     const speakerKey = !isFinal
       ? "interim:" + segment.id
-      : knownSpeakerKey ?? "unknown:" + segment.id;
+      : JSON.stringify([knownSpeakerKey ?? "unknown:" + segment.id, segment.provisional_speaker_name ?? null]);
     const previous = turns.at(-1);
     if (previous?.speakerKey === speakerKey) {
       previous.segments.push(segment);

@@ -104,6 +104,7 @@ class TranscriptSegment(Base):
         Uuid, ForeignKey("speakers.id", ondelete="SET NULL"), nullable=True, index=True
     )
     provisional_speaker_label: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    provisional_speaker_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     text: Mapped[str] = mapped_column(Text)
     confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
     sequence: Mapped[int] = mapped_column(Integer)

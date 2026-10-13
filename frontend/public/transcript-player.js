@@ -145,6 +145,7 @@
         endMs: Number(element.getAttribute("data-subtitle-end-ms")),
         speakerId: element.getAttribute("data-subtitle-speaker-id") || null,
         speakerName: element.getAttribute("data-subtitle-speaker-name") || "",
+        sourceSegmentIds: (element.getAttribute("data-subtitle-source-segment-ids") || "").split(",").filter(Boolean),
         text: element.textContent?.trim() || "",
       }))
       .filter((cue) => Number.isFinite(cue.startMs)
@@ -396,6 +397,26 @@
       let changed = false;
       for (const cue of subtitleCues) {
         if (cue.speakerId !== detail.speakerId) continue;
+        cue.speakerName = detail.speakerName;
+        changed = true;
+      }
+      if (!changed) return;
+      activeSubtitleIndex = -2;
+      renderSubtitle(media.currentTime * 1000);
+    }
+
+    function handleLiveSpeakerRenamed(event) {
+      if (!root.isConnected) {
+        window.removeEventListener("speak-note:live-speaker-renamed", handleLiveSpeakerRenamed);
+        return;
+      }
+      if (!(event instanceof CustomEvent)) return;
+      const detail = event.detail;
+      if (!detail || typeof detail.speakerName !== "string" || !Array.isArray(detail.segmentIds)) return;
+      const ids = new Set(detail.segmentIds);
+      let changed = false;
+      for (const cue of subtitleCues) {
+        if (!cue.sourceSegmentIds.some((id) => ids.has(id))) continue;
         cue.speakerName = detail.speakerName;
         changed = true;
       }
@@ -957,6 +978,7 @@
     window.addEventListener("scroll", handleViewportScroll, { passive: true });
     followScrollContainer?.addEventListener("scroll", handleViewportScroll, { passive: true });
     window.addEventListener("speak-note:speaker-renamed", handleSpeakerRenamed);
+    window.addEventListener("speak-note:live-speaker-renamed", handleLiveSpeakerRenamed);
     if (playToggle instanceof HTMLButtonElement) {
       playToggle.addEventListener("click", togglePlayback);
     }

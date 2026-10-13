@@ -108,13 +108,17 @@ function speakerCountLabel(minimum: number | null, maximum: number | null): stri
 }
 
 function speakerName(segment: TranscriptSegment): string {
-  return segment.speaker?.display_name ?? segment.speaker?.internal_name ?? segment.provisional_speaker_label ?? "話者不明";
+  return segment.speaker?.display_name ?? segment.speaker?.internal_name ?? segment.provisional_speaker_name ?? segment.provisional_speaker_label ?? "話者不明";
 }
 
 function groupIntoTurns(segments: TranscriptSegment[]): TranscriptTurn[] {
   const turns: TranscriptTurn[] = [];
   for (const segment of segments) {
-    const speakerKey = segment.speaker?.id ?? segment.provisional_speaker_label ?? "unknown";
+    const label = segment.provisional_speaker_label;
+    const speakerKey = segment.speaker?.id ?? JSON.stringify([
+      label && label !== "SPEAKER_UNKNOWN" ? label : segment.id,
+      segment.provisional_speaker_name ?? null,
+    ]);
     const previous = turns.at(-1);
     if (previous?.speakerKey === speakerKey) {
       previous.segments.push(segment);
@@ -294,10 +298,12 @@ export default async function MeetingDetailPage({
   const playbackTurns: PlaybackTurn[] = transcriptTurns.map((turn) => ({
     id: `${turn.segments[0].id}-${turn.segments.at(-1)?.id ?? turn.segments[0].id}`,
     startMs: turn.startMs,
-    speakerId: turn.speakerKey === "unknown" ? null : turn.speakerKey,
+    speakerId: transcript?.kind === "final" ? turn.segments[0].speaker?.id ?? null : null,
     speakerName: turn.speakerName,
     words: buildPlaybackWords(turn.segments),
     sourceSegmentIds: transcript?.kind === "live" ? turn.segments.map((segment) => segment.id) : undefined,
+    editableLiveSegmentIds: archivedLiveMeeting && transcript?.kind === "live" && transcript.status === "completed"
+      ? turn.segments.map((segment) => segment.id) : undefined,
   }));
   const playbackChapters: PlaybackChapter[] = resolvePlaybackChapters(
     displayedAnalysis,

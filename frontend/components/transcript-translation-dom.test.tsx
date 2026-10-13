@@ -17,6 +17,12 @@ beforeEach(() => {
 afterEach(() => { act(() => root.unmount()); host.remove(); vi.unstubAllGlobals(); });
 
 describe("playback transcript translations", () => {
+  it("offers Live names by selected segment only after the caller marks them saved and editable", () => {
+    act(() => root.render(<TranscriptDocument meetingId={meetingId} turns={turns} />));
+    expect(host.querySelector('[title="この発言の話者名を変更（暫定）"]')).toBeNull();
+    act(() => root.render(<TranscriptDocument meetingId={meetingId} turns={[{ ...turns[0], editableLiveSegmentIds: turns[0].sourceSegmentIds }]} />));
+    expect(host.querySelector('[title="この発言の話者名を変更（暫定）"]')).not.toBeNull();
+  });
   it("puts saved captions under a grouped original and keeps player seeking limited to the original", () => {
     act(() => root.render(<TranscriptDocument meetingId={meetingId} mediaUrl="/audio" turns={turns} translations={persisted} />));
     const original = host.querySelector('[data-transcript-text]');

@@ -197,6 +197,7 @@ export interface TranscriptSegment {
   sequence: number;
   speaker: Speaker | null;
   provisional_speaker_label: string | null;
+  provisional_speaker_name?: string | null;
   words: TranscriptWord[];
 }
 

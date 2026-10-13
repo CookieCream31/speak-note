@@ -27,6 +27,7 @@ export interface PlaybackTurn {
   speakerName: string;
   words: PlaybackWord[];
   sourceSegmentIds?: string[];
+  editableLiveSegmentIds?: string[];
 }
 
 export interface PlaybackChapter {
@@ -66,6 +67,7 @@ interface SubtitleCue extends SubtitlePart {
   id: string;
   speakerId: string | null;
   speakerName: string;
+  sourceSegmentIds?: string[];
 }
 
 const SUBTITLE_MAX_CHARACTERS = 34;
@@ -163,6 +165,7 @@ function buildSubtitleCues(turns: PlaybackTurn[]): SubtitleCue[] {
           id: `${turn.id}-subtitle-${cues.length}`,
           speakerId: turn.speakerId,
           speakerName: turn.speakerName,
+          sourceSegmentIds: turn.sourceSegmentIds,
           startMs: Math.max(0, first.startMs),
           endMs: Math.max(first.startMs + 1, last.endMs),
           text,
@@ -307,6 +310,7 @@ export function TranscriptMediaPlayer({
                     data-subtitle-end-ms={cue.endMs}
                     data-subtitle-speaker-id={cue.speakerId ?? undefined}
                     data-subtitle-speaker-name={cue.speakerName}
+                    data-subtitle-source-segment-ids={cue.sourceSegmentIds?.join(",")}
                   >
                     {cue.text}
                   </span>
@@ -503,11 +507,12 @@ export function TranscriptDocument({
               >
                 {formatTimestamp(turn.startMs)}
               </button>
-              {turn.speakerId ? (
+              {turn.speakerId || turn.editableLiveSegmentIds?.length ? (
                 <InlineSpeakerName
-                  key={turn.speakerId + ":" + turn.speakerName}
+                  key={(turn.speakerId ?? turn.id) + ":" + turn.speakerName}
                   meetingId={meetingId}
                   speakerId={turn.speakerId}
+                  segmentIds={turn.editableLiveSegmentIds}
                   speakerName={turn.speakerName}
                 />
               ) : (
@@ -554,7 +559,7 @@ export function TranscriptRuntime({ turns }: Pick<TranscriptPlayerProps, "turns"
         data-transcript-timeline
         dangerouslySetInnerHTML={{ __html: compactTimeline }}
       />
-      <Script src="/transcript-player.js?v=20261013-1" strategy="afterInteractive" />
+      <Script src="/transcript-player.js?v=20261013-2" strategy="afterInteractive" />
     </>
   );
 }

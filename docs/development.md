@@ -349,3 +349,35 @@ Soniox原文の時間による保存区切りは、単語の途中・句読点�
 `theme-styles.test.ts` は全ページ・Component CSSの色指定と変数、インライン・publicのRuntime内の直接色指定、両テーマのコントラストを検査します。`theme.test.ts` と `theme-selector.test.tsx` は保存・追従・初回表示・Hydration・入力／音声要素の保持を検証します。新しい表示を追加したら両テーマ・狭い画面・エラー表示も確認し、READMEの最終照合日と関連ガイドを同じ作業で更新してください。
 
 変更ファイル、実行コマンド、結果、未検証事項は[表示テーマガイド](dark-mode.md)に記載しています。
+
+<a id="live-speaker-names"></a>
+## 保存済みリアルタイム版の話者表示名（2026-10-13）
+
+Liveラベルは正式SpeakerのUUIDではありません。会議ページで両者を分離し、保存済みLiveの連続発言を専用APIから編集します。元ラベルとは別のnullable列を0030で追加し、本文・単語時刻・正式話者・他の区間を変更しません。未判定の話者は個別のSegmentとして扱います。表示名の異なる隣接発言はまとめません。操作と制約は[話者名の変更](usage.md#speaker-names)、反映は[Migration 0030](operations.md#live-speaker-names)を参照してください。
+
+Backendの対象は`app/api/routes/transcripts.py`、`app/models/transcript.py`、`app/schemas/transcript.py`、`app/services/transcription/live_speaker_names.py`、`app/services/analysis/processor.py`、Migration 0030と新しい2テストファイルです。Frontendの対象は会議の`page.tsx`、`inline-speaker-name`、`transcript-player`、`realtime-analysis-panel`、`meeting-tools-panel`、API型・エラー整形・話者イベント・publicのPlayer Scriptと関連テストです。
+
+検証は隔離Python環境（`/tmp/speak-note-shared-audio-verify-env/bin`）とNode 22（`/tmp/node-v22.16.0-linux-x64/bin/node`）で実行しました。Backendのcwdは`backend`、Frontendは`frontend`です。
+
+```bash
+pytest -q
+ruff format --check app/api/routes/transcripts.py app/models/transcript.py app/schemas/transcript.py app/services/transcription/live_speaker_names.py app/services/analysis/processor.py tests/test_live_speaker_names.py tests/test_live_speaker_names_migration.py alembic/versions/20261013_0030_live_speaker_names.py
+ruff check app/api/routes/transcripts.py app/models/transcript.py app/schemas/transcript.py app/services/transcription/live_speaker_names.py app/services/analysis/processor.py tests/test_live_speaker_names.py tests/test_live_speaker_names_migration.py alembic/versions/20261013_0030_live_speaker_names.py
+mypy --follow-imports=silent --cache-dir /tmp/speak-note-speaker-name-mypy app/api/routes/transcripts.py app/models/transcript.py app/schemas/transcript.py app/services/transcription/live_speaker_names.py app/services/analysis/processor.py
+ruff check app --output-format concise
+mypy --cache-dir /tmp/speak-note-speaker-name-mypy-full app
+alembic heads
+alembic upgrade 20261012_0029:head --sql
+```
+
+```bash
+node node_modules/vitest/vitest.mjs run
+node node_modules/eslint/bin/eslint.js .
+node node_modules/typescript/bin/tsc --noEmit
+```
+
+結果: Backend全332件、Frontend全330件が成功しました。変更したPython 8ファイルのformat/lint、app 5ファイルの型チェック、Frontend全体のESLint・型チェック、Git差分の空白チェックは成功しています。Frontend専用formatterは設定されていないため、既存の書式へ合わせました。Backend全体のruffは未変更のテンプレート・手動解析・リアルタイム解析・Azureファイルの既存8件、mypyは未変更のAzure・テンプレート行・リアルタイム解析・テンプレートAPIの既存7件が残ります。全テストで既存の非推奨warningが7件出ます。
+
+追加テストでFinalの既存名前編集、Liveの保存・空欄リセット・対象外拒否・録音中拒否・元データ保持・Job非生成、次の要約プロンプトの暫定表示名、Migrationの既存行保持を確認しました。Frontendでは連打・保存中・取消・構造化エラー・再試行・同じ正式話者の同期・Liveの区間限定・字幕更新を確認しました。隔離した実ComponentのChromium表示確認は幅320/393/760/1280px、ライト／ダーク、Live／Finalの32ケースが成功しました（ブラウザのAPIはmock）。
+
+運用DBへの適用と実データの名前保存、実PostgreSQLでの同時編集、実機Safari/iPhoneでの表示は未検証です。エージェントは稼働サービスを再起動していません。

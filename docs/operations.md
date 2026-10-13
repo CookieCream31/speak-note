@@ -4,6 +4,7 @@
 
 コマンドは `/home/llm/speak-note` で実行します。Docker操作はこのプロジェクトだけを対象にしてください。
 録音・録画中はページ更新やサービス再起動を行わず、まず録音を終了して保存完了を確認します。
+現行ソースのMigration headは`20261013_0030`です。最新変更の反映は[話者表示名を含む手順](#live-speaker-names)を使用してください。過去の機能の節にあるhead番号は、その機能を追加した時点のものです。
 
 <a id="apply"></a>
 ## 変更の反映
@@ -89,7 +90,7 @@ sudo docker compose stop worker live-worker realtime-ai-worker answer-worker
 sudo docker compose restart backend
 sudo docker compose up -d --wait --no-deps backend
 sudo docker compose exec -T backend alembic current
-# 現行ソースは20261012_0029 (head)を確認してからWorkerを再開
+# 現行ソースは20261013_0030 (head)を確認してからWorkerを再開
 sudo docker compose up -d --no-deps worker live-worker realtime-ai-worker answer-worker
 sudo docker compose restart frontend
 sudo docker compose ps backend frontend worker live-worker realtime-ai-worker answer-worker
@@ -179,7 +180,7 @@ sudo docker compose ps frontend
 <a id="saved-transcript-summary"></a>
 ## 保存済みLiveからの要約生成・再生UI・言語初期値の反映（2026-10-13）
 
-保存済み原文からの要約生成はBackend・Worker・Frontendの変更です。Frontendだけの再起動では新しいAPIパラメータとLive入力の解析を反映できません。追加Migration・依存・環境変数はなく、現行headは0029です。既存の録音・録画、保存、実行中Jobがすべて終了してから実行してください。同じ環境でソース更新済みなら`git pull`は省略できます。
+保存済み原文からの要約生成はBackend・Worker・Frontendの変更です。Frontendだけの再起動では新しいAPIパラメータとLive入力の解析を反映できません。この機能自体の追加Migration・依存・環境変数はありません。現在のソースには話者表示名の0030も含むため、最新変更は[0030を含む反映手順](#live-speaker-names)を使用します。既存の録音・録画、保存、実行中Jobがすべて終了してから実行してください。同じ環境でソース更新済みなら`git pull`は省略できます。
 
 ```bash
 cd /home/llm/speak-note
@@ -193,6 +194,28 @@ sudo docker compose ps backend frontend worker live-worker realtime-ai-worker an
 ```
 
 BackendのHealthyと各Workerの稼働を確認し、ブラウザを再読み込みします。AIをOFFにして録音した会議で、保存完了後にAIを選んで要約を生成し、解析だけが作られることを確認します。暫定要約の履歴表示、モデル／テンプレート変更でも原文を再処理しないことを確認してください。高精度版は要約の「その他」から別に作成し、完成後の要約はFinalを優先します。再生ボタンの中央と丸いシークマーカー、新しい会議の未選択＝自動判定も確認します。非対応エンジンでは言語を1つ選びます。エージェントは稼働サービスの再起動や運用DBへの適用を行っていません。
+
+<a id="live-speaker-names"></a>
+## 保存済みリアルタイム版の話者名・保存エラー修正（Migration 0030）
+
+0030は`transcript_segments`へnullableの`provisional_speaker_name`（最大200文字）だけを追加します。既存の本文・時刻・元ラベル・話者FK・翻訳・要約・Job・認証情報を保持します。既存行はnullなので、編集するまで従来の話者ラベルを表示します。正式SpeakerへLiveラベルを誤送信する問題と、構造化APIエラーが`[object Object]`になる問題、名前保存後の表示更新も修正しています。追加の依存・環境変数はありません。
+
+**録音・録画・保存・実行中Jobをすべて終了してから**実行します。同じ環境でソース更新済みなら`git pull`は省略できます。エージェントは運用DBへの適用・Docker再起動を実行していません。
+
+```bash
+cd /home/llm/speak-note
+git pull --ff-only
+sudo docker compose stop worker live-worker realtime-ai-worker answer-worker
+sudo docker compose restart backend
+sudo docker compose up -d --wait --no-deps backend
+sudo docker compose exec -T backend alembic current
+# 20261013_0030 (head)とBackendのHealthyを確認してから再開
+sudo docker compose up -d --no-deps worker live-worker realtime-ai-worker answer-worker
+sudo docker compose restart frontend
+sudo docker compose ps backend frontend worker live-worker realtime-ai-worker answer-worker
+```
+
+Backend起動時にMigrationを適用します。失敗した場合はWorkerを停止したままBackendのログを確認し、Volumeを削除しないでください。ブラウザ再読み込み後、[話者名の変更](usage.md#speaker-names)を試します。リアルタイム版の選択した発言だけが変わり、離れた同番号・高精度版が変わらないこと、保存がTXT出力と再読込後も残ることを確認してください。高精度版では同じ正式話者の他の発言と字幕へ反映すること、名前変更で文字起こし・解析Jobが増えないことも確認します。
 
 <a id="soniox-accuracy"></a>
 ## Sonioxの話者分離を精度優先にする変更の反映

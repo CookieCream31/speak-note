@@ -2,6 +2,7 @@
 
 import { Play } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
+import { apiErrorMessage } from "@/lib/api-error-message";
 
 import {
   dispatchSpeakerRenamed,
@@ -59,8 +60,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     let message = `処理に失敗しました (${response.status})`;
     try {
-      const body = await response.json() as { detail?: string };
-      if (body.detail) message = body.detail;
+      message = apiErrorMessage(await response.json(), message);
     } catch {
       // Keep status-based message.
     }
