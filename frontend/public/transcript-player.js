@@ -74,7 +74,7 @@
     try {
       compactTimeline = JSON.parse(timelineElement.textContent || "[]");
     } catch {
-      if (status) status.textContent = "文字起こし時刻を読み込めませんでした";
+      setStatus("文字起こし時刻を読み込めませんでした", true);
       return;
     }
 
@@ -182,7 +182,11 @@
       && typeof window.matchMedia === "function"
       && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
-    function setStatus(message) {
+    function setStatus(message, isError = false) {
+      if (status?.hasAttribute("data-player-errors-only")) {
+        status.hidden = !isError;
+        message = isError ? message : "";
+      }
       if (status && status.textContent !== message) status.textContent = message;
     }
 
@@ -678,7 +682,7 @@
     function reportPlaybackError(error) {
       stopAnimation();
       const detail = error instanceof Error ? error.message : `${mediaLabel}を再生できませんでした`;
-      setStatus(`再生エラー: ${detail}`);
+      setStatus(`再生エラー: ${detail}`, true);
     }
 
     function playFrom(seconds) {

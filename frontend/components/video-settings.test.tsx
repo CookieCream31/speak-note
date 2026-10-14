@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act } from "react";
+import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VideoSettings } from "./video-settings";
@@ -56,6 +57,38 @@ afterEach(() => {
 });
 
 describe("video settings", () => {
+  it.each(["quality", "subtitleSize", "subtitleBackground", "subtitleSpeaker"])(
+    "keeps %s open when React replaces the clicked menu before document bubbling",
+    (setting) => {
+      const trigger = stage.querySelector<HTMLButtonElement>('button[aria-label="画質・字幕の設定"]')!;
+      const dialog = stage.querySelector<HTMLElement>('[role="dialog"]')!;
+      act(() => trigger.click());
+
+      // Browser clicks commit React's discrete update before reaching document.
+      // act alone defers that commit and masks detached event targets.
+      const mount = stage.querySelector<HTMLElement>("[data-mount]")!;
+      const commit = () => flushSync(() => {});
+      mount.addEventListener("click", commit);
+      try {
+        const click = (button: HTMLButtonElement) => act(() => {
+          button.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 }));
+        });
+        click(dialog.querySelector<HTMLButtonElement>(`[data-setting="${setting}"]`)!);
+        expect(dialog.hidden).toBe(false);
+        expect(dialog.dataset.page).toBe(setting);
+        click(dialog.querySelector<HTMLButtonElement>('[aria-label="設定一覧に戻る"]')!);
+        expect(dialog.hidden).toBe(false);
+        expect(dialog.dataset.page).toBe("root");
+        click(dialog.querySelector<HTMLButtonElement>(`[data-setting="${setting}"]`)!);
+        click(dialog.querySelector<HTMLButtonElement>("[data-setting-option]")!);
+        expect(dialog.hidden).toBe(false);
+        expect(dialog.dataset.page).toBe("root");
+      } finally {
+        mount.removeEventListener("click", commit);
+      }
+    },
+  );
+
   it("does not move focus into the settings menu after a pointer click", () => {
     const trigger = stage.querySelector<HTMLButtonElement>('button[aria-label="画質・字幕の設定"]')!;
     const dialog = stage.querySelector<HTMLElement>('[role="dialog"]')!;

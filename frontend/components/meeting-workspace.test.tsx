@@ -117,7 +117,7 @@ describe("MeetingWorkspace", () => {
     const runtime = TranscriptRuntime({ turns: [] });
     const children = Children.toArray(runtime.props.children) as ReactElement<{ src?: string }>[];
 
-    expect(children[1]?.props.src).toBe("/transcript-player.js?v=20261013-2");
+    expect(children[1]?.props.src).toBe("/transcript-player.js?v=20261014-1");
   });
 
   it("renders audio playback as a persistent custom control bar", () => {
@@ -174,6 +174,8 @@ describe("MeetingWorkspace", () => {
       'aria-keyshortcuts="Space K J L ArrowLeft ArrowRight M Shift+Period Shift+Comma"',
     );
     expect(html).not.toContain("data-subtitle-toggle");
+    expect(html).toContain('data-player-status="true" data-player-errors-only="true" aria-live="polite" hidden=""');
+    expect(html).not.toContain("音声を準備中");
     expect(html).not.toContain("<audio controls=");
     expect(html).toContain('id="meeting-media-tab-chapters" role="tab" aria-selected="true"');
     expect(html).toContain(

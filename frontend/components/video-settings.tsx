@@ -74,7 +74,10 @@ export function VideoSettings({ playbackUrl, originalUrl }: VideoSettingsProps) 
     if (!open) return;
     let switchingByPointer = false;
     const outside = (event: Event) => {
-      if (!(event.target instanceof Node) || container.current?.contains(event.target)) return;
+      if (!(event.target instanceof Node)) return;
+      // Navigation replaces the clicked row before this document listener runs.
+      // The original event path still identifies it as an inside click.
+      if (container.current && event.composedPath().includes(container.current)) return;
       if (event.type === "pointerdown") {
         // Closing before click would move the other menu's button on narrow screens.
         switchingByPointer = event.target instanceof Element

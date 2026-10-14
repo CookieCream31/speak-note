@@ -384,9 +384,6 @@ export function TranscriptMediaPlayer({
             {chapterTrack}
             <div className={styles.audioTimeRow}>
               <output className={styles.mediaTime} data-media-time>0:00 / --:--</output>
-              <output className={styles.audioStatus} data-player-status aria-live="polite">
-                音声を準備中
-              </output>
               {orderedChapters.length > 0 && (
                 <button
                   type="button"
@@ -454,6 +451,7 @@ export function TranscriptMediaPlayer({
                 )}
               </div>
             </div>
+            <output className={styles.audioError} data-player-status data-player-errors-only aria-live="polite" hidden />
           </div>
         </>
       )}
@@ -561,7 +559,7 @@ export function TranscriptRuntime({ turns }: Pick<TranscriptPlayerProps, "turns"
         data-transcript-timeline
         dangerouslySetInnerHTML={{ __html: compactTimeline }}
       />
-      <Script src="/transcript-player.js?v=20261013-2" strategy="afterInteractive" />
+      <Script src="/transcript-player.js?v=20261014-1" strategy="afterInteractive" />
     </>
   );
 }

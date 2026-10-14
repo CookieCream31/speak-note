@@ -551,9 +551,6 @@
   border-left-width: 5px;
   border-left-color: var(--media-subtitle);
 }
-.videoControls .chapterSegment[aria-current="true"]:not(:hover) {
-  transform: none;
-}
 .chapterSegment > [data-chapter-progress] {
   position: absolute;
   inset: 0 auto 0 0;
@@ -561,8 +558,6 @@
   background: var(--primary-bg);
   pointer-events: none;
 }
-.chapterSegment:hover,
-.chapterSegment[aria-current="true"] { transform: scaleY(1.55); }
 .chapterTooltip {
   position: absolute;
   bottom: calc(100% + 10px);
@@ -577,7 +572,7 @@
   background: var(--media-surface);
   border: 1px solid var(--media-border);
   box-shadow: 3px 3px 0 var(--shadow-strong);
-  transform: translateX(-50%) scaleY(.645);
+  transform: translateX(-50%);
   transform-origin: bottom center;
   pointer-events: none;
 }
@@ -586,18 +581,18 @@
 .videoControls .chapterTooltip {
   bottom: calc(100% + 13px);
   background: var(--media-tooltip);
-  transform: translateX(-50%) scaleY(.645);
 }
-.videoControls .chapterSegment:first-child .chapterTooltip {
+.chapterSegment:first-child .chapterTooltip {
   left: 0;
-  transform: scaleY(.645);
+  transform: none;
 }
-.videoControls .chapterSegment:last-child .chapterTooltip {
+.chapterSegment:last-of-type .chapterTooltip {
   right: 0;
   left: auto;
-  transform: scaleY(.645);
+  transform: none;
 }
-.chapterSegment:hover .chapterTooltip { display: block; }
+.chapterSegment:hover .chapterTooltip,
+.chapterSegment:focus-visible .chapterTooltip { display: block; }
 .followStatus { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); white-space: nowrap; font-size: 12px; font-weight: 700; }
 .followStatus i { width: 7px; height: 7px; background: var(--success-solid); border-radius: 50%; }
 .document { max-width: 980px; margin: 0 auto; padding: 10px 0 34px; }
@@ -744,19 +739,18 @@
 .audioControls .chapterSegment:nth-child(even) { background: var(--blue-soft); }
 .audioControls .chapterSegment > [data-chapter-progress] { background: var(--blue); }
 .audioControls .seekThumb { background: var(--blue); }
-.audioControls .chapterSegment[aria-current="true"] { z-index: 1; transform: none; }
-.audioControls .chapterSegment:hover { transform: none; }
+.audioControls .chapterSegment[aria-current="true"] { z-index: 1; }
 .audioTimeRow {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 14px;
 }
 .audioTimeRow .mediaTime { color: var(--muted); font-size: 12px; text-shadow: none; }
-.audioStatus { grid-column: 2; min-width: 0; overflow: hidden; color: var(--muted); font-size: 12px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.audioError { color: var(--danger); font-size: 12px; overflow-wrap: anywhere; }
 .audioChapterStatus {
-  grid-column: 3;
+  grid-column: 2;
   min-width: 0;
   display: flex;
   align-items: baseline;
@@ -922,8 +916,6 @@
   .secondaryButtonGroup { padding: 1px 3px; }
   .secondaryButtonGroup .controlButton { width: 28px; height: 28px; }
   .videoSettingsIcon { width: 15px; height: 15px; }
-  .chapterSegment:hover,
-  .chapterSegment[aria-current="true"] { transform: none; }
   .documentControls { padding: 9px 12px; }
   .followStatus { white-space: normal; }
   .document { padding: 8px 12px 36px; }
@@ -932,7 +924,6 @@
   .audioControlRow { gap: 2px; }
   .audioUtilityButton { min-width: 32px; padding: 0 4px; }
   .playbackRateButton { width: 44px; padding: 0 4px; }
-  .audioStatus { display: none; }
   .audioChapterStatus output { max-width: 48vw; }
 }
 

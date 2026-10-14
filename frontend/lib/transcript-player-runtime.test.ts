@@ -78,7 +78,69 @@ function advance(time: number, top: number) {
   media.dispatchEvent(new Event("timeupdate"));
 }
 
+function initializeAudio(timeline = "[]") {
+  document.body.innerHTML = `
+    <section data-transcript-player data-media-kind="audio">
+      <audio data-meeting-media></audio>
+      <output data-media-time></output>
+      <output data-player-status data-player-errors-only hidden></output>
+      <button data-play-toggle><span data-play-label>再生</span></button>
+      <script type="application/json" data-transcript-timeline>${timeline}</script>
+    </section>`;
+  const audio = document.querySelector("audio")!;
+  Object.defineProperty(audio, "duration", { value: 60 });
+  Object.defineProperty(audio, "readyState", { value: 4 });
+  (window as unknown as { speakNoteTranscriptPlayer: { initialize: () => void } })
+    .speakNoteTranscriptPlayer.initialize();
+  return { audio, status: document.querySelector<HTMLOutputElement>("[data-player-status]")! };
+}
+
 describe("transcript playback runtime", () => {
+  it("keeps audio time on the left without repeating normal playback status", () => {
+    const { audio, status } = initializeAudio();
+    let paused = true;
+    Object.defineProperty(audio, "paused", { get: () => paused });
+    audio.currentTime = 13;
+    audio.dispatchEvent(new Event("timeupdate"));
+    for (const event of ["loadedmetadata", "play", "pause", "ended"]) {
+      paused = event !== "play";
+      audio.dispatchEvent(new Event(event));
+      expect(status.hidden).toBe(true);
+      expect(status.textContent).toBe("");
+      expect(document.querySelector("[data-media-time]")?.textContent).toBe("0:13 / 1:00");
+    }
+    expect(document.querySelector("[data-play-toggle]")?.getAttribute("aria-label")).toBe("再生");
+  });
+
+  it("shows audio playback failures and clears them after a successful retry", async () => {
+    const { audio, status } = initializeAudio();
+    audio.currentTime = 13;
+    const play = vi.spyOn(audio, "play").mockRejectedValueOnce(new Error("再生が拒否されました"));
+    document.querySelector<HTMLButtonElement>("[data-play-toggle]")!.click();
+    await Promise.resolve();
+    expect(play).toHaveBeenCalledOnce();
+    expect(status.hidden).toBe(false);
+    expect(status.textContent).toBe("再生エラー: 再生が拒否されました");
+    expect(audio.currentTime).toBe(13);
+
+    Object.defineProperty(audio, "paused", { value: false });
+    audio.dispatchEvent(new Event("play"));
+    expect(status.hidden).toBe(true);
+    expect(status.textContent).toBe("");
+
+    audio.dispatchEvent(new Event("error"));
+    expect(status.hidden).toBe(false);
+    expect(status.textContent).toContain("音声を読み込めませんでした");
+    audio.dispatchEvent(new Event("loadedmetadata"));
+    expect(status.hidden).toBe(true);
+  });
+
+  it("keeps malformed audio timeline errors visible", () => {
+    const { status } = initializeAudio("invalid-json");
+    expect(status.hidden).toBe(false);
+    expect(status.textContent).toBe("文字起こし時刻を読み込めませんでした");
+  });
+
   it("shows the seek marker only with a known duration and tracks playback and seeks", () => {
     const thumb = document.querySelector<HTMLElement>("[data-seek-thumb]")!;
     expect(thumb.hidden).toBe(true);
