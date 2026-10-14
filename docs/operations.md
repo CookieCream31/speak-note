@@ -613,6 +613,22 @@ sudo docker compose ps
 ブラウザを再読み込みし、[要約再生成の操作と動作確認](usage.md#summary-regeneration)を実行します。Final作成失敗は親の文字起こしJob、要約失敗は解析Jobの「再試行」を使用します。Final保存後に予約が失敗した場合、親Jobの再試行は保存済みFinalを使い、WhisperXを再実行しません。接続先を変更した場合は現在の設定で新しい再生成を開始してください。テンプレート版の競合はダイアログを閉じてページを再読み込みし、選び直します。既存サービス・Docker Volumeは操作しません。
 
 
+<a id="meeting-status"></a>
+
+## 処理完了後の会議状態の復旧（2026-10-15）
+
+「すべて完了なのに会議が失敗」の修正はAPI・各Worker・Frontendにあります。録音・録画・保存と実行中Jobの終了を確認してから反映してください。DB Migration・環境変数の変更はありません。
+
+```bash
+cd /home/llm/speak-note
+git pull --ff-only
+sudo docker compose restart backend worker live-worker realtime-ai-worker answer-worker frontend
+sudo docker compose up -d --wait --no-deps backend
+sudo docker compose ps backend worker live-worker realtime-ai-worker answer-worker frontend
+```
+
+ブラウザを再読み込みして対象の会議を開きます。保存結果と本処理Jobの成功を確認できる会議だけ完了へ復旧します。処理状況の「更新」でも再照合できます。一覧へ戻って完了表示になり、再生・文字起こし・要約・過去の履歴が保たれていることを確認してください。再生成・文字起こしの再処理は不要です。録音中・本処理失敗・ファイル欠損の場合は失敗を隠しません。[原因・条件・検証](meeting-status.md)。
+
 <a id="chapter-thumbnails"></a>
 
 ## チャプターのサムネイル自動生成の反映（2026-10-15）

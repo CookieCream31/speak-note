@@ -447,6 +447,7 @@ export default async function MeetingDetailPage({
               key={jobs.map((job) => `${job.id}:${job.status}:${job.attempts}`).join("|") || meeting.id}
               meetingId={meeting.id}
               initialJobs={jobs}
+              meetingStatus={meeting.status}
             />
           </div>
         </div>

@@ -11,6 +11,7 @@ from app.models.meeting import Meeting, MeetingStatus
 from app.models.question import MeetingQuestion, MeetingQuestionStatus
 from app.models.realtime import RealtimeChunk
 from app.schemas.job import JobRead
+from app.services.jobs.meeting_status import AUXILIARY_JOB_TYPES
 from app.services.realtime.windows import build_realtime_transcription_windows
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -123,11 +124,7 @@ def retry_job(job_id: uuid.UUID, session: DbSession) -> Job:
             question.error_message = None
             question.completed_at = None
     meeting = session.get(Meeting, job.meeting_id)
-    if meeting is not None and job.type not in {
-        JobType.GENERATE_THUMBNAILS,
-        JobType.TRANSCRIBE_LIVE,
-        JobType.ASK_MEETING,
-    }:
+    if meeting is not None and job.type not in AUXILIARY_JOB_TYPES:
         meeting.status = MeetingStatus.QUEUED
     session.commit()
     session.refresh(job)

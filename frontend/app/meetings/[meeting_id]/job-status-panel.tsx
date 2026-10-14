@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import type { Job } from "@/lib/api";
+import type { Job, MeetingStatus } from "@/lib/api";
 
 import styles from "./page.module.css";
 
 interface JobStatusPanelProps {
   meetingId: string;
   initialJobs: Job[];
+  meetingStatus?: MeetingStatus;
 }
 
 function jobLabel(job: Job): string {
@@ -128,13 +129,20 @@ async function errorMessage(response: Response): Promise<string> {
   return `処理状況を更新できませんでした (${response.status})`;
 }
 
-export function JobStatusPanel({ meetingId, initialJobs }: JobStatusPanelProps) {
+export function JobStatusPanel({ meetingId, initialJobs, meetingStatus }: JobStatusPanelProps) {
   const router = useRouter();
   const [jobs, setJobs] = useState(initialJobs);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
   const jobsRef = useRef(initialJobs);
+
+  const reconcileStatus = useCallback(async (signal?: AbortSignal) => {
+    const response = await fetch(`/api/v1/meetings/${meetingId}/reconcile-status`, { method: "POST", signal });
+    if (!response.ok) throw new Error(await errorMessage(response));
+    const meeting = await response.json() as { status: MeetingStatus };
+    return meeting.status === "completed";
+  }, [meetingId]);
 
   const refreshJobs = useCallback(async (showIndicator = false) => {
     if (showIndicator) setRefreshing(true);
@@ -148,7 +156,9 @@ export function JobStatusPanel({ meetingId, initialJobs }: JobStatusPanelProps) 
       jobsRef.current = nextJobs;
       setJobs(nextJobs);
       setError("");
-      if (hadActiveJob && !hasActiveJob(nextJobs)) {
+      const idle = !hasActiveJob(nextJobs);
+      if (idle && meetingStatus === "failed") await reconcileStatus();
+      if ((hadActiveJob && idle) || showIndicator) {
         router.refresh();
       }
     } catch (caught) {
@@ -156,7 +166,7 @@ export function JobStatusPanel({ meetingId, initialJobs }: JobStatusPanelProps) 
     } finally {
       if (showIndicator) setRefreshing(false);
     }
-  }, [meetingId, router]);
+  }, [meetingId, meetingStatus, reconcileStatus, router]);
 
   const polling = hasActiveJob(jobs);
   const { currentJobs, historyJobs } = groupJobsForDisplay(jobs);
@@ -169,6 +179,19 @@ export function JobStatusPanel({ meetingId, initialJobs }: JobStatusPanelProps) 
         ? "すべて完了"
         : "処理なし";
   const summaryStatus = polling ? "active" : failedCount > 0 ? "failed" : "idle";
+
+  useEffect(() => {
+    const current = groupJobsForDisplay(initialJobs).currentJobs;
+    if (meetingStatus !== "failed" || hasActiveJob(initialJobs) || current.length === 0
+      || current.some((job) => job.status !== "completed")) return;
+    const controller = new AbortController();
+    void reconcileStatus(controller.signal).then((restored) => {
+      if (restored && !controller.signal.aborted) router.refresh();
+    }).catch((caught: unknown) => {
+      if (!controller.signal.aborted) setError(caught instanceof Error ? caught.message : "会議状態を確認できませんでした");
+    });
+    return () => controller.abort();
+  }, [initialJobs, meetingStatus, reconcileStatus, router]);
 
   useEffect(() => {
     if (!polling) return;

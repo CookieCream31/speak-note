@@ -32,6 +32,7 @@ from app.schemas.upload import (
 )
 from app.services.analysis.processor import find_completed_final
 from app.services.analysis.regeneration import lock_meeting
+from app.services.jobs.meeting_status import restore_completed_meeting
 from app.services.media import (
     InvalidAudioError,
     InvalidUploadChunkError,
@@ -170,6 +171,18 @@ def bulk_manage_meetings(
 
 @router.get("/{meeting_id}", response_model=MeetingRead)
 def get_meeting(meeting: MeetingDep) -> Meeting:
+    return meeting
+
+
+@router.post("/{meeting_id}/reconcile-status", response_model=MeetingRead)
+def reconcile_meeting_status(
+    meeting: MeetingDep,
+    session: DbSession,
+    storage: StorageDep,
+) -> Meeting:
+    restore_completed_meeting(session, meeting, storage)
+    session.commit()
+    session.refresh(meeting)
     return meeting
 
 

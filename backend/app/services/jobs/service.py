@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.job import Job, JobStatus, JobType
 from app.models.meeting import Meeting, MeetingStatus, utc_now
 from app.models.transcript import TranscriptKind, TranscriptStatus, TranscriptVersion
+from app.services.jobs.meeting_status import AUXILIARY_JOB_TYPES, restore_completed_meeting
 
 # Live transcription has its own worker so captions never wait behind
 # hour-long final transcription or AI jobs on the general queue.
@@ -80,6 +81,10 @@ def finish_job(session: Session, job: Job) -> None:
     job.status = JobStatus.COMPLETED
     job.progress = 100
     job.finished_at = utc_now()
+    if job.type in AUXILIARY_JOB_TYPES:
+        meeting = session.get(Meeting, job.meeting_id)
+        if meeting is not None and meeting.status == MeetingStatus.FAILED:
+            restore_completed_meeting(session, meeting)
     if job.type in {JobType.PREPROCESS_MEDIA, JobType.ANALYZE}:
         from app.services.media.thumbnails import enqueue_chapter_thumbnails
 
@@ -104,12 +109,7 @@ def fail_job(session: Session, job: Job, error_message: str) -> None:
     if job.type == JobType.ANSWER_LIVE:
         mark_answer_failed(session, job, error_message)
     meeting = session.get(Meeting, job.meeting_id)
-    if meeting is not None and job.type not in {
-        JobType.GENERATE_THUMBNAILS,
-        JobType.TRANSCRIBE_LIVE,
-        JobType.ASK_MEETING,
-        JobType.ANSWER_LIVE,
-    }:
+    if meeting is not None and job.type not in AUXILIARY_JOB_TYPES:
         meeting.status = (
             MeetingStatus.COMPLETED
             if _keeps_previous_result(session, meeting, job)
