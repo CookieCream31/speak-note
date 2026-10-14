@@ -1,6 +1,6 @@
 # 表示テーマ（ダークモード）
 
-最終照合: 2026-10-14（設定内への移動、全画面のOS追従・別タブ同期を照合）。[README](../README.md) · [操作ガイド](usage.md#display-theme) · [運用手順](operations.md#settings-navigation)
+最終照合: 2026-10-15（ライトモードの少し明るい緑、設定内の選択、全画面のOS追従・別タブ同期を照合）。[README](../README.md) · [操作ガイド](usage.md#display-theme) · [運用手順](operations.md#settings-navigation)
 
 ## 操作と保存
 
@@ -24,6 +24,32 @@ OS追従は「システムに合わせる」の間だけ有効です。ページ
 配色はリデザイン第1段階（[リデザイン実装ガイド](redesign.md)）の値です。白・黒・グレーを基本に、差し色（リンク・再生中・フォーカス、トークン名は従来の `--blue`）はエメラルド1色、赤はエラー・削除・停止とマイクのミュート状態だけに使います。録画中の画面共有・マイクのボタンはグレー、ミュート中は薄い赤の面に赤い枠（録画中は2px）、停止は赤の塗りで区別します。会議作成時の「マイク：ミュートで開始」も赤で表示します。方眼背景は廃止し、`body` の背景は `--paper` だけです（`--background-grid` は互換のため `transparent` で残しています）。ブラウザの `theme-color` はページ背景に合わせてライト `#fafafa`、ダーク `#09090b` です。ダークでは主要ボタンが白地・黒文字になり、`--danger-solid` も黒文字で読める明るい赤にしています。
 
 全ページ・ComponentのCSSは共通paletteへ接続し、色の直接指定やローカルのテーマ上書きを検査します。映像・画像の内容は変えません。映像上の字幕・操作部・録画プレビューには固定した `--media-*` を使い、音声プレイヤー・文字起こし等は選択テーマへ追従します。OSの画面共有ピッカー、ブラウザの権限ダイアログ、開発用フレームワークOverlayはアプリの配色対象ではありません。
+
+<a id="light-accent"></a>
+## ライトモードの緑を少し明るくする変更（2026-10-15）
+
+ライトモードの`--blue`・`--focus`・`--success`・`--success-solid`を`#047857`から`#007e54`へ変更しました。相対輝度が約10%上がり、リンク・時刻・スイッチ・シークバー・フォーカス枠・成功表示へ同じ色を使います。フォーカスの外側は`rgba(0, 126, 84, 0.25)`です。既存の別名`--accent`・`--mint`にも反映します。ダークモード・OSのダーク配色・映像上の固定配色は従来の値です。
+
+緑文字と白背景は約5.11:1、薄いグレーの面は約4.65:1、成功表示の薄い緑の面は約4.55:1です。少し明るくしながら、既存の4.5:1以上の検査を保持しています。
+
+変更ファイルは`frontend/app/theme.css`、`README.md`、`DESIGN.md`、`docs/dark-mode.md`、`docs/redesign.md`の5件です。画面ごとの色を直接変更せず、共通paletteのライト定義だけを更新しました。
+
+実行コマンド（Node 22.16.0の`/tmp/node-v22.16.0-linux-x64/bin/node`）:
+
+```bash
+# frontend内
+node node_modules/vitest/vitest.mjs run lib/theme-styles.test.ts lib/theme.test.ts components/theme-selector.test.tsx components/theme-observer.test.tsx components/settings-navigation.test.tsx
+node node_modules/typescript/bin/tsc --noEmit
+node node_modules/eslint/bin/eslint.js .
+# Project内
+git diff --check
+```
+
+関連28件、型チェック・ESLint・空白検査が成功しました。両テーマのCSS・コントラスト・OS追従・設定保存・Hydration・別タブ同期を既存テストで検証しています。色定数と文書だけの変更のため、Frontend全体・Backend・DBの検証は再実行していません。Frontend専用formatterは未設定で、既存書式へ合わせた限定差分を確認しました。
+
+Chromiumの実Component・CSSによる設定・会議作成・保存音声の3画面を、ライト／ダーク×幅320・393・844・1280pxの24条件で確認しました。設定の選択枠・フォーカス、作成スイッチ、文字起こしの時刻、音声のシークマーカー・スキップボタンへ新しい色が反映されること、ダークの色の保持、横はみ出しなし・page errorなしが成功しました。OSがダークでも明示的なライト選択を優先することも確認しています。検証は`FONTCONFIG_FILE=/tmp/speak-note-provisional-speakers-browser/fonts.conf PLAYWRIGHT_BROWSERS_PATH=/tmp/speak-note-browsers LD_LIBRARY_PATH=/tmp/speak-note-browser-libs/usr/lib/x86_64-linux-gnu XDG_CACHE_HOME=/tmp/speak-note-browser-font-cache /tmp/speak-note-title-speed-verify-env/bin/python /tmp/speak-note-settings-navigation-browser/check_light_accent.py`で行いました。
+
+録音・録画と保存の終了後にページを再読み込みし、設定の「表示テーマ」でライトを選んで確認します。必要な場合のFrontendだけの再起動は[運用手順](operations.md#display-theme)を使います。新しいMigration・依存・環境変数はありません。外部API・運用会議・稼働Dockerは操作していません。Safari／iPhone実機・実録音・Docker反映は未検証です。
 
 ## 検証
 
