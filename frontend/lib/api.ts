@@ -407,6 +407,20 @@ export const transcriptsApi = {
   createFinal: (meetingId: string) => request<Job>(`/meetings/${meetingId}/transcript`, { method: "POST" }),
 };
 
+export interface ChapterThumbnails {
+  status: "unavailable" | "missing" | "queued" | "running" | "completed" | "failed";
+  thumbnails: { chapter_id: string; start_ms: number; url: string | null }[];
+  job: Job | null;
+}
+
+export const chapterThumbnailsApi = {
+  ensure: (meetingId: string, analysisId: string, signal?: AbortSignal) =>
+    request<ChapterThumbnails>(`/meetings/${meetingId}/analyses/${analysisId}/chapter-thumbnails`, { method: "POST", signal }),
+  get: (meetingId: string, analysisId: string, signal?: AbortSignal) =>
+    request<ChapterThumbnails>(`/meetings/${meetingId}/analyses/${analysisId}/chapter-thumbnails`, { signal, cache: "no-store" }),
+  retry: (jobId: string) => request<Job>(`/jobs/${jobId}/retry`, { method: "POST" }),
+};
+
 export const meetingsApi = {
   list: (projectId?: string, offset = 0) => request<MeetingList>(`/meetings?limit=100&offset=${offset}${projectId ? `&project_id=${encodeURIComponent(projectId)}` : ""}`),
   create: (

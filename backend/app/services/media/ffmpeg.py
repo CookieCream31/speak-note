@@ -22,6 +22,45 @@ class FFmpegMediaService:
         self.ffmpeg_binary = ffmpeg_binary
         self.ffprobe_binary = ffprobe_binary
 
+    def create_thumbnail(self, source: Path, destination: Path, timestamp_ms: int) -> None:
+        if timestamp_ms < 0:
+            raise MediaProcessingError("サムネイルの時刻が不正です")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        temporary = destination.with_name(f".{destination.stem}.processing.jpg")
+        try:
+            self._run(
+                [
+                    self.ffmpeg_binary,
+                    "-nostdin",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-y",
+                    "-ss",
+                    f"{timestamp_ms // 1000}.{timestamp_ms % 1000:03d}",
+                    "-i",
+                    str(source),
+                    "-map",
+                    "0:v:0",
+                    "-frames:v",
+                    "1",
+                    "-an",
+                    "-vf",
+                    "scale=320:180:force_original_aspect_ratio=decrease,"
+                    "pad=320:180:(ow-iw)/2:(oh-ih)/2",
+                    "-q:v",
+                    "3",
+                    "-update",
+                    "1",
+                    str(temporary),
+                ]
+            )
+            if not temporary.is_file() or temporary.stat().st_size == 0:
+                raise MediaProcessingError("チャプター位置の画像を取得できませんでした")
+            os.replace(temporary, destination)
+        finally:
+            temporary.unlink(missing_ok=True)
+
     def process_video(
         self,
         original_path: Path,

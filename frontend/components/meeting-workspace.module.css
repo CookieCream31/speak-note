@@ -34,7 +34,12 @@
 .chapterItem:hover { background: var(--surface-hover); }
 .chapterItem[aria-current] { color: var(--ink); background: var(--surface-hover); }
 .chapterThumb { position: relative; width: 112px; height: 63px; display: flex; align-items: flex-end; justify-content: flex-end; padding: 4px; overflow: hidden; background: var(--media-surface); border-radius: 8px; }
-.chapterLength { padding: 1px 5px; color: var(--media-text); background: var(--media-badge); border-radius: 4px; font-family: var(--font-mono); font-size: 11px; }
+.chapterImage { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.chapterFallback { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--media-muted); }
+.chapterLength { position: relative; padding: 1px 5px; color: var(--media-text); background: var(--media-badge); border-radius: 4px; font-family: var(--font-mono); font-size: 11px; }
+.thumbnailStatus { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0; padding: 10px 14px; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.thumbnailStatus button { min-height: 44px; padding: 6px 12px; color: var(--ink); background: var(--surface-hover); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.thumbnailStatus button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .chapterProgress { position: absolute; bottom: 0; left: 0; width: 0; height: 3px; background: var(--media-text); }
 .chapterText { min-width: 0; display: grid; justify-items: start; gap: 6px; }
 .chapterTitle { font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }

@@ -24,6 +24,7 @@ from app.services.media import (
     RealtimeWindowMediaService,
     process_video_job,
 )
+from app.services.media.thumbnails import process_thumbnail_job
 from app.services.questions import process_meeting_question_job
 from app.services.realtime import process_live_transcription_job
 from app.services.transcription import (
@@ -84,6 +85,9 @@ def process_job(session: Session, job: Job) -> None:
     )
     if job.type == JobType.PREPROCESS_MEDIA:
         process_video_job(session, job, FFmpegMediaService(), storage)
+        return
+    if job.type == JobType.GENERATE_THUMBNAILS:
+        process_thumbnail_job(session, job, FFmpegMediaService(), storage)
         return
     if job.type == JobType.TRANSCRIBE:
         process_transcription_job(

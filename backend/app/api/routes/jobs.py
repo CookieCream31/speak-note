@@ -31,6 +31,28 @@ def get_job(job_id: uuid.UUID, session: DbSession) -> Job:
 @router.post("/{job_id}/retry", response_model=JobRead)
 def retry_job(job_id: uuid.UUID, session: DbSession) -> Job:
     job = get_job_or_404(job_id, session)
+    if job.type == JobType.GENERATE_THUMBNAILS:
+        from app.services.media.thumbnails import latest_thumbnail_job, saved_playback_video
+
+        meeting = session.scalar(
+            select(Meeting).where(Meeting.id == job.meeting_id).with_for_update()
+        )
+        session.refresh(job)
+        latest = latest_thumbnail_job(session, job.meeting_id)
+        if meeting is None or saved_playback_video(session, meeting) is None:
+            raise HTTPException(
+                status_code=409, detail="録音・録画と動画変換の完了を待ってください"
+            )
+        if (
+            latest is not None
+            and latest.id != job.id
+            and latest.status
+            in {
+                JobStatus.QUEUED,
+                JobStatus.RUNNING,
+            }
+        ):
+            raise HTTPException(status_code=409, detail="サムネイルはすでに処理中です")
     if job.type in (JobType.TRANSCRIBE, JobType.ANALYZE):
         from app.services.analysis.processor import AnalysisProcessingError
         from app.services.analysis.regeneration import (
@@ -102,6 +124,7 @@ def retry_job(job_id: uuid.UUID, session: DbSession) -> Job:
             question.completed_at = None
     meeting = session.get(Meeting, job.meeting_id)
     if meeting is not None and job.type not in {
+        JobType.GENERATE_THUMBNAILS,
         JobType.TRANSCRIBE_LIVE,
         JobType.ASK_MEETING,
     }:

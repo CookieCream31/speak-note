@@ -613,7 +613,24 @@ sudo docker compose ps
 ブラウザを再読み込みし、[要約再生成の操作と動作確認](usage.md#summary-regeneration)を実行します。Final作成失敗は親の文字起こしJob、要約失敗は解析Jobの「再試行」を使用します。Final保存後に予約が失敗した場合、親Jobの再試行は保存済みFinalを使い、WhisperXを再実行しません。接続先を変更した場合は現在の設定で新しい再生成を開始してください。テンプレート版の競合はダイアログを閉じてページを再読み込みし、選び直します。既存サービス・Docker Volumeは操作しません。
 
 
+<a id="chapter-thumbnails"></a>
+
+## チャプターのサムネイル自動生成の反映（2026-10-15）
+
+DB・環境変数・依存の追加はありません。録音・録画・保存と実行中Jobの終了を確認してから実行してください。最新コードを通常Workerにも読み込ませます。ここで再起動するのは`speak-note`の対象サービスだけです。
+
+```bash
+cd /home/llm/speak-note
+git pull --ff-only
+sudo docker compose restart backend worker frontend
+sudo docker compose up -d --wait --no-deps backend
+sudo docker compose ps backend worker frontend
+```
+
+ブラウザを再読み込みし、チャプターのある保存済み動画を開きます。通常Workerの「サムネイル生成」が完了すると画像が表示されます。既存会議も自動予約するため、文字起こし・要約の再生成は不要です。音声のみは音声アイコンで、画像Jobを作りません。失敗時は一覧または処理状況から明示的に再試行します。[実装・検証・確認手順](chapter-thumbnails.md)。この機能のために高精度版作成や外部AIを呼ぶ必要はありません。
+
 <a id="settings-navigation"></a>
+
 ## 設定と会議作成の入口の反映（2026-10-14）
 
 Frontendのみの変更です。録音・録画と保存が終わってから反映します。DB Migration、Backend／Worker再起動、環境変数や依存の更新は不要です。開発用Composeではbind mountとHMRで反映し、必要な場合だけFrontendを再起動します。

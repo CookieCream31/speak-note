@@ -528,6 +528,8 @@ export default async function MeetingDetailPage({
       <section className={styles.transcriptSection}>
         <MeetingWorkspace
           meetingId={meeting.id}
+          analysisId={displayedAnalysis?.id}
+          thumbnailJobState={jobs.filter((job) => job.type === "generate_thumbnails").map((job) => `${job.id}:${job.status}:${job.attempts}`).join("|")}
           transcriptTranslations={archivedLiveMeeting && transcript?.kind !== "final" ? liveSession?.translations : []}
           realtimeTranslation={archivedLiveMeeting && transcript?.kind !== "final" ? liveSession?.translation : null}
           playback={{

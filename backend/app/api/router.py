@@ -4,6 +4,7 @@ from app.api.routes import (
     ai_settings,
     analysis,
     answer_assist,
+    chapter_thumbnails,
     health,
     jobs,
     knowledge,
@@ -29,6 +30,7 @@ api_router.include_router(tags.router)
 api_router.include_router(meeting_ai.router)
 api_router.include_router(jobs.router)
 api_router.include_router(media_content.router)
+api_router.include_router(chapter_thumbnails.router)
 api_router.include_router(transcripts.router)
 api_router.include_router(transcription_settings.router)
 api_router.include_router(realtime.router)

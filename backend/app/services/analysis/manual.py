@@ -31,6 +31,7 @@ from app.schemas.analysis import (
     TemplateValueOutput,
 )
 from app.services.analysis.processor import SUMMARY_FORMAT_INSTRUCTIONS, _store_result
+from app.services.media.thumbnails import enqueue_chapter_thumbnails
 
 MANUAL_PROMPT_VERSION = "manual-minutes-v3"
 MANUAL_MODEL_NAME = "manual-import"
@@ -286,6 +287,7 @@ def save_manual_analysis(
     _store_result(session, meeting, analysis, result, list(transcript.segments))
     meeting.active_analysis_version_id = analysis.id
     meeting.status = MeetingStatus.COMPLETED
+    enqueue_chapter_thumbnails(session, meeting)
     session.commit()
     return analysis
 

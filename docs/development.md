@@ -224,7 +224,7 @@ Migrationの検証は、バックアップまたは検証用DBを準備してか
 
 - 質問候補 / チャプターの用途別設定は保存可能だが、[確定議事録処理](../backend/app/services/analysis/processor.py)はそれぞれの設定を解決していない。機能追加時はUIだけでなく生成Jobと出力Schemaも確認する。
 - [質問回答](../backend/app/services/questions/processor.py)は `resolve_analysis_profile` を使用。「質問候補」設定は質問回答用の独立設定ではない。
-- [JobType](../backend/app/models/job.py)の `generate_thumbnails` に対して [通常Worker](../backend/app/workers/main.py)の処理分岐はない。
+- `generate_thumbnails` は[通常Worker](../backend/app/workers/main.py)で処理する。[予約・画像再利用](../backend/app/services/media/thumbnails.py)、[状態・配信API](../backend/app/api/routes/chapter_thumbnails.py)、[一覧UI](../frontend/components/chapter-list.tsx)を変更単位として確認する。DB変更はない。[設計・検証・反映](chapter-thumbnails.md)。
 - 認証・利用者ごとの権限分離はアプリ内にない。Caddy / Tunnelだけで認証を実装したことにはならない。
 - `frontend/public/transcript-player.js` とAudioWorkletはTypeScriptの型チェック対象外。JSの変更はブラウザ確認を省略しない。
 - `frontend/public/transcript-player.js` を変更した場合は、[TranscriptRuntime](../frontend/components/transcript-player.tsx)のScript URLに付く版番号も更新し、ブラウザが旧版を再利用しないようにする。確認時はページを完全に再読み込みする。

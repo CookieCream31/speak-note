@@ -17,12 +17,15 @@ import {
   type TranscriptPlayerProps,
 } from "./transcript-player";
 import styles from "./meeting-workspace.module.css";
+import { ChapterList } from "./chapter-list";
 
 type NotesView = "notes" | "questions" | "tools";
 type MediaView = "chapters" | "transcript";
 
 interface MeetingWorkspaceProps {
   meetingId: string;
+  analysisId?: string | null;
+  thumbnailJobState?: string;
   playback: TranscriptPlayerProps;
   notes: ReactNode;
   questions: ReactNode;
@@ -39,16 +42,6 @@ const notesLabels: Record<NotesView, string> = {
   tools: "検索・ツール",
 };
 
-function formatClock(milliseconds: number): string {
-  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  return hours > 0
-    ? `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
-    : `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
-
 /** Same filter and order as the player's chapter track, so the runtime can match items by start time. */
 function orderChapters(chapters: PlaybackChapter[]): PlaybackChapter[] {
   return chapters
@@ -56,42 +49,10 @@ function orderChapters(chapters: PlaybackChapter[]): PlaybackChapter[] {
     .sort((left, right) => left.startMs - right.startMs);
 }
 
-function ChapterList({ chapters, durationMs }: { chapters: PlaybackChapter[]; durationMs?: number | null }) {
-  return (
-    <ol className={styles.chapterList}>
-      {chapters.map((chapter, index) => {
-        const endMs = chapter.endMs ?? chapters[index + 1]?.startMs ?? durationMs ?? null;
-        return (
-          <li key={chapter.id}>
-            <button
-              type="button"
-              className={styles.chapterItem}
-              data-seek-ms={chapter.startMs}
-              data-chapter-list-item
-              data-chapter-list-start-ms={chapter.startMs}
-              aria-label={`${chapter.title} ${formatClock(chapter.startMs)}から再生`}
-            >
-              {/* Thumbnails arrive with the generate_thumbnails job (redesign stage 4). */}
-              <span className={styles.chapterThumb} aria-hidden="true">
-                {endMs !== null && endMs > chapter.startMs && (
-                  <span className={styles.chapterLength}>{formatClock(endMs - chapter.startMs)}</span>
-                )}
-                <span className={styles.chapterProgress} data-chapter-list-progress />
-              </span>
-              <span className={styles.chapterText}>
-                <span className={styles.chapterTitle}>{chapter.title}</span>
-                <time className={styles.chapterStart}>{formatClock(chapter.startMs)}</time>
-              </span>
-            </button>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
 export function MeetingWorkspace({
   meetingId,
+  analysisId,
+  thumbnailJobState,
   playback,
   notes,
   questions,
@@ -188,7 +149,12 @@ export function MeetingWorkspace({
               aria-labelledby="meeting-media-tab-chapters"
               hidden={activeMediaView !== "chapters"}
             >
-              <ChapterList chapters={chapters} durationMs={visiblePlayback.durationMs} />
+              <ChapterList
+                key={`${analysisId}:${visiblePlayback.mediaUrl}:${chapters.map((chapter) => `${chapter.id}:${chapter.startMs}`).join("|")}`}
+                meetingId={meetingId} analysisId={analysisId} chapters={chapters}
+                jobState={thumbnailJobState}
+                durationMs={visiblePlayback.durationMs} mediaKind={visiblePlayback.mediaKind}
+              />
             </div>
           )}
           <div

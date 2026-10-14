@@ -80,6 +80,12 @@ def finish_job(session: Session, job: Job) -> None:
     job.status = JobStatus.COMPLETED
     job.progress = 100
     job.finished_at = utc_now()
+    if job.type in {JobType.PREPROCESS_MEDIA, JobType.ANALYZE}:
+        from app.services.media.thumbnails import enqueue_chapter_thumbnails
+
+        meeting = session.get(Meeting, job.meeting_id)
+        if meeting is not None:
+            enqueue_chapter_thumbnails(session, meeting)
     session.commit()
 
 
@@ -99,6 +105,7 @@ def fail_job(session: Session, job: Job, error_message: str) -> None:
         mark_answer_failed(session, job, error_message)
     meeting = session.get(Meeting, job.meeting_id)
     if meeting is not None and job.type not in {
+        JobType.GENERATE_THUMBNAILS,
         JobType.TRANSCRIBE_LIVE,
         JobType.ASK_MEETING,
         JobType.ANSWER_LIVE,
