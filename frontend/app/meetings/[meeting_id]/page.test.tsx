@@ -122,6 +122,7 @@ describe("meeting summary regeneration presentation", () => {
       { id: "w2", text: "lo", startMs: 300, endMs: 450, exact: true },
       { id: "w3", text: " world.", startMs: 2000, endMs: 2200, exact: true },
     ]);
+    expect(workspace(element)?.props.playback.turns[0].subwordTokens).toBe(model.startsWith("stt-"));
   });
   it("never sends a provisional label as a Speaker ID and edits saved Live by segment", async () => {
     sharedAudio = true;

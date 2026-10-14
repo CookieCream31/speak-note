@@ -350,6 +350,25 @@ sudo docker compose ps frontend
 
 ページを再読み込みし、単語時刻のある保存済みLive／Finalを再生します。短い単語間でハイライトが消えて点滅せず、長い無音や話者切替では解除されること、単語クリック・後ろへのシークで位置が合うことを確認してください。録音し直しや文字起こしの再処理は不要です。公開JSのURLを更新してcacheを避けます。エージェントは稼働Dockerを再起動していません。[原因・変更ファイル・検証](soniox-transcription.md#playback-flicker)。
 
+<a id="transcript-click-start"></a>
+### 本文クリック時に単語の冒頭から再生する変更の反映（2026-10-14）
+
+Frontendだけの変更です。録音・録画と保存を終えてから実行します。ソース更新済みの環境では`git pull`は不要です。Backend・Worker・DB変更や新しい環境変数はありません。
+
+```bash
+cd /home/llm/speak-note
+git pull --ff-only
+sudo docker compose restart frontend
+sudo docker compose ps frontend
+```
+
+1. 保存済みLiveまたはFinalの会議ページを再読み込みします。録音し直しや「文字起こしを再作成」は不要です。
+2. 単語の中央・後半の文字を押し、その単語の先頭の0.1秒前から再生して冒頭が聞こえることを確認します。音声・動画、日本語・英語の長い単語で確認してください。
+3. 時刻ボタン・Evidence・シークバーが指定時刻へ移ること、ハイライトの0.1秒先行が保たれ、設定画面が追加されていないことを確認します。
+4. 単語時刻のない旧Live・本文編集後は文字位置から推定した時刻の0.1秒前です。推定誤差やASRの時刻誤差は残ります。
+
+公開JSのURLを`20261014-5`へ更新してcacheを避けます。エージェントはDockerを再起動していません。[変更ファイル・検証・制約](soniox-transcription.md#transcript-click-start)。
+
 <a id="transcript-display-sync"></a>
 ### ハイライトを固定で0.1秒早める変更の反映（2026-10-14）
 
@@ -362,7 +381,7 @@ sudo docker compose restart frontend
 sudo docker compose ps frontend
 ```
 
-ページを再読み込みし、文字起こし欄から「同期」ボタンと設定画面がなくなったこと、ハイライトが固定で0.1秒先行すること、保存音声の時間表示・字幕・単語クリックのシークが変わらないことを確認します。以前の会議別補正値は使わず、設定の消去操作も不要です。音声・動画・ライト／ダーク・スマートフォンで表示を確認してください。既存会議にも適用され、録音し直し・文字起こしJobの追加は不要です。公開JSのURLを更新してcacheを避けます。エージェントは稼働Dockerを再起動していません。[実装と検証](soniox-transcription.md#playback-fixed-lead)。
+ページを再読み込みし、文字起こし欄から「同期」ボタンと設定画面がなくなったこと、ハイライトが固定で0.1秒先行すること、この表示補正が保存音声の時間表示・字幕へ影響しないことを確認します。本文クリックには別の[単語先頭と100msの余裕](#transcript-click-start)を使います。以前の会議別補正値は使わず、設定の消去操作も不要です。音声・動画・ライト／ダーク・スマートフォンで表示を確認してください。既存会議にも適用され、録音し直し・文字起こしJobの追加は不要です。公開JSのURLを更新してcacheを避けます。エージェントは稼働Dockerを再起動していません。[実装と検証](soniox-transcription.md#playback-fixed-lead)。
 
 <a id="language-picker-ui"></a>
 ### 言語の検索一覧・タグ・詳細設定への表示改善

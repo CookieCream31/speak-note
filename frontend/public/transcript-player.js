@@ -1,6 +1,7 @@
 (() => {
   const MAX_HIGHLIGHT_GAP_MS = 180;
   const TRANSCRIPT_HIGHLIGHT_LEAD_MS = 100;
+  const TRANSCRIPT_SEEK_PREROLL_MS = 100;
 
   function formatTimestamp(seconds) {
     const totalSeconds = Math.max(0, Math.floor(seconds));
@@ -94,6 +95,7 @@
         highlighted: element.querySelector("[data-karaoke-highlight]"),
         after,
         characters: Array.from(after?.textContent || ""),
+        subwordTokens: element.dataset.subwordTokens === "true",
         words: [],
         turnIndex,
         renderedStart: -1,
@@ -106,13 +108,14 @@
       const rows = Array.isArray(compactTimeline[turnIndex]) ? compactTimeline[turnIndex] : [];
       let characterOffset = 0;
       for (const row of rows) {
-        if (!Array.isArray(row) || row.length !== 3) continue;
-        const [startMs, endMs, characterLength] = row.map(Number);
+        if (!Array.isArray(row) || (row.length !== 3 && row.length !== 4)) continue;
+        const [startMs, endMs, characterLength] = row.slice(0, 3).map(Number);
         if (
           !Number.isFinite(startMs)
           || !Number.isFinite(endMs)
           || !Number.isInteger(characterLength)
           || characterLength <= 0
+          || (row.length === 4 && typeof row[3] !== "boolean")
         ) {
           continue;
         }
@@ -121,6 +124,8 @@
           endMs: Math.max(startMs, endMs),
           charStart: characterOffset,
           charEnd: characterOffset + characterLength,
+          exact: row.length === 3 || row[3],
+          wordIndex: turn.words.length,
           turn,
         };
         characterOffset = word.charEnd;
@@ -946,21 +951,40 @@
     function seekTimeForClick(trigger, event) {
       const fallbackMs = Number(trigger.getAttribute("data-seek-ms"));
       if (!trigger.hasAttribute("data-transcript-text")) return fallbackMs;
+      // Start slightly before the word so its attack is audible. This is a
+      // playback target, independent of the fixed lead used for highlighting.
+      const withPreroll = (timeMs) => Math.max(0, timeMs - TRANSCRIPT_SEEK_PREROLL_MS);
 
       const turnIndex = Number(trigger.getAttribute("data-turn-index"));
       const turn = turns[turnIndex];
-      if (!turn || turn.characters.length === 0) return fallbackMs;
+      if (!turn || turn.characters.length === 0 || event.detail === 0) return withPreroll(fallbackMs);
 
       const index = characterIndexFromPoint(trigger, event.clientX, event.clientY);
-      if (index === null) return fallbackMs;
+      if (index === null) return withPreroll(fallbackMs);
       const characterIndex = Math.min(turn.characters.length - 1, Math.max(0, index));
-      const word = findWordAtCharacter(turn, characterIndex);
-      if (!word) return fallbackMs;
+      let word = findWordAtCharacter(turn, characterIndex);
+      if (!word) return withPreroll(fallbackMs);
 
+      if (word.exact) {
+        // Soniox can split an English word across multiple timed tokens.
+        // Return to its first token, but keep unspaced Japanese tokens separate.
+        const wordCharacter = /[\p{L}\p{N}\p{M}'’ʼ\-‐‑\u200c\u200d]/u;
+        const unspacedScript = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u;
+        while (turn.subwordTokens && word.wordIndex > 0) {
+          const previous = turn.words[word.wordIndex - 1];
+          const edges = [turn.characters[previous.charEnd - 1], turn.characters[word.charStart]];
+          if (!previous.exact || !edges.every((edge) => wordCharacter.test(edge) && !unspacedScript.test(edge))) break;
+          word = previous;
+        }
+        return withPreroll(word.startMs);
+      }
+
+      // Older transcripts only have segment times. Preserve their estimated
+      // character position rather than jumping to the start of a long segment.
       const characterOffset = characterIndex - word.charStart;
       const characterLength = Math.max(1, word.charEnd - word.charStart);
       const progress = characterOffset / characterLength;
-      return word.startMs + (word.endMs - word.startMs) * progress;
+      return withPreroll(word.startMs + (word.endMs - word.startMs) * progress);
     }
 
     root.addEventListener("click", (event) => {

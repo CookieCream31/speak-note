@@ -1,6 +1,6 @@
 # Soniox文字起こし
 
-最終照合: 2026-10-14（ハイライトの固定100ms先行と同期設定UIの廃止、再生ハイライトのちらつき抑制、Liveの単語時刻保存・再生追従、非同期SonioxとWhisperXの共通再生経路、録音時計とPCM取得時刻の同期、途中の話者ブロック、LiveのSoniox固定、独立した全体処理を照合）。[README](../README.md) · [操作ガイド](usage.md) · [現行構成・反映](soniox-realtime-only.md)
+最終照合: 2026-10-14（本文クリックの単語先頭と100ms前からの再生、ハイライトの固定100ms先行と同期設定UIの廃止、再生ハイライトのちらつき抑制、Liveの単語時刻保存・再生追従、非同期SonioxとWhisperXの共通再生経路、録音時計とPCM取得時刻の同期、途中の話者ブロック、LiveのSoniox固定、独立した全体処理を照合）。[README](../README.md) · [操作ガイド](usage.md) · [現行構成・反映](soniox-realtime-only.md)
 
 ## 公式仕様と実装の境界
 
@@ -93,12 +93,50 @@ git diff --check
 
 WebKitは環境の`libgles2`・`gstreamer1.0-libav`不足で起動できませんでした。これはコード／テストの失敗とは区別します。実Soniox音声による判定遅延・精度、Safari／iPhone実機、Docker反映は未検証です。稼働サービスは再起動していません。新しいMigration・依存・環境変数は追加しません。
 
+<a id="transcript-click-start"></a>
+## 本文クリックで単語の冒頭が切れる問題の修正（2026-10-14）
+
+以前の再生runtimeは、クリックした文字の位置に応じて単語区間内の時刻を補間していました。例えば1.0〜2.2秒の単語の後半を押すと、単語の途中から再生していました。これはハイライトを0.1秒早める表示補正とは別の処理です。
+
+保存済み単語時刻がある本文では、どの文字をクリックしても単語の開始時刻の100ms前から再生するよう変更しました。Sonioxの英単語が`Capac`と`itance`のように空白なしで分割されている場合も、最初のtokenまで戻ります。日本語など空白なしの文字体系では別tokenを連結せず、それぞれの先頭を使います。先頭は0msへ制限します。単語時刻のない旧Live・本文編集後は文字位置から推定する動作を保ち、その100ms前へ移ります。キーボードで本文を実行した場合とcaret APIが使えない場合は、発話の先頭の100ms前です。
+
+音声・動画、保存済みLive・Final、WhisperX・Sonioxに共通です。時刻ボタン・Evidence・チャプターのシーク先や保存データは変更せず、ハイライトの固定100ms先行も保持します。メディアのmetadata待ちでは計算済みの再生先を保持し、100msを二重に引きません。既存会議へページ再読み込みで適用し、再録音・文字起こしJob・同期設定は不要です。
+
+変更した13ファイル:
+
+| ファイル | 内容 |
+| --- | --- |
+| `frontend/public/transcript-player.js` | 単語先頭、英単語subwordの先頭、100msの余裕、推定時刻とキーボードの処理 |
+| `frontend/components/transcript-player.tsx` | compact timelineへ既存の`exact`フラグを渡し、公開JSのURLを`20261014-5`へ更新 |
+| `frontend/app/meetings/[meeting_id]/page.tsx`、`page.test.tsx` | 保存済みSonioxモデルの`stt-`名でsubwordを区別し、WhisperXの別単語を連結しないことを検証 |
+| `frontend/lib/transcript-player-click.test.ts` | 実runtimeでクリックから再生までの回帰テスト13件 |
+| `frontend/components/{transcript-sync,meeting-workspace}.test.tsx` | 保存時刻・`exact`フラグ・公開JSのURLを検証 |
+| `README.md`、`DESIGN.md`、`docs/{soniox-transcription,usage,development,operations}.md` | 現行動作・適用範囲・検証・反映と確認手順 |
+
+実行コマンド（Node 22の`/tmp/node-v22.16.0-linux-x64/bin/node`）:
+
+```bash
+# frontend内
+node node_modules/vitest/vitest.mjs run lib/transcript-player-click.test.ts lib/transcript-player-runtime.test.ts components/transcript-sync.test.tsx components/meeting-workspace.test.tsx 'app/meetings/[meeting_id]/page.test.tsx'
+node node_modules/vitest/vitest.mjs run
+node node_modules/typescript/bin/tsc --noEmit
+node node_modules/eslint/bin/eslint.js .
+# Project内
+git diff --check
+```
+
+関連59件・Frontend全体55ファイル394件、型チェック・ESLint・空白検査が成功しました。先に追加したクリック回帰テストは修正前に12件中11件の失敗を確認し、WhisperXの別単語を連結しない確認も含めて最終13件は全件成功しました。caret APIの2方式、単語の先頭／中央／末尾、Unicode、英単語の分割、日本語、旧推定時刻、0秒への制限、キーボード、metadata待ち、旧3要素timelineとの互換、時刻・チャプターの保持を確認しています。Frontend専用formatterは未設定で、既存の記法に合わせて差分を確認しました。Backend・DBを変更していないため、Backend・Migrationの検証は再実行していません。
+
+Chromiumで実Component・CSS・runtimeを一時プレビューへbundleし、ライト／ダーク×幅320・393・560・844・1280・1920px×音声／動画の24条件が成功しました。実際のポインター座標とブラウザのcaret APIで単語内をクリックし、先頭の100ms前へのシーク、英単語の分割、日本語、0秒への制限、キーボード、元の単語時刻保持、横はみ出しなし・page errorなしを確認しました。検証コマンドは`FONTCONFIG_FILE=/tmp/speak-note-provisional-speakers-browser/fonts.conf PLAYWRIGHT_BROWSERS_PATH=/tmp/speak-note-browsers LD_LIBRARY_PATH=/tmp/speak-note-browser-libs/usr/lib/x86_64-linux-gnu XDG_CACHE_HOME=/tmp/speak-note-browser-font-cache /tmp/speak-note-title-speed-verify-env/bin/python /tmp/speak-note-word-timings-browser/check_click_start.py`です。自動スクロールの完了後に座標を測り、合成WAVと一時serverで検証しました。
+
+実際の音声での冒頭の聞こえ方、Safari／iPhone実機、Docker反映は未検証です。ASRの単語時刻自体に100msを超える誤差がある場合や、時刻のない旧履歴の推定誤差まで保証する変更ではありません。外部API・稼働Docker・保存済み会議を操作せず、追加Migration・依存・環境変数はありません。[Frontend反映と動作確認](operations.md#transcript-click-start)。
+
 <a id="playback-fixed-lead"></a>
 ## ハイライトを固定で0.1秒早める（2026-10-14）
 
 ユーザーが同期調整を0.1秒早めて確認し、「固定にして設定画面なし」を指定したため、再生ハイライトと自動スクロールの表示時計を常に100ms先行させます。既存会議・新しい会議、音声・動画、WhisperX・SonioxのLive／Finalで共通です。保存済み単語時刻や音声を再生成・変更する処理はありません。
 
-「同期」ボタン・設定Component・専用CSS・localStorageの読書き・変更イベントを削除しました。旧ブラウザ設定が残っていても使わず、100ms補正へ加算しません。音声の再生時刻、単語クリックのシーク、字幕、チャプター、AI入力は保存時刻のままです。固定先行はAPIの認識時刻を修正するものではなく、ユーザー指定の表示設定です。[Frontend反映](operations.md#transcript-display-sync)後にページを再読み込みするだけで適用します。
+「同期」ボタン・設定Component・専用CSS・localStorageの読書き・変更イベントを削除しました。旧ブラウザ設定が残っていても使わず、100ms補正へ加算しません。この表示補正は音声の再生時刻、字幕、チャプター、AI入力へ適用しません。本文クリックは別の[単語先頭と100msの余裕](#transcript-click-start)を使います。固定先行はAPIの認識時刻を修正するものではなく、ユーザー指定の表示設定です。[Frontend反映](operations.md#transcript-display-sync)後にページを再読み込みするだけで適用します。以下のファイル・URL・件数は固定先行を導入した時点の記録です。
 
 変更した15ファイル:
 

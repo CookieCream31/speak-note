@@ -26,6 +26,7 @@ export interface PlaybackTurn {
   speakerId: string | null;
   speakerName: string;
   words: PlaybackWord[];
+  subwordTokens?: boolean;
   sourceSegmentIds?: string[];
   editableLiveSegmentIds?: string[];
   provisionalSpeakerLabel?: string | null;
@@ -495,6 +496,7 @@ export function TranscriptDocument({
             id={`transcript-turn-${index}`}
             key={turn.id}
             data-transcript-turn
+            data-subword-tokens={turn.subwordTokens || undefined}
           >
             <div className={styles.meta}>
               <button
@@ -527,7 +529,7 @@ export function TranscriptDocument({
                 data-turn-index={index}
                 data-seek-ms={turn.startMs}
                 disabled={!mediaUrl}
-                title="クリックした単語・文字の位置から再生"
+                title="クリックした単語の少し前から再生"
               >
                 <span data-karaoke-before />
                 <span className={styles.karaokeHighlight} data-karaoke-highlight />
@@ -548,7 +550,7 @@ export function TranscriptDocument({
 export function TranscriptRuntime({ turns }: Pick<TranscriptPlayerProps, "turns">) {
   const compactTimeline = JSON.stringify(
     turns.map((turn) =>
-      turn.words.map((word) => [word.startMs, word.endMs, Array.from(word.text).length]),
+      turn.words.map((word) => [word.startMs, word.endMs, Array.from(word.text).length, word.exact]),
     ),
   );
 
@@ -559,7 +561,7 @@ export function TranscriptRuntime({ turns }: Pick<TranscriptPlayerProps, "turns"
         data-transcript-timeline
         dangerouslySetInnerHTML={{ __html: compactTimeline }}
       />
-      <Script src="/transcript-player.js?v=20261014-4" strategy="afterInteractive" />
+      <Script src="/transcript-player.js?v=20261014-5" strategy="afterInteractive" />
     </>
   );
 }
