@@ -73,7 +73,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ c
   try {
     aiProfiles = await loadAIProfiles();
   } catch {
-    aiProfileLoadError = "AIプロファイルを取得できませんでした。AI設定を確認してください。";
+    aiProfileLoadError = "AIプロファイルを取得できませんでした。設定を確認してください。";
   }
 
   return (

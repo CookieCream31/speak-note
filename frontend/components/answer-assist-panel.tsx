@@ -117,7 +117,7 @@ export function AnswerAssistPanel({ meetingId }: { meetingId: string }) {
     <p className={styles.description}>プロフィール・プロジェクト資料と会話をもとに発言案を作ります。議事録の要約・会議後の質問とは別の機能です。</p>
     <div className={styles.controls}>
       <label>回答に使うAI<select value={profileId} disabled={busy} onChange={(event) => void stop(event.target.value)}>
-        {profiles.length === 0 && <option value="">AI設定でプロファイルを作成してください</option>}
+        {profiles.length === 0 && <option value="">設定でAIプロファイルを作成してください</option>}
         {profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name} · {profile.model}</option>)}
       </select></label>
       {active ? <button disabled={busy} onClick={() => void stop()}>回答支援を停止</button> : <button className={styles.primary} disabled={busy || !consent || !profileId || !feed.capture_id} onClick={() => void start()}>このAIで開始</button>}

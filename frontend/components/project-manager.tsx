@@ -7,7 +7,6 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { knowledgeApi, meetingsApi, type Meeting, type PersonalProfile, type Project, type ProjectDocument } from "@/lib/api";
 import { AppSidebar } from "./app-sidebar";
 import styles from "./project-manager.module.css";
-import { ThemeSelector } from "./theme-selector";
 
 export function ProjectManager() {
   const [profiles, setProfiles] = useState<PersonalProfile[]>([]);
@@ -174,7 +173,6 @@ export function ProjectManager() {
     <main className={styles.main}>
       <header className={styles.header}>
         <h1>プロジェクト</h1>
-        <ThemeSelector />
         <button type="button" className={styles.primaryButton} disabled={busy} onClick={() => selectProject(null)}>
           <Plus size={16} aria-hidden="true" />新しいプロジェクト
         </button>

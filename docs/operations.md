@@ -22,7 +22,7 @@ Composeはソースをbind mountしますが、プロセスの再起動・依存
 | BackendのDockerfile / pyproject.toml | `sudo docker compose up --build -d backend worker live-worker realtime-ai-worker answer-worker` | 5サービスでBackendイメージを使用 |
 | .env / Composeの設定 | 対象サービスを `up -d --force-recreate` | `restart` だけではコンテナの環境変数は変わらない |
 | Caddyfile | `sudo docker compose restart caddy` | ルーティングを再読込 |
-| AI設定画面の保存 | 原則Docker操作不要 | DBへ保存。録音用設定は新しい録音で確認 |
+| 設定画面の保存 | 原則Docker操作不要 | AI設定はDB、表示テーマはブラウザへ保存。録音用設定は新しい録音で確認 |
 
 `.env` / Compose変更例（変えた設定を使用するサービスだけ指定）:
 
@@ -612,6 +612,20 @@ sudo docker compose ps
 
 ブラウザを再読み込みし、[要約再生成の操作と動作確認](usage.md#summary-regeneration)を実行します。Final作成失敗は親の文字起こしJob、要約失敗は解析Jobの「再試行」を使用します。Final保存後に予約が失敗した場合、親Jobの再試行は保存済みFinalを使い、WhisperXを再実行しません。接続先を変更した場合は現在の設定で新しい再生成を開始してください。テンプレート版の競合はダイアログを閉じてページを再読み込みし、選び直します。既存サービス・Docker Volumeは操作しません。
 
+
+<a id="settings-navigation"></a>
+## 設定と会議作成の入口の反映（2026-10-14）
+
+Frontendのみの変更です。録音・録画と保存が終わってから反映します。DB Migration、Backend／Worker再起動、環境変数や依存の更新は不要です。開発用Composeではbind mountとHMRで反映し、必要な場合だけFrontendを再起動します。
+
+```bash
+cd /home/llm/speak-note
+git pull --ff-only # ソース更新済みなら不要
+sudo docker compose restart frontend
+sudo docker compose ps frontend
+```
+
+ページを再読み込みし、ナビゲーションが「設定」になったこと、設定の先頭に名前付きの「表示テーマ」があること、各ヘッダーからテーマ選択がなくなったことを確認します。会議詳細の「新しい会議」から3方式の作成ダイアログを開きます。録音開始前・録音／録画・保存中は別タブで開き、元の画面を閉じずに使います。設定を別タブで変更したとき、元の会議の配色・OS追従も確認してください。エージェントはDockerを再起動していません。[全変更ファイル・検証・制約](settings-navigation.md)。
 
 <a id="display-theme"></a>
 ## 表示テーマの反映

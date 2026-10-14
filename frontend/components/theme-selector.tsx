@@ -36,6 +36,7 @@ export function ThemeSelector() {
           onClick={() => setThemePreference(option.value)}
         >
           {option.icon}
+          <span>{option.label}</span>
         </button>
       ))}
     </div>

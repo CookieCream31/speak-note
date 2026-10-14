@@ -1,4 +1,5 @@
 import { isValidElement, type ComponentProps, type ReactElement, type ReactNode } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MeetingReviewPanel } from "@/components/meeting-review-panel";
 import MeetingDetailPage from "./page";
@@ -29,6 +30,14 @@ let finalAnalysis: Record<string, unknown> | null;
 let sharedAudio = false;
 let translationsEnabled = false;
 let liveReady = true;
+let liveStatus = "completed";
+function header(node: ReactNode): ReactElement | undefined {
+  if (Array.isArray(node)) {
+    for (const child of node) { const found = header(child); if (found) return found; }
+  } else if (isValidElement<{ children?: ReactNode }>(node)) {
+    return node.type === "header" ? node : header(node.props.children);
+  }
+}
 function workspace(node: ReactNode): ReactElement<ComponentProps<typeof MeetingWorkspace>> | undefined {
   if (Array.isArray(node)) {
     for (const child of node) { const found = workspace(child); if (found) return found; }
@@ -76,6 +85,7 @@ beforeEach(() => {
   liveTranscript.segments[0].provisional_speaker_name = null;
   translationsEnabled = false;
   liveReady = true;
+  liveStatus = "completed";
   finalAnalysis = null;
   sharedAudio = false;
   vi.stubGlobal("fetch", vi.fn(async (url: string) => {
@@ -92,7 +102,7 @@ beforeEach(() => {
     else if (path.endsWith("/transcript?version_id=live")) data = liveTranscript;
     else if (path.endsWith("/transcript?version_id=final")) data = finalTranscript;
     else if (path.endsWith("/live/analysis")) data = realtime;
-    else if (path.endsWith("/live")) data = { status: "completed", translation: translationsEnabled ? { type: "one_way", target_language: "ja" } : null,
+    else if (path.endsWith("/live")) data = { status: liveStatus, translation: translationsEnabled ? { type: "one_way", target_language: "ja" } : null,
       translations: translationsEnabled ? [{ id: "caption", result_id: "caption", text: "翻訳", sequence: 0, source_language: "en", target_language: "ja", source_segment_id: "live-segment", speaker_label: null }] : [] };
     else if (path.endsWith("/analysis") || path.endsWith("/analyses/a")) {
       data = finalAnalysis; status = data ? 200 : 404;
@@ -103,6 +113,22 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("meeting summary regeneration presentation", () => {
+  it.each(["completed", "recording", "finalizing"])("offers settings and new meeting while preserving the %s capture page", async (status) => {
+    sharedAudio = true;
+    liveStatus = status;
+    const element = await MeetingDetailPage({ params: Promise.resolve({ meeting_id: "m" }), searchParams: Promise.resolve({}) });
+    const html = renderToStaticMarkup(header(element));
+    expect(html).toContain('href="/?create=1"');
+    expect(html).toContain('href="/settings/ai"');
+    expect(html).not.toContain("AI設定");
+    expect(html).not.toContain("data-theme-option");
+    if (status === "completed") expect(html).not.toContain('target="_blank"');
+    else {
+      expect(html.match(/target="_blank"/g)).toHaveLength(2);
+      expect(html.match(/rel="noopener noreferrer"/g)).toHaveLength(2);
+      expect(html).toContain('aria-label="新しい会議（別タブで開く）"');
+    }
+  });
   it.each(["whisperx", "stt-async-v5", "stt-rt-v5"])("uses stored word times for %s without stretching the whole segment", async (model) => {
     sharedAudio = model === "stt-rt-v5";
     const transcript = sharedAudio ? liveTranscript : finalTranscript;

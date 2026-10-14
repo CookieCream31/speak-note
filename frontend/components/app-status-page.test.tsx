@@ -7,7 +7,7 @@ import NotFound from "@/app/not-found";
 
 afterEach(() => vi.unstubAllGlobals());
 describe("themed error pages", () => {
-  it("offers theme selection and reset without showing internal error details", async () => {
+  it("offers settings and reset without showing internal error details or a theme control", async () => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     const container = document.createElement("div");
     document.body.append(container);
@@ -20,7 +20,8 @@ describe("themed error pages", () => {
         ),
       );
       expect(container.textContent).not.toContain("private detail");
-      expect(container.querySelector('[role="group"][aria-label="表示テーマ"]')).not.toBeNull();
+      expect(container.querySelector('[role="group"][aria-label="表示テーマ"]')).toBeNull();
+      expect(container.querySelector('a[href="/settings/ai"]')?.textContent).toBe("設定");
       await act(async () => container.querySelector("button")!.click());
       expect(reset).toHaveBeenCalledOnce();
       expect(container.querySelector("a")?.getAttribute("href")).toBe("/");
@@ -29,7 +30,7 @@ describe("themed error pages", () => {
       container.remove();
     }
   });
-  it("provides the same theme control for missing pages", async () => {
+  it("provides the same settings entry for missing pages", async () => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     const container = document.createElement("div");
     document.body.append(container);
@@ -37,7 +38,8 @@ describe("themed error pages", () => {
     try {
       await act(async () => root.render(<NotFound />));
       expect(container.textContent).toContain("ページが見つかりません");
-      expect(container.querySelector('[role="group"][aria-label="表示テーマ"]')).not.toBeNull();
+      expect(container.querySelector('[role="group"][aria-label="表示テーマ"]')).toBeNull();
+      expect(container.querySelector('a[href="/settings/ai"]')?.textContent).toBe("設定");
     } finally {
       act(() => root.unmount());
       container.remove();

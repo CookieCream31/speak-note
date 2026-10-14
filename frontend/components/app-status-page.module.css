@@ -1,5 +1,6 @@
 .page { position: relative; min-height: 100dvh; display: grid; place-items: center; padding: 24px; color: var(--ink); background: var(--paper); }
-.theme { position: absolute; top: max(16px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); }
+.settingsLink { position: absolute; top: max(16px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; color: var(--ink); text-decoration: none; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font-size: 14px; }
+.settingsLink:hover { background: var(--surface-hover); }
 .content { width: min(400px, 100%); display: grid; justify-items: center; gap: 12px; text-align: center; }
 .code { color: var(--muted); font-family: var(--font-mono); font-size: 13px; }
 .content h1 { margin: 0; font-size: 22px; font-weight: 600; overflow-wrap: anywhere; }

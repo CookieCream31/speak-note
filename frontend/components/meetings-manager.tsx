@@ -2,7 +2,7 @@
 
 import {
   AudioLines, Check, ChevronRight, CircleAlert, Ellipsis, Folder, Hash, House, Inbox, Mic, MonitorUp, Plus, Search, SearchX,
-  Sparkles, Star, Trash2, Upload, Video, X,
+  Settings, Star, Trash2, Upload, Video, X,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -39,7 +39,6 @@ import {
   type UploadSession,
 } from "./chunked-media-uploader";
 import styles from "./meetings-manager.module.css";
-import { ThemeSelector } from "./theme-selector";
 import { MicrophoneStartToggle } from "./microphone-start-toggle";
 import { NewMeetingProjectField } from "./new-meeting-project-field";
 import { MeetingLanguageFields, type MeetingLanguageSelection } from "./meeting-language-fields";
@@ -683,8 +682,8 @@ export function MeetingsManager({
             <span>プロジェクト</span>
           </Link>
           <Link href="/settings/ai">
-            <Sparkles size={18} aria-hidden="true" />
-            <span>AI設定</span>
+            <Settings size={18} aria-hidden="true" />
+            <span>設定</span>
           </Link>
         </nav>
         <section className={styles.sidebarTags} aria-label="タグ">
@@ -731,7 +730,6 @@ export function MeetingsManager({
                 aria-label="会議を検索"
               />
             </label>
-            <ThemeSelector />
             <button className={styles.primaryButton} type="button" onClick={() => openCreate("media_upload")}>
               <Plus size={16} aria-hidden="true" />
               <span className={styles.primaryLabel}>新しい会議</span>

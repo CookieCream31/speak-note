@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { updateSegmentAction } from "@/app/actions";
-import { ChevronDown, Download, Sparkles } from "lucide-react";
+import { ChevronDown, Download, Plus, Settings } from "lucide-react";
 
 import { ChunkedMediaUploader } from "@/components/chunked-media-uploader";
 import { LiveMeetingRecorder } from "@/components/live-meeting-recorder";
@@ -16,7 +16,6 @@ import { MeetingTranscriptionSettings } from "@/components/meeting-transcription
 import { LiveTranscriptStream, RealtimeAnalysisPanel } from "@/components/realtime-analysis-panel";
 import { MeetingToolsPanel } from "@/components/meeting-tools-panel";
 import { MeetingWorkspace } from "@/components/meeting-workspace";
-import { ThemeSelector } from "@/components/theme-selector";
 import { AppStatusPage } from "@/components/app-status-page";
 import { SummaryRegenerationButton, type SummaryRegenerationProps } from "@/components/final-transcript-button";
 import type {
@@ -340,6 +339,7 @@ export default async function MeetingDetailPage({
   };
   const regenerationKey = jobs.filter((job) => ["preprocess_media", "transcribe", "analyze"].includes(job.type)).map((job) => `${job.id}:${job.status}:${job.attempts}`).join("|");
   const showCapturePanel = !isRealtimeCapture && !uploadedOriginal;
+  const keepCapturePageOpen = isRealtimeCapture && !archivedLiveMeeting;
 
   return (
     <main className={styles.page}>
@@ -352,10 +352,27 @@ export default async function MeetingDetailPage({
           <span aria-hidden="true">/</span>
           <span aria-current="page">{meeting.title}</span>
         </nav>
-        <ThemeSelector />
-        <Link className={styles.headerButton} href="/settings/ai">
-          <Sparkles size={16} aria-hidden="true" />
-          AI設定
+        <Link
+          className={styles.headerButton}
+          href="/settings/ai"
+          target={keepCapturePageOpen ? "_blank" : undefined}
+          rel={keepCapturePageOpen ? "noopener noreferrer" : undefined}
+          aria-label={keepCapturePageOpen ? "設定（別タブで開く）" : "設定"}
+          title={keepCapturePageOpen ? "設定（別タブで開く）" : "設定"}
+        >
+          <Settings size={16} aria-hidden="true" />
+          設定
+        </Link>
+        <Link
+          className={`${styles.headerButton} ${styles.newMeetingButton}`}
+          href="/?create=1"
+          target={keepCapturePageOpen ? "_blank" : undefined}
+          rel={keepCapturePageOpen ? "noopener noreferrer" : undefined}
+          aria-label={keepCapturePageOpen ? "新しい会議（別タブで開く）" : "新しい会議"}
+          title={keepCapturePageOpen ? "新しい会議（別タブで開く）" : "新しい会議"}
+        >
+          <Plus size={16} aria-hidden="true" />
+          新しい会議
         </Link>
       </header>
 

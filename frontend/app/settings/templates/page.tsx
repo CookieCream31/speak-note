@@ -3,7 +3,6 @@ import Link from "next/link";
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { MeetingTemplateManager } from "@/components/meeting-template-manager";
-import { ThemeSelector } from "@/components/theme-selector";
 import type { MeetingTemplate } from "@/lib/api";
 
 import styles from "./page.module.css";
@@ -27,11 +26,10 @@ export default async function MeetingTemplatesPage() {
       <main className={styles.main}>
         <header className={styles.header}>
           <nav className={styles.breadcrumb} aria-label="パンくずリスト">
-            <Link href="/settings/ai">AI設定</Link>
+            <Link href="/settings/ai">設定</Link>
             <ChevronRight size={14} aria-hidden="true" />
             <h1>議事録テンプレート</h1>
           </nav>
-          <ThemeSelector />
         </header>
         <div className={styles.content}>
           <MeetingTemplateManager initialTemplates={templates} />

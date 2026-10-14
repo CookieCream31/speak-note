@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Noto_Sans_JP } from "next/font/google";
 import type { ReactNode } from "react";
 
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme";
+import { ThemeObserver } from "@/components/theme-observer";
 
 import "./theme.css";
 import "./globals.css";
@@ -30,7 +31,10 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         <meta name="theme-color" content="#fafafa" />
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
       </head>
-      <body>{children}</body>
+      <body>
+        <ThemeObserver />
+        {children}
+      </body>
     </html>
   );
 }

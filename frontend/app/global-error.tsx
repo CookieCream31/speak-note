@@ -1,6 +1,7 @@
 "use client";
 
 import { AppStatusPage } from "@/components/app-status-page";
+import { ThemeObserver } from "@/components/theme-observer";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme";
 import "./theme.css";
 import "./globals.css";
@@ -18,6 +19,7 @@ export default function GlobalError({
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
       </head>
       <body>
+        <ThemeObserver />
         <AppStatusPage
           title="画面を表示できませんでした"
           description="しばらく待ってから再試行してください。"

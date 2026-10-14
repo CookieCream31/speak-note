@@ -35,6 +35,7 @@ interface AISettingsManagerProps {
 }
 
 const sections = [
+  { id: "appearance", label: "表示テーマ" },
   { id: "providers", label: "接続先" },
   { id: "profiles", label: "AIプロファイル" },
   { id: "templates", label: "議事録テンプレート" },
@@ -210,12 +211,11 @@ export function AISettingsManager({
       <AppSidebar current="settings" />
       <main className={styles.main}>
         <header className={styles.header}>
-          <h1>AI設定</h1>
-          <ThemeSelector />
+          <h1>設定</h1>
         </header>
 
         <div className={styles.content}>
-          <nav className={styles.toc} aria-label="AI設定の項目">
+          <nav className={styles.toc} aria-label="設定の項目">
             {sections.map((section) => <a key={section.id} href={`#${section.id}`}>{section.label}</a>)}
           </nav>
 
@@ -225,6 +225,14 @@ export function AISettingsManager({
                 {error || message}
               </div>
             )}
+
+            <section className={styles.section} id="appearance" aria-labelledby="appearance-title">
+              <div className={styles.sectionHeading}>
+                <h2 id="appearance-title">表示テーマ</h2>
+              </div>
+              <p className={styles.sectionNote}>このブラウザの表示を切り替えます。選択はすぐに反映され、自動で保存されます。</p>
+              <ThemeSelector />
+            </section>
 
             <section className={styles.section} id="providers">
               <div className={styles.sectionHeading}>

@@ -186,16 +186,21 @@ describe("application theme coverage", () => {
       }
     },
   );
-  it("makes the theme selector available on all four page types", () => {
+  it("keeps the theme selector inside settings and observes changes independently of headers", () => {
+    expect(readFileSync(resolve(root, "components/ai-settings-manager.tsx"), "utf8")).toContain("<ThemeSelector />");
     for (const path of [
       "components/meetings-manager.tsx",
-      "components/ai-settings-manager.tsx",
       "components/project-manager.tsx",
       "app/meetings/[meeting_id]/page.tsx",
+      "app/settings/templates/page.tsx",
+      "components/app-status-page.tsx",
     ]) {
-      expect(readFileSync(resolve(root, path), "utf8"), path).toContain(
+      expect(readFileSync(resolve(root, path), "utf8"), path).not.toContain(
         "<ThemeSelector />",
       );
+    }
+    for (const path of ["app/layout.tsx", "app/global-error.tsx"]) {
+      expect(readFileSync(resolve(root, path), "utf8"), path).toContain("<ThemeObserver />");
     }
   });
 });

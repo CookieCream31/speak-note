@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ThemeSelector } from "./theme-selector";
+import { Settings } from "lucide-react";
 import styles from "./app-status-page.module.css";
 
 export function AppStatusPage({
@@ -28,7 +28,7 @@ export function AppStatusPage({
         <span className={styles.brand}>speak-note</span>
       </section>
       {/* Placed after the content so focus reaches the page actions first; positioned top-right by CSS. */}
-      <div className={styles.theme}><ThemeSelector /></div>
+      <Link className={styles.settingsLink} href="/settings/ai"><Settings size={16} aria-hidden="true" />設定</Link>
     </main>
   );
 }

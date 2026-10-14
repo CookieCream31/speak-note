@@ -366,6 +366,8 @@ Soniox原文の時間による保存区切りは、単語の途中・句読点�
 
 `frontend/lib/theme.ts` が保存値、OS追従、別タブ同期、初回描画前のScriptを担当し、`ThemeSelector` はuseSyncExternalStoreで選択を共有します。保存不可・matchMediaなしにも対応し、SSR Snapshotはsystemで一定にします。Root LayoutとGlobal Errorの初回Script、通常Error／404、会議取得失敗の表示も共通テーマを使います。
 
+表示テーマの操作は`AISettingsManager`の`#appearance`へ集約しました。`ThemeObserver`をRoot LayoutとGlobal Errorへ設置し、操作UIのないページでも`subscribeTheme`を維持します。既存のstorage key・初回Script・配色は変更しません。画面名は「設定」へ統一し、`/settings/ai`は維持します。会議詳細Headerの作成リンクは`/?create=1`を使い、録音開始前・録音／保存中は設定と作成リンクを別タブへ開きます。テーマ操作によるAIフォームの未保存値・音声要素の保持、OS追従・別タブ同期、会議作成の3方式とmobileの44px操作領域を検証します。[変更ファイル・コマンド・結果](settings-navigation.md)。
+
 `theme-styles.test.ts` は全ページ・Component CSSの色指定と変数、インライン・publicのRuntime内の直接色指定、両テーマのコントラストを検査します。`theme.test.ts` と `theme-selector.test.tsx` は保存・追従・初回表示・Hydration・入力／音声要素の保持を検証します。新しい表示を追加したら両テーマ・狭い画面・エラー表示も確認し、READMEの最終照合日と関連ガイドを同じ作業で更新してください。
 
 変更ファイル、実行コマンド、結果、未検証事項は[表示テーマガイド](dark-mode.md)に記載しています。

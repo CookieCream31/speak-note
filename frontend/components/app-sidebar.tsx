@@ -1,4 +1,4 @@
-import { Folder, House, Sparkles } from "lucide-react";
+import { Folder, House, Settings } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -9,7 +9,7 @@ type Section = "meetings" | "projects" | "settings";
 const items: { section: Section; href: string; label: string; icon: ReactNode }[] = [
   { section: "meetings", href: "/", label: "すべての会議", icon: <House size={18} aria-hidden="true" /> },
   { section: "projects", href: "/projects", label: "プロジェクト", icon: <Folder size={18} aria-hidden="true" /> },
-  { section: "settings", href: "/settings/ai", label: "AI設定", icon: <Sparkles size={18} aria-hidden="true" /> },
+  { section: "settings", href: "/settings/ai", label: "設定", icon: <Settings size={18} aria-hidden="true" /> },
 ];
 
 /** Navigation sidebar for pages other than home (home keeps its own sidebar with counts and tags). */

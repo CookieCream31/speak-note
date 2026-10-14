@@ -42,7 +42,7 @@ function pressed(scope: ParentNode = container) {
 }
 
 describe("ThemeSelector", () => {
-  it("exposes all three choices as labelled icon buttons in a named group", async () => {
+  it("exposes all three choices with visible names and icons in a named group", async () => {
     root = createRoot(container);
     await act(async () => root!.render(<ThemeSelector />));
     const group = container.querySelector('[role="group"]')!;
@@ -55,6 +55,7 @@ describe("ThemeSelector", () => {
     ]);
     expect(buttons.every((button) => button.type === "button")).toBe(true);
     expect(buttons.every((button) => button.querySelector("svg"))).toBe(true);
+    expect(buttons.map((button) => button.textContent)).toEqual(["システムに合わせる", "ライト", "ダーク"]);
     expect(pressed()).toEqual(["system"]);
   });
   it("changes all selectors together without remounting inputs or media or requesting the backend", async () => {
