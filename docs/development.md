@@ -337,6 +337,8 @@ Soniox Liveは精度を優先して`enable_endpoint_detection: false`とし、�
 
 Soniox原文accumulatorは`interims`配列を返し、未保存の確定token＋毎応答で置換する非確定tokenを連続した`speaker`ごとに分けます。`onInterims`→`replace-interims`イベントでStoreの途中配列をまとめて置換します。部分的なupsertの連続で複数話者を取りこぼさないこと、空配列・停止・切断で全途中ブロックが消えること、話者の訂正で保存IDや番号を消費しないことを検証します。旧Azureの単一途中結果upsertは配列1件へ変換して互換性を保持します。回答支援の「最新の発言」は末尾の途中ブロックを参照します。表示は確定履歴と途中配列の単一snapshotを購読し、原文参照のある翻訳を各ブロックの直下へ配置します。[変更ファイル・テスト・制約](soniox-transcription.md#provisional-speaker-blocks)。
 
+録音の時計はSonioxの準備完了後にMediaRecorderと同時に開始します。`deferAudioStart`でPCMの準備と入力接続を分離し、Recorder起動後に`startAudio`で有効化します。Workletの`startTime`は先頭sampleの`currentFrame / sampleRate`を基にし、リサンプリングの補間位置とflush末尾も保持します。`pcm-audio-input.ts`が入力接続時のAudioContextと会議時計を対応付け、Sonioxへ送る最初のframeの取得時刻をaccumulatorへ渡します。メインスレッドの受信時刻や固定100msを基準にしません。Soniox側のtoken時刻や送信形式は変更しません。Worklet URLを`capture-timestamps-v2`にして旧cacheを避け、旧Azureは追加metadataを無視して従来の音声処理を維持します。[時刻ずれの検証](soniox-transcription.md#audio-timeline)。
+
 `schemas/translation.py`が一方向／双方向の設定と保存payloadを検証します。Meetingの設定は開始時にSessionへ固定し、Soniox Clientが公式モデルの翻訳対応をキー発行前に確認します。`services/realtime/translation.py`は原文とは別テーブルに確定翻訳を保存し、Sessionのrow lockと一意IDで重複を防ぎます。保存応答を返す前にlockを解放し、同じIDの異なる本文は拒否します。翻訳だけの検証失敗は終了応答として再送を止め、録音・原文の接続を継続します。
 
 Frontendは`soniox-translation.ts`で時刻のない翻訳tokenを組み立て、`live-translation-store.ts`で仮説と確定履歴を分離します。原文accumulatorが確定tokenの表示結果IDを記録し、翻訳accumulatorは到着順で先行する同じ話者・原言語の表示ブロックを参照します。`source_result_id`は0029で保存し、BackendのSession内UUIDから`source_segment_id`を返します。原文未保存でも翻訳を受け付け、IDが表示されるまでは同じ枠の末尾に残します。別Session・別接続やFinalへ推測で対応付けません。

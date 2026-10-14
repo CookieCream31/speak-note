@@ -173,7 +173,7 @@ export function LiveMeetingRecorder({
   };
   const streamsRef = useRef<MediaStream[]>([]);
   const captureMixerRef = useRef<LiveCaptureMixer | null>(null);
-  const startedAtRef = useRef(0);
+  const startedAtRef = useRef<number | null>(null);
   const audioChunkStartRef = useRef(0);
   const audioSequenceRef = useRef(0);
   const videoPartSequenceRef = useRef(0);
@@ -197,7 +197,7 @@ export function LiveMeetingRecorder({
   }, [isMicrophoneOnly]);
 
   const currentElapsedMs = useCallback(() => (
-    startedAtRef.current > 0
+    startedAtRef.current !== null
       ? Math.max(0, Math.round(performance.now() - startedAtRef.current))
       : 0
   ), []);
@@ -539,7 +539,9 @@ export function LiveMeetingRecorder({
       setHasSpeechDiagnostics(false);
       publishLiveTranscriptEvent({ type: "reset", meetingId });
       getLiveTranslationStore(meetingId).reset();
-      startedAtRef.current = performance.now();
+      // Soniox is prepared before recording, then activated on the media clock.
+      // Legacy Azure retains its existing initialization timeline.
+      startedAtRef.current = started.transcriptionProvider === "soniox" ? null : performance.now();
       setElapsedMs(0);
       audioChunkStartRef.current = 0;
       audioSequenceRef.current = 0;
@@ -547,14 +549,16 @@ export function LiveMeetingRecorder({
       currentVideoPartRef.current = null;
       videoPartCloseRef.current = Promise.resolve();
       chunkMsRef.current = started.chunkMs;
+      let startSpeechAudio: (() => void) | undefined;
       if (started.transcriptionProvider !== "whisperx") {
         const isSoniox = started.transcriptionProvider === "soniox";
         const startStream = isSoniox ? startSonioxSpeechStream : startAzureSpeechStream;
         const streamProviderName = isSoniox ? "Soniox" : "Azure AI Speech";
-        speechStreamRef.current = await startStream({
+        const speechStream = await startStream({
           tokenUrl: `/api/v1/meetings/${meetingId}/live/${isSoniox ? "soniox" : "azure"}-token`,
           audioStream: audioCaptureStream,
           ...(isSoniox ? {
+            deferAudioStart: true,
             onInterims: (results: import("@/lib/azure-speech-stream").AzureSpeechResult[]) => {
               publishLiveTranscriptEvent({ type: "replace-interims", meetingId, results });
             },
@@ -630,6 +634,11 @@ export function LiveMeetingRecorder({
             setMessage(`${streamProviderName}: ${errorMessage}。録音データの保存は継続しています。`);
           },
         });
+        speechStreamRef.current = speechStream;
+        if ("startAudio" in speechStream) {
+          const startAudio = speechStream.startAudio;
+          if (typeof startAudio === "function") startSpeechAudio = () => startAudio();
+        }
       }
       audioRecorder.addEventListener("dataavailable", (event) => {
         if (event.data.size === 0) return;
@@ -655,8 +664,10 @@ export function LiveMeetingRecorder({
         }
       }
       recordingActiveRef.current = true;
+      if (started.transcriptionProvider === "soniox") startedAtRef.current = performance.now();
       audioRecorder.start(started.chunkMs);
       if (displayStream && !isAudioOnly) startVideoPart(displayStream, 0);
+      startSpeechAudio?.();
       setPhase("recording");
       recordingMessageRef.current = started.transcriptionProvider !== "whisperx"
         ? isAudioOnly

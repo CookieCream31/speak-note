@@ -72,7 +72,7 @@ let mixer: {
   isCurrentDisplay: (stream: Stream) => boolean; handleDisplayEnded: ReturnType<typeof vi.fn>;
   setMicrophoneMuted: ReturnType<typeof vi.fn>; attachMicrophone: ReturnType<typeof vi.fn>;
 };
-async function render(includeMicrophone = true, resumePendingCapture = false, captureMode: "shared_audio" | "display" = "shared_audio") {
+async function render(includeMicrophone = true, resumePendingCapture = false, captureMode: "shared_audio" | "display" | "microphone" = "shared_audio") {
   await act(async () => root.render(<LiveMeetingRecorder meetingId="m" captureMode={captureMode}
     existingRecording={false} transcriptionReady={false} hasFinalTranscript={false}
     finalProcessing={false} aiDisabled={false} initialIncludeMicrophone={includeMicrophone}
@@ -88,6 +88,7 @@ async function click(label: string) {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("isSecureContext", true);
   vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
     queueMicrotask(() => callback(0)); return 1;
   });
@@ -119,9 +120,44 @@ beforeEach(() => {
 });
 afterEach(() => {
   act(() => root.unmount()); host.remove(); vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("shared audio recording", () => {
+  it("does not start saved media or PCM when Soniox preparation fails", async () => {
+    mocks.start.mockResolvedValue({ chunk_ms: 15000, transcription_provider: "soniox" });
+    mocks.soniox.mockRejectedValueOnce(new Error("Sonioxの準備に失敗しました"));
+    await render(); await click("画面共有を開始");
+    expect(Recorder.instances[0].start).not.toHaveBeenCalled();
+    expect(mocks.send).not.toHaveBeenCalled();
+    expect(mocks.close).toHaveBeenCalled();
+    expect(host.textContent).toContain("Sonioxの準備に失敗しました");
+  });
+  it.each(["microphone", "shared_audio", "display"] as const)("starts the %s media timeline after delayed Soniox setup and before PCM activation", async (mode) => {
+    let now = 1000;
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+    const activate = vi.fn(() => {
+      expect(Recorder.instances[0].state).toBe("recording");
+      if (mode === "display") expect(Recorder.instances[1].state).toBe("recording");
+    });
+    mocks.start.mockResolvedValue({ chunk_ms: 15000, transcription_provider: "soniox" });
+    mocks.soniox.mockImplementationOnce(async (options) => {
+      expect(options.deferAudioStart).toBe(true);
+      expect(Recorder.instances[0].state).toBe("inactive");
+      now = 5000; // Key issuance, WebSocket and AudioWorklet setup take 4 seconds.
+      expect(options.getTimelinePositionMs()).toBe(0);
+      return { startAudio: activate, stop: vi.fn() };
+    });
+    await render(true, false, mode); await click(mode === "microphone" ? "録音を開始" : "画面共有を開始");
+    expect(activate).toHaveBeenCalledOnce();
+    const options = mocks.soniox.mock.calls[0][0];
+    expect(options.getTimelinePositionMs()).toBe(0);
+    now = 6500;
+    act(() => Recorder.instances[0].chunk());
+    expect(mocks.send).toHaveBeenCalledWith(expect.objectContaining({ start_ms: 0, end_ms: 1500 }), expect.any(Blob));
+    expect(options.getTimelinePositionMs()).toBe(1500);
+    await click(mode === "display" ? "録画を終了して確定" : "録音を終了して確定");
+  });
   it("publishes Soniox speaker drafts together and sends only confirmed results to the backend", async () => {
     mocks.start.mockResolvedValue({ chunk_ms: 15000, transcription_provider: "soniox" });
     await render(); await click("画面共有を開始");

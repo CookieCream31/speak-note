@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseSonioxResponse, SonioxTranscriptAccumulator, startSonioxSpeechStream } from "./soniox-speech-stream";
+import { createPcmAudioInput } from "./pcm-audio-input";
 
-const pcm = vi.hoisted(() => ({ callback: null as ((buffer: ArrayBuffer) => void) | null, close: vi.fn() }));
-vi.mock("./pcm-audio-input", () => ({ createPcmAudioInput: vi.fn(async (_: MediaStream, callback: (buffer: ArrayBuffer) => void) => { pcm.callback = callback; return { close: pcm.close }; }) }));
+const pcm = vi.hoisted(() => ({ callback: null as ((buffer: ArrayBuffer, capturedStartMs: number) => void) | null, start: vi.fn(), close: vi.fn() }));
+vi.mock("./pcm-audio-input", () => ({ createPcmAudioInput: vi.fn(async (_: MediaStream, callback: (buffer: ArrayBuffer, capturedStartMs: number) => void) => { pcm.callback = callback; return { start: pcm.start, close: pcm.close }; }) }));
 
 class FakeSocket {
   static OPEN = 1;
@@ -145,7 +146,7 @@ describe("Soniox streaming lifecycle", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     FakeSocket.instances = [];
-    pcm.callback = null; pcm.close.mockReset();
+    pcm.callback = null; pcm.start.mockReset(); pcm.close.mockReset();
     vi.stubGlobal("WebSocket", FakeSocket);
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ api_key: "temporary-key", model: "stt-rt-v5", language: "ja" }) })));
   });
@@ -184,17 +185,44 @@ describe("Soniox streaming lifecycle", () => {
     const config = JSON.parse(socket.sent[0] as string);
     expect(config).toMatchObject({ audio_format: "pcm_s16le", sample_rate: 16000, num_channels: 1, enable_speaker_diarization: true, enable_endpoint_detection: false });
     expect(config.api_key).toBeUndefined();
-    const buffer = new ArrayBuffer(3200); pcm.callback?.(buffer);
+    const buffer = new ArrayBuffer(3200); pcm.callback?.(buffer, 3000);
     expect(socket.sent[1]).toBe(buffer);
     socket.receive({ tokens: [token("確定する発言")] });
     await controller.stop();
     expect(socket.sent.at(-1)).toBe("");
     expect(onResult).toHaveBeenCalledOnce();
-    expect(onResult.mock.calls[0][0].startMs).toBe(3000);
+    expect(onResult.mock.calls[0][0].startMs).toBe(3100);
     expect(onResult.mock.calls[0][0].speakerLabel).toBe("話者 1");
     expect(pcm.close).toHaveBeenCalledOnce();
     await controller.stop();
     expect(onResult).toHaveBeenCalledOnce();
+  });
+  it("uses capture timestamps instead of message receipt time or an assumed 100ms frame, including reconnect", async () => {
+    const { socket, controller, onResult } = await start();
+    pcm.callback?.(new ArrayBuffer(320), 1250);
+    await vi.advanceTimersByTimeAsync(5000);
+    socket.receive({ tokens: [token("最初の発言")], finished: true });
+    expect(onResult.mock.calls[0][0]).toMatchObject({ startMs: 1350, endMs: 1750 });
+    await vi.advanceTimersByTimeAsync(1000); await tick();
+    const next = FakeSocket.instances[1]; next.open(); await tick();
+    pcm.callback?.(new ArrayBuffer(3200), 25_000);
+    next.receive({ tokens: [token("再接続後の発言")], finished: true });
+    expect(onResult.mock.calls[1][0]).toMatchObject({ startMs: 25_100, endMs: 25_500 });
+    await controller.stop();
+  });
+  it("prepares deferred PCM without starting it until recording is activated", async () => {
+    const getTimelinePositionMs = vi.fn(() => 0);
+    const promise = startSonioxSpeechStream({ tokenUrl: "/soniox-token", audioStream: {} as MediaStream,
+      deferAudioStart: true, getTimelinePositionMs, onResult: vi.fn(), onError: vi.fn() });
+    await tick(); FakeSocket.instances[0].open(); await tick();
+    const controller = await promise;
+    expect(createPcmAudioInput).toHaveBeenLastCalledWith(expect.anything(), expect.any(Function), { deferStart: true, getTimelinePositionMs });
+    expect(pcm.start).not.toHaveBeenCalled();
+    controller.startAudio();
+    expect(pcm.start).toHaveBeenCalledOnce();
+    await controller.stop();
+    controller.startAudio();
+    expect(pcm.start).toHaveBeenCalledOnce();
   });
   it("reconnects with a fresh single-use key and does not duplicate finalized text", async () => {
     const { socket, controller, onResult } = await start();

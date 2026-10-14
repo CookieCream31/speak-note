@@ -25,6 +25,7 @@ interface StreamOptions {
   tokenUrl: string;
   audioStream: MediaStream;
   getTimelinePositionMs?: () => number;
+  deferAudioStart?: boolean;
   onInterims?: (results: AzureSpeechResult[]) => void;
   onResult: (result: AzureSpeechResult) => void;
   onError: (message: string) => void;
@@ -128,7 +129,7 @@ export function parseSonioxResponse(value: unknown): SonioxResponse {
   return response;
 }
 
-export async function startSonioxSpeechStream(options: StreamOptions): Promise<AzureSpeechStreamController> {
+export async function startSonioxSpeechStream(options: StreamOptions): Promise<AzureSpeechStreamController & { startAudio: () => void }> {
   let socket: WebSocket | null = null;
   let stopping = false;
   let attempts = 0;
@@ -239,7 +240,7 @@ export async function startSonioxSpeechStream(options: StreamOptions): Promise<A
   };
   try {
     await connect();
-    input = await createPcmAudioInput(options.audioStream, (buffer) => {
+    input = await createPcmAudioInput(options.audioStream, (buffer, capturedStartMs) => {
       if (socket?.readyState !== WebSocket.OPEN || !acceptingAudio) return;
       if (socket.bufferedAmount >= 512_000) {
         options.onError("Sonioxへの音声送信が遅延しています。再接続します");
@@ -247,12 +248,11 @@ export async function startSonioxSpeechStream(options: StreamOptions): Promise<A
         return;
       }
       if (!audioStarted) {
-        const firstFramePosition = Math.max(0, Math.round(options.getTimelinePositionMs?.() ?? 0) - 100);
-        accumulator = new SonioxTranscriptAccumulator(generationPrefix, firstFramePosition);
+        accumulator = new SonioxTranscriptAccumulator(generationPrefix, capturedStartMs);
         audioStarted = true;
       }
       socket.send(buffer);
-    });
+    }, { deferStart: options.deferAudioStart, getTimelinePositionMs: options.getTimelinePositionMs });
   } catch (error) {
     stopping = true;
     (socket as WebSocket | null)?.close();
@@ -263,7 +263,7 @@ export async function startSonioxSpeechStream(options: StreamOptions): Promise<A
     if (!stopping && socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "keepalive" }));
   }, 20_000);
   let stopPromise: Promise<void> | null = null;
-  return { stop: () => {
+  return { startAudio: () => { if (!stopping) input?.start(); }, stop: () => {
     if (stopPromise) return stopPromise;
     stopping = true;
     clearInterval(keepalive);

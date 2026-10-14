@@ -11,13 +11,14 @@ class AzureSpeechPcmProcessor extends AudioWorkletProcessor {
     this.hasPreviousSample = false;
     this.pcm = new Int16Array(this.chunkSamples);
     this.pcmLength = 0;
+    this.pcmStartTime = 0;
     this.sumSquares = 0;
     this.port.onmessage = (event) => {
       if (event.data?.type !== "flush") return;
       if (this.pcmLength) {
         const buffer = this.pcm.slice(0, this.pcmLength).buffer;
         const level = Math.sqrt(this.sumSquares / this.pcmLength);
-        this.port.postMessage({ type: "pcm", buffer, level }, [buffer]);
+        this.port.postMessage({ type: "pcm", buffer, level, startTime: this.pcmStartTime }, [buffer]);
         this.pcmLength = 0;
         this.sumSquares = 0;
       }
@@ -25,7 +26,8 @@ class AzureSpeechPcmProcessor extends AudioWorkletProcessor {
     };
   }
 
-  appendSample(sample) {
+  appendSample(sample, time) {
+    if (this.pcmLength === 0) this.pcmStartTime = time;
     const clamped = Math.max(-1, Math.min(1, sample));
     this.pcm[this.pcmLength] = Math.round(
       clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff,
@@ -36,7 +38,7 @@ class AzureSpeechPcmProcessor extends AudioWorkletProcessor {
 
     const buffer = this.pcm.buffer;
     const level = Math.sqrt(this.sumSquares / this.pcmLength);
-    this.port.postMessage({ type: "pcm", buffer, level }, [buffer]);
+    this.port.postMessage({ type: "pcm", buffer, level, startTime: this.pcmStartTime }, [buffer]);
     this.pcm = new Int16Array(this.chunkSamples);
     this.pcmLength = 0;
     this.sumSquares = 0;
@@ -50,13 +52,14 @@ class AzureSpeechPcmProcessor extends AudioWorkletProcessor {
 
     const channel = inputs[0]?.[0];
     if (!channel?.length) return true;
+    const frame = typeof currentFrame === "number" ? currentFrame : this.inputPosition;
 
     for (let index = 0; index < channel.length; index += 1) {
       const currentSample = channel[index];
       if (!this.hasPreviousSample) {
         this.previousSample = currentSample;
         this.hasPreviousSample = true;
-        this.appendSample(currentSample);
+        this.appendSample(currentSample, (frame + index) / sampleRate);
         this.nextOutputPosition += this.sourceStep;
         this.inputPosition += 1;
         continue;
@@ -67,6 +70,7 @@ class AzureSpeechPcmProcessor extends AudioWorkletProcessor {
         const fraction = Math.max(0, Math.min(1, this.nextOutputPosition - intervalStart));
         this.appendSample(
           this.previousSample + (currentSample - this.previousSample) * fraction,
+          (frame + index - 1 + fraction) / sampleRate,
         );
         this.nextOutputPosition += this.sourceStep;
       }

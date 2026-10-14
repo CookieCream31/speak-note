@@ -306,6 +306,20 @@ sudo docker compose ps frontend
 
 ブラウザを再読み込みし、新しい会議で2人以上が交互に話します。Sonioxから途中の話者変更が返ると確定前でも別ブロックになること、訂正・撤回で古い途中ブロックが残らないこと、停止後に途中表示が消えて保存済み原文・翻訳が残ることを確認します。早期確定OFFのままなのでAPI側の話者判定・確定までの遅れは残ります。[公式根拠・検証・未確認事項](soniox-transcription.md#provisional-speaker-blocks)。エージェントはDockerを再起動していません。
 
+<a id="soniox-audio-timeline"></a>
+### Soniox録音の開始時刻・PCM時刻の修正（2026-10-14）
+
+Frontendと共有Workletだけの修正です。追加Migration・環境変数・依存はありません。録音・録画と保存を終えてから、Frontendを反映します。ソース更新済みなら`git pull`を省略できます。
+
+```bash
+cd /home/llm/speak-note
+git pull --ff-only
+sudo docker compose restart frontend
+sudo docker compose ps frontend
+```
+
+録音停止後にブラウザを再読み込みし、新しい短い会議で冒頭と終盤に発言して、保存音声の再生・文字起こしクリックの位置を確認します。マイク録音・画面共有録画・共有音声のみの3方式に適用します。過去に保存した時刻は変更されません。Sonioxモデルの認識誤差・Liveの単語位置の推定は別の制約です。[原因・検証・既存会議の注意](soniox-transcription.md#audio-timeline)。エージェントは稼働Dockerを再起動していません。
+
 <a id="language-picker-ui"></a>
 ### 言語の検索一覧・タグ・詳細設定への表示改善
 

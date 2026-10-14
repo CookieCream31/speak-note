@@ -1,6 +1,6 @@
 # Soniox文字起こし
 
-最終照合: 2026-10-14（LiveをSonioxに統一、全体処理はWhisperX／Soniox、キー・モデル・履歴・精度優先を維持）。[README](../README.md) · [操作ガイド](usage.md) · [現行構成・反映](soniox-realtime-only.md)
+最終照合: 2026-10-14（録音時計とPCM取得時刻の同期、途中の話者ブロック、LiveのSoniox固定、独立した全体処理を照合）。[README](../README.md) · [操作ガイド](usage.md) · [現行構成・反映](soniox-realtime-only.md)
 
 ## 公式仕様と実装の境界
 
@@ -92,6 +92,47 @@ git diff --check
 実Component・CSS・原文accumulatorの一時プレビューをChromiumで確認し、ライト／ダーク×幅320・393・560・844・1280・1920pxの12条件で、話者分割・訂正・確定・撤回・原文直下の翻訳・DOM保持・横はみ出しなし・page errorなしが成功しました。検証コマンドは`FONTCONFIG_FILE=/tmp/speak-note-provisional-speakers-browser/fonts.conf PLAYWRIGHT_BROWSERS_PATH=/tmp/speak-note-browsers LD_LIBRARY_PATH=/tmp/speak-note-browser-libs/usr/lib/x86_64-linux-gnu XDG_CACHE_HOME=/tmp/speak-note-browser-font-cache /tmp/speak-note-title-speed-verify-env/bin/python /tmp/speak-note-provisional-speakers-browser/check.py chromium`です。一時環境のフォント設定不足は検証用fontconfigとフォントだけで解消し、アプリの設定を変更していません。
 
 WebKitは環境の`libgles2`・`gstreamer1.0-libav`不足で起動できませんでした。これはコード／テストの失敗とは区別します。実Soniox音声による判定遅延・精度、Safari／iPhone実機、Docker反映は未検証です。稼働サービスは再起動していません。新しいMigration・依存・環境変数は追加しません。
+
+<a id="audio-timeline"></a>
+## 録音と文字起こしの開始時刻ずれ（2026-10-14）
+
+従来は会議の時計を開始してからSonioxの一時キー・接続・Workletを準備し、その後にMediaRecorderを開始していました。この準備時間が文字起こしと保存Chunkの時刻へ加わり、音声ファイルの再生位置より文字起こしが一定量遅れる原因になります。また、最初のPCM通知を受け取った時刻から固定100msを引く推定は、ブラウザの通知待ちや短いflush末尾を正しく扱えませんでした。
+
+現在はSonioxの準備中にPCM音声の入力を接続せず、保存用MediaRecorderと会議時計を開始してからPCMを有効化します。各frameとflush末尾に先頭sampleのAudioContext時刻を付け、録音時計へ換算します。再接続時も、最初に送信した音声を実際に取得した時刻を使います。[Sonioxのtoken時刻仕様](https://soniox.com/docs/stt/concepts/timestamps)の`start_ms`／`end_ms`と送信形式は保持し、接続ごとの取得時刻を加えて会議の整数msへ変換します。[AudioWorkletのcurrentFrame](https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletGlobalScope/currentFrame)とAudioContextの時計を使うため、メインスレッドへの通知の遅れを発言時刻へ加えません。
+
+ユーザー指定の停止済みマイク会議を読取APIで確認し、Soniox Live・保存会議時間118.012秒・音声の再生時間115.497秒を確認しました。差は2.515秒で、準備時間が含まれる不具合と整合します。ただし当時の録音開始差・生PCM時刻は保存されていないため、差の全量が各発言の正確な補正量であるとは断定しません。元音声・保存済み文字起こし・要約・Jobを変更する操作は行っていません。
+
+この修正は更新後に新しく開始する録音へ適用します。過去の時刻を推測で変更せず、保存履歴の再処理も自動で行いません。Live版の単語位置は保存された発話区間から推定しており、この修正はその区間の時計を合わせるものです。Sonioxモデル自身のtoken時刻の精度を保証する変更ではありません。[Frontendのみの反映・確認手順](operations.md#soniox-audio-timeline)。
+
+変更した13ファイル:
+
+| ファイル | 内容 |
+| --- | --- |
+| `frontend/components/live-meeting-recorder.tsx`、`shared-audio-recorder.test.tsx` | Soniox準備後に録音時計を開始し、MediaRecorder起動後にPCMを有効化。マイク／録画／共有音声での準備遅延と失敗の検証 |
+| `frontend/lib/pcm-audio-input.ts`、`pcm-audio-input.test.ts` | 入力接続の遅延開始、AudioContextと会議時計の対応、通知待ち・flush・再サンプルの検証 |
+| `frontend/lib/soniox-speech-stream.ts`、`soniox-speech-stream.test.ts` | 取得時刻を使う接続ごとのoffset、短いframe・再接続・停止後の入力再開防止 |
+| `frontend/public/azure-speech-pcm-worklet.js` | 各PCM frameと末尾の先頭sample時刻を保持。旧Azure向けのPCM・level・flushも保持 |
+| `README.md`、`DESIGN.md`、`docs/{soniox-transcription,usage,development,operations}.md` | 原因・適用範囲・操作・検証とFrontend反映手順を更新 |
+
+実行コマンド（FrontendはNode 22の`/tmp/node-v22.16.0-linux-x64/bin/node`）:
+
+```bash
+# frontend内
+node node_modules/vitest/vitest.mjs run lib/soniox-speech-stream.test.ts lib/pcm-audio-input.test.ts components/shared-audio-recorder.test.tsx lib/azure-speech-stream-reconnect.test.ts
+node node_modules/vitest/vitest.mjs run
+node node_modules/typescript/bin/tsc --noEmit
+node node_modules/eslint/bin/eslint.js .
+# backend内
+/tmp/speak-note-shared-audio-verify-env/bin/pytest -q
+# Project内
+git diff --check
+```
+
+関連テストは修正途中で66件成功し、最終的にはFrontend全53ファイル363件、Backend全346件（既存の非推奨warning 6件）、型チェック・ESLint・空白検査が成功しました。Frontend専用formatterは未設定で、既存の記法に合わせて差分を確認しました。準備4秒を録音時間へ含めないこと、通知が5秒遅れてもPCM時刻を使うこと、10msの短いframeと再接続、16／44.1／48kHzの再サンプル、flush末尾の時刻・音声保持、準備失敗時に録音しないこと、旧Azureの互換性を検証しています。
+
+Chromiumの実MediaRecorder・AudioWorklet・Opus録音／デコードを使い、750msの準備待ち×合成音源16／44.1／48kHz×メインスレッド遅延0／600msの6条件を確認しました。保存音声の3つの音とPCMの取得時刻の差は3〜30msで、600ms待たされた通知でも先頭frameの取得時刻は0〜3msでした。ブラウザ検証は`FONTCONFIG_FILE=/tmp/speak-note-provisional-speakers-browser/fonts.conf PLAYWRIGHT_BROWSERS_PATH=/tmp/speak-note-browsers LD_LIBRARY_PATH=/tmp/speak-note-browser-libs/usr/lib/x86_64-linux-gnu XDG_CACHE_HOME=/tmp/speak-note-browser-font-cache /tmp/speak-note-title-speed-verify-env/bin/python /tmp/speak-note-audio-timing-browser/check.py`で実行し、一時server・生成音源だけを使用しました。外部APIへ合成音を送信していません。
+
+実マイク／画面共有とSoniox APIを組み合わせた認識・時刻精度、Safari／iPhone実機、長時間録音や端末の省電力状態、Docker反映は未検証です。旧会議についてはユーザーの指定により修復・時刻補正のUIを追加せず、保存済み会議を保持しています。追加Migration・依存・環境変数はありません。
 
 <a id="word-boundaries"></a>
 ## Live原文の単語分断防止（2026-10-13）
