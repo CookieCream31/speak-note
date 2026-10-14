@@ -676,8 +676,6 @@
 .documentControls {
   min-height: 42px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
   align-items: center;
   justify-content: space-between;
   padding: 10px 22px;

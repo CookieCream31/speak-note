@@ -1,6 +1,6 @@
 # Soniox文字起こし
 
-最終照合: 2026-10-14（小さなハイライトのずれの調査と会議ごとの同期調整、再生ハイライトのちらつき抑制、Liveの単語時刻保存・再生追従、非同期SonioxとWhisperXの共通再生経路、録音時計とPCM取得時刻の同期、途中の話者ブロック、LiveのSoniox固定、独立した全体処理を照合）。[README](../README.md) · [操作ガイド](usage.md) · [現行構成・反映](soniox-realtime-only.md)
+最終照合: 2026-10-14（ハイライトの固定100ms先行と同期設定UIの廃止、再生ハイライトのちらつき抑制、Liveの単語時刻保存・再生追従、非同期SonioxとWhisperXの共通再生経路、録音時計とPCM取得時刻の同期、途中の話者ブロック、LiveのSoniox固定、独立した全体処理を照合）。[README](../README.md) · [操作ガイド](usage.md) · [現行構成・反映](soniox-realtime-only.md)
 
 ## 公式仕様と実装の境界
 
@@ -93,8 +93,46 @@ git diff --check
 
 WebKitは環境の`libgles2`・`gstreamer1.0-libav`不足で起動できませんでした。これはコード／テストの失敗とは区別します。実Soniox音声による判定遅延・精度、Safari／iPhone実機、Docker反映は未検証です。稼働サービスは再起動していません。新しいMigration・依存・環境変数は追加しません。
 
+<a id="playback-fixed-lead"></a>
+## ハイライトを固定で0.1秒早める（2026-10-14）
+
+ユーザーが同期調整を0.1秒早めて確認し、「固定にして設定画面なし」を指定したため、再生ハイライトと自動スクロールの表示時計を常に100ms先行させます。既存会議・新しい会議、音声・動画、WhisperX・SonioxのLive／Finalで共通です。保存済み単語時刻や音声を再生成・変更する処理はありません。
+
+「同期」ボタン・設定Component・専用CSS・localStorageの読書き・変更イベントを削除しました。旧ブラウザ設定が残っていても使わず、100ms補正へ加算しません。音声の再生時刻、単語クリックのシーク、字幕、チャプター、AI入力は保存時刻のままです。固定先行はAPIの認識時刻を修正するものではなく、ユーザー指定の表示設定です。[Frontend反映](operations.md#transcript-display-sync)後にページを再読み込みするだけで適用します。
+
+変更した15ファイル:
+
+| ファイル | 内容 |
+| --- | --- |
+| `frontend/public/transcript-player.js` | `TRANSCRIPT_HIGHLIGHT_LEAD_MS = 100`による固定先行、旧値・イベントを廃止 |
+| `frontend/components/transcript-player.tsx`、`transcript-player.module.css` | 同期UIと専用レイアウトを外し、公開JSのURLを`20261014-4`へ更新 |
+| `frontend/components/transcript-sync-control.{tsx,module.css,test.tsx}` | 廃止した設定Component・CSS・旧UIテストを削除 |
+| `frontend/components/transcript-sync.test.tsx` | 固定表示・設定UI不在・元のtimeline保持・旧設定を読書きしないことへテストを置換 |
+| `frontend/lib/transcript-player-runtime.test.ts`、`frontend/components/meeting-workspace.test.tsx` | 100ms先行、旧値無視、停止中の表示、1回だけの補正、時計分離、cache URL |
+| `README.md`、`DESIGN.md`、`docs/{soniox-transcription,usage,development,operations}.md` | 固定表示・旧UI廃止・適用範囲・検証・反映を更新 |
+
+実行コマンド（Node 22の`/tmp/node-v22.16.0-linux-x64/bin/node`）:
+
+```bash
+# frontend内
+node node_modules/vitest/vitest.mjs run lib/transcript-player-runtime.test.ts components/transcript-sync.test.tsx components/meeting-workspace.test.tsx
+node node_modules/vitest/vitest.mjs run
+node node_modules/typescript/bin/tsc --noEmit
+node node_modules/eslint/bin/eslint.js .
+# Project内
+git diff --check
+```
+
+関連27件・全体54ファイル380件、ESLint・型チェック・空白検査が成功しました。設定UIの14件は機能廃止に伴いUI不在・固定補正・旧設定無視の4件へ置換し、再生の20件は保存時刻と表示時計を分けた仕様で検証しています。無音・話者切替・Text Node保持・速度変化・後ろへのシーク・字幕・チャプター・音声時刻・自動スクロールの回帰検証を残しています。Frontend専用formatterは未設定のため、既存の記法で限定差分を確認しました。Backend・DBを変更していないため、BackendとMigrationの検証は再実行していません。
+
+Chromiumでは実Component・CSS・再生runtimeを一時プレビューへbundleし、ライト／ダーク×幅320・393・560・844・1280・1920px×音声／動画の24条件が成功しました。固定100ms先行・設定UI不在・旧会議設定の無視・元音声と単語時刻の保持・無音・後ろへのシーク・横はみ出しなし・page errorなしを確認しています。検証コマンドは`FONTCONFIG_FILE=/tmp/speak-note-provisional-speakers-browser/fonts.conf PLAYWRIGHT_BROWSERS_PATH=/tmp/speak-note-browsers LD_LIBRARY_PATH=/tmp/speak-note-browser-libs/usr/lib/x86_64-linux-gnu XDG_CACHE_HOME=/tmp/speak-note-browser-font-cache /tmp/speak-note-title-speed-verify-env/bin/python /tmp/speak-note-word-timings-browser/check_fixed_lead.py`です。一時serverと生成WAVだけを使用し、外部APIへ音声を送信していません。一時serverは検証後に終了しました。
+
+実機での他会議の体感、実Soniox音声・Safari／iPhone、Docker反映は未検証です。以前の調査と会議別調整UIの検証は次節に履歴として残します。追加Migration・依存・環境変数はありません。稼働Dockerや保存済み会議は変更していません。
+
 <a id="playback-sync"></a>
-## 小さなハイライトのずれの調査と同期調整（2026-10-14）
+## 小さなハイライトのずれの調査と旧同期UIの記録（2026-10-14）
+
+現行仕様は[固定100ms先行](#playback-fixed-lead)です。ユーザーが0.1秒早めた表示を確認し、設定画面の廃止を指定しました。以下の会議別設定・操作・専用テストは導入時の履歴であり、現在のUI・設定ではありません。
 
 ユーザー指定の保存済み画面共有会議（Soniox Live）をGETのみで調査しました。29 Segment・532 Wordが保存され、ページのcompact timelineにも同じ532件が渡されています。最新の配信JSはソースと一致し、再生中のハイライトには固定1秒の待ち時間がありません。短い隙間の保持は次のtokenの開始を遅らせません。tokenの大半は60msの区間で、token内の文字補間も1秒の遅れの原因にはなりません。
 

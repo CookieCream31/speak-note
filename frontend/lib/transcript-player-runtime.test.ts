@@ -96,13 +96,14 @@ function initializeAudio(timeline = "[]") {
 }
 
 function initializeGappedTranscript() {
+  // The first token starts at 100ms; the fixed display lead begins at media 0.
   document.body.innerHTML = `<section data-transcript-player data-media-kind="video">
     <video data-meeting-media></video><div data-transcript-document>
       ${["Hello world.！また", "別"].map((text, index) => `<article data-transcript-turn>
         <button data-transcript-text data-turn-index="${index}">
           <span data-karaoke-before></span><span data-karaoke-highlight></span><span data-karaoke-after>${text}</span>
         </button></article>`).join("")}</div>
-    <script type="application/json" data-transcript-timeline>[[[0,100,3],[150,200,2],[205,225,1],[260,400,6],[450,450,1],[700,900,2]],[[950,1000,1]]]</script></section>`;
+    <script type="application/json" data-transcript-timeline>[[[100,200,3],[250,300,2],[305,325,1],[360,500,6],[550,550,1],[800,1000,2]],[[1050,1100,1]]]</script></section>`;
   media = document.querySelector("video")!;
   Object.defineProperty(media, "paused", { configurable: true, value: false });
   Object.defineProperty(media, "readyState", { value: 4 });
@@ -111,43 +112,40 @@ function initializeGappedTranscript() {
 }
 
 describe("transcript playback runtime", () => {
-  it("adjusts only transcript display immediately, including paused playback and negative offsets", () => {
+  it("always leads transcript display by 100ms, including paused playback, without using old preferences", () => {
     const [highlight] = initializeGappedTranscript();
     const player = document.querySelector<HTMLElement>("[data-transcript-player]")!;
     Object.defineProperty(media, "paused", { configurable: true, value: true });
+    advance(0, 300);
+    expect(highlight.textContent).toBe("H");
     advance(0.06, 300);
     expect(highlight.textContent).toBe("He");
-    player.dataset.transcriptSyncMs = "200";
-    player.dispatchEvent(new Event("speak-note:transcript-sync"));
-    expect(highlight.textContent).toBe("w");
-    expect(media.currentTime).toBe(0.06);
-    player.dataset.transcriptSyncMs = "-100";
-    player.dispatchEvent(new Event("speak-note:transcript-sync"));
-    expect(highlight.textContent).toBe("");
-    expect(media.currentTime).toBe(0.06);
-    for (const value of ["0", "NaN", "2100", "10.5"]) {
+    for (const value of ["-100", "0", "100", "2000", "NaN"]) {
       player.dataset.transcriptSyncMs = value;
       player.dispatchEvent(new Event("speak-note:transcript-sync"));
+      advance(0.06, 300);
       expect(highlight.textContent).toBe("He");
+      expect(media.currentTime).toBe(0.06);
     }
+    advance(0.15, 300);
+    expect(highlight.textContent).toBe("l");
   });
   it("keeps chapter progress, video subtitles and displayed media time on the original clock", () => {
     document.body.innerHTML = `<section data-transcript-player data-media-kind="video" data-subtitles-enabled="true" data-transcript-sync-ms="1000">
       <video data-meeting-media></video><output data-media-time></output>
       <div data-chapter-track><button data-chapter-segment data-chapter-title="会議全体" data-chapter-start-ms="0" data-chapter-end-ms="20000"><span data-chapter-progress></span></button></div>
       <div data-subtitle-overlay><span data-subtitle-speaker></span><p data-subtitle-text></p></div>
-      <span data-subtitle-cue data-subtitle-start-ms="0" data-subtitle-end-ms="14000">元の字幕</span>
-      <span data-subtitle-cue data-subtitle-start-ms="14000" data-subtitle-end-ms="20000">次の字幕</span>
+      <span data-subtitle-cue data-subtitle-start-ms="0" data-subtitle-end-ms="13050">元の字幕</span>
+      <span data-subtitle-cue data-subtitle-start-ms="13050" data-subtitle-end-ms="20000">次の字幕</span>
       <div data-transcript-document><article data-transcript-turn><button data-transcript-text data-turn-index="0">
         <span data-karaoke-before></span><span data-karaoke-highlight></span><span data-karaoke-after>字</span>
-      </button></article></div><script type="application/json" data-transcript-timeline>[[[13900,14100,1]]]</script></section>`;
+      </button></article></div><script type="application/json" data-transcript-timeline>[[[13080,13180,1]]]</script></section>`;
     media = document.querySelector("video")!;
     Object.defineProperty(media, "readyState", { value: 4 });
     Object.defineProperty(media, "duration", { value: 20 });
-    const player = media.closest<HTMLElement>("[data-transcript-player]")!;
     (window as unknown as { speakNoteTranscriptPlayer: { initialize: () => void } }).speakNoteTranscriptPlayer.initialize();
     media.currentTime = 13;
-    player.dispatchEvent(new Event("speak-note:transcript-sync"));
+    media.dispatchEvent(new Event("timeupdate"));
     expect(document.querySelector("[data-karaoke-highlight]")?.textContent).toBe("字");
     expect(document.querySelector("[data-subtitle-text]")?.textContent).toBe("元の字幕");
     expect(document.querySelector<HTMLElement>("[data-chapter-progress]")?.style.width).toBe("65%");
@@ -164,11 +162,11 @@ describe("transcript playback runtime", () => {
       },
     });
     document.querySelector<HTMLElement>("[data-transcript-player]")!.dataset.transcriptSyncMs = "1000";
-    advance(2.5, 950);
+    advance(3.85, 950);
     expect(targets.at(-1)).toBe("い");
-    advance(3.9, 950);
+    advance(3.95, 950);
     expect(targets.at(-1)).toBe("う");
-    expect(media.currentTime).toBe(3.9);
+    expect(media.currentTime).toBe(3.95);
   });
   it("keeps the completed token visible through brief gaps and standalone whitespace without flashing", () => {
     const [highlight] = initializeGappedTranscript();
@@ -221,16 +219,16 @@ describe("transcript playback runtime", () => {
     Object.defineProperty(media, "readyState", { value: 4 });
     (window as unknown as { speakNoteTranscriptPlayer: { initialize: () => void } }).speakNoteTranscriptPlayer.initialize();
     const highlight = () => document.querySelector("[data-karaoke-highlight]")?.textContent;
-    advance(0.18, 300);
+    advance(0.08, 300);
     expect(highlight()).toBe("He");
-    advance(0.35, 300);
+    advance(0.25, 300);
     expect(highlight()).toBe("l");
-    advance(1.5, 300);
+    advance(1.4, 300);
     expect(highlight()).toBe("");
     expect(document.querySelector("[data-transcript-text]")?.textContent?.replace(/\s+/g, "").trim()).toBe("Helloworld.はい");
-    advance(2.1, 300);
+    advance(2, 300);
     expect(highlight()).toBe(" wor");
-    advance(2.95, 300);
+    advance(2.85, 300);
     expect(highlight()).toBe("はい");
   });
   it("keeps audio time on the left without repeating normal playback status", () => {

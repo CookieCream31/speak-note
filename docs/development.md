@@ -343,7 +343,7 @@ Soniox原文accumulatorは確定tokenの`words`を会議時刻へ変換し、Rec
 
 再生runtimeの`findActiveWord`は、同一Block内で次の表示対象tokenまで180ms以下の隙間だけ直前の完了表示を保持します。空白だけ／時間0のtokenをフラットな表示対象から除き、`turn.words`の全文字offsetとクリック用時刻は保持します。長い無音・別Block・最後のtokenは延長しません。`transcript-player-runtime.test.ts`で短い隙間・空白・Text Node保持・長い無音・話者切替・後ろへのシークを確認します。公開JSのURLを`20261014-2`へ更新してcacheを避け、`meeting-workspace.test.tsx`も対応します。[比較検証・反映](soniox-transcription.md#playback-flicker)。
 
-`TranscriptSyncControl`は会議IDごとのlocalStorage（`speak-note:transcript-sync:v1:<meeting_id>`）と表示用の`data-transcript-sync-ms`を管理します。100ms刻み・±2000ms、不正値は0。値の変更で`speak-note:transcript-sync`を通知し、runtimeは停止中もハイライトを即更新します。`transcriptTimeMs`は表示・追従だけへ適用し、メディア時刻・字幕・チャプター・クリックのシークへ重ねません。イベント・storageの購読はcleanupし、保存失敗でも操作を継続します。専用UIの14件とruntimeの3件で保存・範囲・別会議・キーボード・時計の分離・追従への補正が1回だけであることを検証します。公開JSのURLは`20261014-3`です。[調査結果・変更ファイル・検証](soniox-transcription.md#playback-sync)。
+ユーザー指定により同期設定UIを廃止し、再生runtimeの`TRANSCRIPT_HIGHLIGHT_LEAD_MS = 100`で表示と自動スクロールだけを固定で先行させます。`transcriptTimeMs`はメディア時刻へ100msを1回だけ加え、字幕・チャプター・クリックのシーク・保存時刻には適用しません。旧`TranscriptSyncControl`・専用CSS・localStorage処理・変更イベントを削除し、旧UIテストは固定補正・旧値無視・設定UI不在のテストへ置き換えました。`transcript-sync.test.tsx`はUI不在と未変更のcompact timeline、runtimeテストは100ms先行・二重適用防止・時計の分離を確認します。公開JSのURLは`20261014-4`です。[変更ファイル・検証](soniox-transcription.md#playback-fixed-lead)。
 
 `schemas/translation.py`が一方向／双方向の設定と保存payloadを検証します。Meetingの設定は開始時にSessionへ固定し、Soniox Clientが公式モデルの翻訳対応をキー発行前に確認します。`services/realtime/translation.py`は原文とは別テーブルに確定翻訳を保存し、Sessionのrow lockと一意IDで重複を防ぎます。保存応答を返す前にlockを解放し、同じIDの異なる本文は拒否します。翻訳だけの検証失敗は終了応答として再送を止め、録音・原文の接続を継続します。
 

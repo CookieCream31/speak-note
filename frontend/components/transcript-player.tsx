@@ -9,7 +9,6 @@ import { InlineTranslations, TranslationRemainder, useLiveTranslations } from ".
 import { InlineSpeakerName } from "./inline-speaker-name";
 import { VideoSettings } from "./video-settings";
 import { PlaybackRateControl } from "./playback-rate-control";
-import { TranscriptSyncControl } from "./transcript-sync-control";
 
 import styles from "./transcript-player.module.css";
 
@@ -485,7 +484,6 @@ export function TranscriptDocument({
           <i aria-hidden="true" />
           <span data-follow-status>再生位置を自動追従します</span>
         </span>
-        {mediaUrl && turns.length > 0 && <TranscriptSyncControl meetingId={meetingId} />}
         <button type="button" className={styles.resumeFollowButton} data-follow-resume hidden>
           <ArrowDown size={14} aria-hidden="true" /> 自動スクロールを再開
         </button>
@@ -561,7 +559,7 @@ export function TranscriptRuntime({ turns }: Pick<TranscriptPlayerProps, "turns"
         data-transcript-timeline
         dangerouslySetInnerHTML={{ __html: compactTimeline }}
       />
-      <Script src="/transcript-player.js?v=20261014-3" strategy="afterInteractive" />
+      <Script src="/transcript-player.js?v=20261014-4" strategy="afterInteractive" />
     </>
   );
 }

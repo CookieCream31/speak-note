@@ -1,5 +1,6 @@
 (() => {
   const MAX_HIGHLIGHT_GAP_MS = 180;
+  const TRANSCRIPT_HIGHLIGHT_LEAD_MS = 100;
 
   function formatTimestamp(seconds) {
     const totalSeconds = Math.max(0, Math.floor(seconds));
@@ -676,11 +677,8 @@
     }
 
     function transcriptTimeMs(mediaMs) {
-      const offset = Number(root.dataset.transcriptSyncMs || 0);
-      return mediaMs + (Number.isInteger(offset) && Math.abs(offset) <= 2000 ? offset : 0);
+      return mediaMs + TRANSCRIPT_HIGHLIGHT_LEAD_MS;
     }
-
-    root.addEventListener("speak-note:transcript-sync", showActiveWord);
 
     function stopAnimation() {
       if (animationFrame !== null) cancelAnimationFrame(animationFrame);
