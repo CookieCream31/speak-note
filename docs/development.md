@@ -341,6 +341,8 @@ Soniox原文accumulatorは`interims`配列を返し、未保存の確定token＋
 
 Soniox原文accumulatorは確定tokenの`words`を会議時刻へ変換し、Recorderの保存payloadとLive Storeへ渡します。`schemas/transcript.py::TranscriptWordTiming`と`services/realtime/transcript_words.py`が本文・順序・範囲を検証し、`capture.py`はSegmentとWordを一緒に保存します。同一結果の再送を受け付け、異なる内容の再送で履歴を上書きしません。非同期は従来の`normalize_soniox_transcript`→Word保存を使い、両用途とWhisperXが`buildPlaybackWords`→既存プレイヤーの単語時刻を共用します。単語の内部だけは従来の文字補間です。`test_streaming_word_timings.py`でWebSocket→DB→停止・再読込、不正payload、再送を確認し、`test_soniox_transcription.py`で非同期WordのDB・GET応答も確認します。Frontendではaccumulator・Recorder・Store・会議ページ・実再生runtimeを検証します。[変更ファイル・全体テスト・ブラウザ・制約](soniox-transcription.md#word-timing-playback)。
 
+再生runtimeの`findActiveWord`は、同一Block内で次の表示対象tokenまで180ms以下の隙間だけ直前の完了表示を保持します。空白だけ／時間0のtokenをフラットな表示対象から除き、`turn.words`の全文字offsetとクリック用時刻は保持します。長い無音・別Block・最後のtokenは延長しません。`transcript-player-runtime.test.ts`で短い隙間・空白・Text Node保持・長い無音・話者切替・後ろへのシークを確認します。公開JSのURLを`20261014-2`へ更新してcacheを避け、`meeting-workspace.test.tsx`も対応します。[比較検証・反映](soniox-transcription.md#playback-flicker)。
+
 `schemas/translation.py`が一方向／双方向の設定と保存payloadを検証します。Meetingの設定は開始時にSessionへ固定し、Soniox Clientが公式モデルの翻訳対応をキー発行前に確認します。`services/realtime/translation.py`は原文とは別テーブルに確定翻訳を保存し、Sessionのrow lockと一意IDで重複を防ぎます。保存応答を返す前にlockを解放し、同じIDの異なる本文は拒否します。翻訳だけの検証失敗は終了応答として再送を止め、録音・原文の接続を継続します。
 
 Frontendは`soniox-translation.ts`で時刻のない翻訳tokenを組み立て、`live-translation-store.ts`で仮説と確定履歴を分離します。原文accumulatorが確定tokenの表示結果IDを記録し、翻訳accumulatorは到着順で先行する同じ話者・原言語の表示ブロックを参照します。`source_result_id`は0029で保存し、BackendのSession内UUIDから`source_segment_id`を返します。原文未保存でも翻訳を受け付け、IDが表示されるまでは同じ枠の末尾に残します。別Session・別接続やFinalへ推測で対応付けません。

@@ -95,7 +95,61 @@ function initializeAudio(timeline = "[]") {
   return { audio, status: document.querySelector<HTMLOutputElement>("[data-player-status]")! };
 }
 
+function initializeGappedTranscript() {
+  document.body.innerHTML = `<section data-transcript-player data-media-kind="video">
+    <video data-meeting-media></video><div data-transcript-document>
+      ${["Hello world.！また", "別"].map((text, index) => `<article data-transcript-turn>
+        <button data-transcript-text data-turn-index="${index}">
+          <span data-karaoke-before></span><span data-karaoke-highlight></span><span data-karaoke-after>${text}</span>
+        </button></article>`).join("")}</div>
+    <script type="application/json" data-transcript-timeline>[[[0,100,3],[150,200,2],[205,225,1],[260,400,6],[450,450,1],[700,900,2]],[[950,1000,1]]]</script></section>`;
+  media = document.querySelector("video")!;
+  Object.defineProperty(media, "paused", { configurable: true, value: false });
+  Object.defineProperty(media, "readyState", { value: 4 });
+  (window as unknown as { speakNoteTranscriptPlayer: { initialize: () => void } }).speakNoteTranscriptPlayer.initialize();
+  return Array.from(document.querySelectorAll<HTMLElement>("[data-karaoke-highlight]"));
+}
+
 describe("transcript playback runtime", () => {
+  it("keeps the completed token visible through brief gaps and standalone whitespace without flashing", () => {
+    const [highlight] = initializeGappedTranscript();
+    for (const [time, expected] of [[0.09, "Hel"], [0.11, "Hel"], [0.149, "Hel"], [0.15, "l"],
+      [0.201, "lo"], [0.212, "lo"], [0.259, "lo"], [0.26, "w"]] as const) {
+      advance(time, 300);
+      expect(highlight.textContent).toBe(expected);
+      expect(document.querySelector("[data-transcript-turn]")?.hasAttribute("aria-current")).toBe(true);
+    }
+  });
+  it("clears long silence and speaker boundaries, ignores zero-duration tokens and resets after a backward seek", () => {
+    const [first, second] = initializeGappedTranscript();
+    advance(0.39, 300);
+    expect(first.textContent).toBe("world.");
+    for (const time of [0.41, 0.45, 0.65]) {
+      advance(time, 300);
+      expect(first.textContent).toBe("");
+      expect(document.querySelector("[data-transcript-turn]")?.hasAttribute("aria-current")).toBe(false);
+    }
+    advance(0.89, 300);
+    expect(first.textContent).toBe("また");
+    advance(0.92, 300);
+    expect(first.textContent).toBe("");
+    advance(0.96, 300);
+    expect(second.textContent).toBe("別");
+    advance(0.212, 300);
+    expect(first.textContent).toBe("lo");
+    expect(second.textContent).toBe("");
+    expect(document.querySelector("[data-transcript-text]")?.textContent?.trim()).toBe("Hello world.！また");
+  });
+  it("does not replace highlight text nodes repeatedly while a brief gap is held", () => {
+    const [highlight] = initializeGappedTranscript();
+    advance(0.201, 300);
+    expect(highlight.textContent).toBe("lo");
+    const node = highlight.firstChild;
+    for (const time of [0.211, 0.225, 0.24, 0.255]) {
+      advance(time, 300);
+      expect(highlight.firstChild).toBe(node);
+    }
+  });
   it("follows API token times through pauses and changes of speaking speed instead of a constant phrase speed", () => {
     document.body.innerHTML = `<section data-transcript-player data-media-kind="video">
       <video data-meeting-media></video><div data-transcript-document>

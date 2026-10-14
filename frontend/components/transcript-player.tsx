@@ -559,7 +559,7 @@ export function TranscriptRuntime({ turns }: Pick<TranscriptPlayerProps, "turns"
         data-transcript-timeline
         dangerouslySetInnerHTML={{ __html: compactTimeline }}
       />
-      <Script src="/transcript-player.js?v=20261014-1" strategy="afterInteractive" />
+      <Script src="/transcript-player.js?v=20261014-2" strategy="afterInteractive" />
     </>
   );
 }

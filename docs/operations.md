@@ -336,6 +336,20 @@ sudo docker compose ps backend frontend
 
 新しい録音で早口・ゆっくりした発話・途中の無音を混ぜ、停止・保存後に再読み込みします。再生中に各単語の位置が速度と間に合わせて動き、原文をクリックすると対応する単語の先頭へ移ることを確認します。Soniox非同期も全体処理設定で選び、新しいアップロードのFinalを同様に確認します。既存WhisperXの単語追従・速度変更・話者名変更も確認してください。旧Liveは保存済み単語時刻がないため従来の推定表示で、再処理や時刻の書換えはしません。実Soniox・iPhone実機・Docker反映は未検証です。[公式根拠と検証](soniox-transcription.md#word-timing-playback)。エージェントはDockerを再起動していません。
 
+<a id="transcript-highlight-flicker"></a>
+### 再生ハイライトのちらつき修正の反映（2026-10-14）
+
+Frontendの再生runtimeだけの表示修正です。録音・録画と保存を終えてから反映します。ソース更新済みなら`git pull`を省略します。Backend・Workerの変更や追加Migrationはありません。
+
+```bash
+cd /home/llm/speak-note
+git pull --ff-only
+sudo docker compose restart frontend
+sudo docker compose ps frontend
+```
+
+ページを再読み込みし、単語時刻のある保存済みLive／Finalを再生します。短い単語間でハイライトが消えて点滅せず、長い無音や話者切替では解除されること、単語クリック・後ろへのシークで位置が合うことを確認してください。録音し直しや文字起こしの再処理は不要です。公開JSのURLを更新してcacheを避けます。エージェントは稼働Dockerを再起動していません。[原因・変更ファイル・検証](soniox-transcription.md#playback-flicker)。
+
 <a id="language-picker-ui"></a>
 ### 言語の検索一覧・タグ・詳細設定への表示改善
 

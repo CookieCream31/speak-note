@@ -1,4 +1,6 @@
 (() => {
+  const MAX_HIGHLIGHT_GAP_MS = 180;
+
   function formatTimestamp(seconds) {
     const totalSeconds = Math.max(0, Math.floor(seconds));
     const hours = Math.floor(totalSeconds / 3600);
@@ -122,7 +124,11 @@
         };
         characterOffset = word.charEnd;
         turn.words.push(word);
-        words.push(word);
+        // Keep all character offsets for text clicks, but do not flash a
+        // highlight on whitespace-only or instantaneous API tokens.
+        if (word.endMs > word.startMs && turn.characters.slice(word.charStart, word.charEnd).some((character) => /\S/u.test(character))) {
+          words.push(word);
+        }
       }
     }
 
@@ -504,7 +510,16 @@
           high = middle - 1;
         }
       }
-      if (candidate >= 0 && currentMs < words[candidate].endMs) return candidate;
+      if (candidate >= 0) {
+        const word = words[candidate];
+        if (currentMs < word.endMs) return candidate;
+        const next = words[candidate + 1];
+        // Hold the completed token across a brief gap in this same turn.
+        // This affects the display only; do not retime speech or extend the
+        // highlight into a long pause, another speaker or the end of a turn.
+        if (next && next.turn === word.turn && next.startMs - word.endMs <= MAX_HIGHLIGHT_GAP_MS
+          && currentMs < next.startMs) return candidate;
+      }
       return -1;
     }
 

@@ -1,6 +1,6 @@
 # Soniox文字起こし
 
-最終照合: 2026-10-14（Liveの単語時刻保存・再生追従、非同期SonioxとWhisperXの共通再生経路、録音時計とPCM取得時刻の同期、途中の話者ブロック、LiveのSoniox固定、独立した全体処理を照合）。[README](../README.md) · [操作ガイド](usage.md) · [現行構成・反映](soniox-realtime-only.md)
+最終照合: 2026-10-14（再生ハイライトのちらつき抑制、Liveの単語時刻保存・再生追従、非同期SonioxとWhisperXの共通再生経路、録音時計とPCM取得時刻の同期、途中の話者ブロック、LiveのSoniox固定、独立した全体処理を照合）。[README](../README.md) · [操作ガイド](usage.md) · [現行構成・反映](soniox-realtime-only.md)
 
 ## 公式仕様と実装の境界
 
@@ -92,6 +92,40 @@ git diff --check
 実Component・CSS・原文accumulatorの一時プレビューをChromiumで確認し、ライト／ダーク×幅320・393・560・844・1280・1920pxの12条件で、話者分割・訂正・確定・撤回・原文直下の翻訳・DOM保持・横はみ出しなし・page errorなしが成功しました。検証コマンドは`FONTCONFIG_FILE=/tmp/speak-note-provisional-speakers-browser/fonts.conf PLAYWRIGHT_BROWSERS_PATH=/tmp/speak-note-browsers LD_LIBRARY_PATH=/tmp/speak-note-browser-libs/usr/lib/x86_64-linux-gnu XDG_CACHE_HOME=/tmp/speak-note-browser-font-cache /tmp/speak-note-title-speed-verify-env/bin/python /tmp/speak-note-provisional-speakers-browser/check.py chromium`です。一時環境のフォント設定不足は検証用fontconfigとフォントだけで解消し、アプリの設定を変更していません。
 
 WebKitは環境の`libgles2`・`gstreamer1.0-libav`不足で起動できませんでした。これはコード／テストの失敗とは区別します。実Soniox音声による判定遅延・精度、Safari／iPhone実機、Docker反映は未検証です。稼働サービスは再起動していません。新しいMigration・依存・環境変数は追加しません。
+
+<a id="playback-flicker"></a>
+## 再生ハイライトのちらつき抑制（2026-10-14）
+
+単語の終了から次の単語の開始までの数十msの隙間でもハイライトを全解除し、次のtokenで再表示していました。空白だけのtokenも白い背景の対象になるため、単語・subword時刻を使うとちらついて見える原因になります。
+
+現在は同じ話者Block内で、次の表示対象tokenまで180ms以下の隙間だけ直前tokenの完了表示を保持します。空白だけ・表示時間0のtokenを再生ハイライトと追従から除き、本文・文字offsetとクリック用の時刻は保持します。長い無音・別Block・最後のtokenでは解除し、保存時刻と次tokenの開始は変えません。表示状態が変わらないframeではText Nodeを更新しません。この修正はページ再読み込み後の既存会議にも適用されます。単語時刻のない旧Liveへ時刻を補う変更ではありません。
+
+変更した10ファイル:
+
+| ファイル | 内容 |
+| --- | --- |
+| `frontend/public/transcript-player.js` | 短い隙間での表示保持、空白・時間0のtokenを表示対象から除外 |
+| `frontend/lib/transcript-player-runtime.test.ts` | ちらつきの再現、短い隙間、Text Node保持、長い無音、話者切替、後ろへのシーク |
+| `frontend/components/transcript-player.tsx`、`meeting-workspace.test.tsx` | 公開JSのcache更新（`20261014-2`）とテスト |
+| `README.md`、`DESIGN.md`、`docs/{soniox-transcription,usage,development,operations}.md` | 表示規則、適用範囲、検証、Frontend反映を更新 |
+
+実行コマンド（Node 22の`/tmp/node-v22.16.0-linux-x64/bin/node`で実行）:
+
+```bash
+# frontend内
+node node_modules/vitest/vitest.mjs run lib/transcript-player-runtime.test.ts components/meeting-workspace.test.tsx
+node node_modules/vitest/vitest.mjs run
+node node_modules/typescript/bin/tsc --noEmit
+node node_modules/eslint/bin/eslint.js .
+# Project内
+git diff --check
+```
+
+新規の回帰テスト3件で修正前のちらつきを再現した後、関連20件・全体53ファイル373件、ESLint・型チェック・空白検査が成功しました。Frontend専用formatterは未設定で、既存の記法に合わせて限定差分を確認しました。Backend・DBを変更していないため、Backend検証とMigration検証は再実行していません。
+
+Chromiumで実Component・CSSと修正前後の再生JSを比較し、ライト／ダーク×幅320・393・560・844・1280・1920px×修正前後の24条件を確認しました。20か所の短い単語間でハイライトが消える回数は20回から0回になり、本文・段落の高さ・長い無音での解除を保持しました。実際の音声再生とrequestAnimationFrameでも修正後に短い隙間の解除がないこと、単語クリックの時刻、横はみ出しなし・page errorなしを確認しています。検証コマンドは`FONTCONFIG_FILE=/tmp/speak-note-provisional-speakers-browser/fonts.conf PLAYWRIGHT_BROWSERS_PATH=/tmp/speak-note-browsers LD_LIBRARY_PATH=/tmp/speak-note-browser-libs/usr/lib/x86_64-linux-gnu XDG_CACHE_HOME=/tmp/speak-note-browser-font-cache /tmp/speak-note-title-speed-verify-env/bin/python /tmp/speak-note-word-timings-browser/check_flicker.py`です。
+
+検証用route callbackの引数誤りは一時スクリプトで修正し、アプリの失敗と区別しています。実Soniox音声・Safari／iPhone実機・Docker反映は未検証です。稼働サービス・保存済み会議へ変更を行っていません。反映後は既存会議を再生して確認でき、録音し直しや文字起こしの再処理は不要です。[Frontendのみの反映](operations.md#transcript-highlight-flicker)。
 
 <a id="word-timing-playback"></a>
 ## 単語時刻を使う再生追従（2026-10-14）
