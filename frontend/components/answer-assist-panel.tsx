@@ -106,7 +106,7 @@ export function AnswerAssistPanel({ meetingId }: { meetingId: string }) {
 
   function answerLatest() {
     const snapshot = getLiveTranscriptStore(meetingId).getSnapshot();
-    const text = snapshot.interim?.text ?? snapshot.history.at(-1)?.text ?? feed.segments[0]?.text ?? "";
+    const text = snapshot.interims.at(-1)?.text ?? snapshot.history.at(-1)?.text ?? feed.segments[0]?.text ?? "";
     if (!text) { setError("回答したい発言を入力してください"); return; }
     void generate(text);
   }

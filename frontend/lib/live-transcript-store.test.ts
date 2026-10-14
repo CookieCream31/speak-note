@@ -15,18 +15,48 @@ function result(overrides: Partial<LiveTranscriptUpsertDetail> = {}): LiveTransc
 }
 
 describe("live transcript snapshots", () => {
+  it("replaces all speaker drafts atomically, including corrections, withdrawal and empty snapshots", () => {
+    const store = createLiveTranscriptStore();
+    store.accept(result({ resultId: "saved", isFinal: true }));
+    const history = store.getHistory();
+    const listener = vi.fn();
+    store.subscribe(listener);
+    store.accept({ type: "replace-interims", meetingId: "meeting", results: [
+      result({ resultId: "a", text: "話者1の途中" }), result({ resultId: "b", text: "話者2の途中", speakerLabel: "SPEAKER_01" }),
+    ] });
+    expect(listener).toHaveBeenCalledOnce();
+    expect(store.getSnapshot().interims.map((row) => row.text)).toEqual(["話者1の途中", "話者2の途中"]);
+    store.accept({ type: "replace-interims", meetingId: "meeting", results: [result({ resultId: "a", text: "短い訂正", speakerLabel: "SPEAKER_02" })] });
+    expect(store.getInterims()).toEqual([expect.objectContaining({ id: "a", text: "短い訂正", provisional_speaker_label: "SPEAKER_02", isFinal: false })]);
+    store.accept({ type: "replace-interims", meetingId: "meeting", results: [] });
+    expect(store.getInterims()).toEqual([]);
+    expect(store.getHistory()).toBe(history);
+    expect(listener).toHaveBeenCalledTimes(3);
+  });
+  it("finalizes one draft without dropping other speakers and ignores late drafts for saved IDs", () => {
+    const store = createLiveTranscriptStore();
+    store.accept({ type: "replace-interims", meetingId: "meeting", results: [result(), result({ resultId: "next", text: "次の話者" })] });
+    store.accept(result({ isFinal: true }));
+    expect(store.getInterims().map((row) => row.id)).toEqual(["next"]);
+    store.accept({ type: "persisted", meetingId: "meeting", resultId: "phrase-1", segmentId: "db-1" });
+    store.accept({ type: "replace-interims", meetingId: "meeting", results: [result({ text: "古い途中" }), result({ resultId: "next", text: "次の訂正" })] });
+    expect(store.getInterims().map((row) => row.text)).toEqual(["次の訂正"]);
+    expect(store.getHistory()).toEqual([expect.objectContaining({ text: "最初の文", persistedId: "db-1" })]);
+    store.accept({ type: "reset", meetingId: "meeting" });
+    expect(store.getSnapshot()).toEqual({ history: [], interims: [] });
+  });
   it("publishes to the store before DOM listeners and retains events before the panel mounts", () => {
     vi.stubGlobal("window", new EventTarget());
     const store = getLiveTranscriptStore("event-meeting");
     const unsubscribe = subscribeLiveTranscriptEvent((detail) => {
-      if (detail.type === "upsert") expect(store.getInterim()?.text).toBe(detail.text);
+      if (detail.type === "upsert") expect(store.getInterims()[0]?.text).toBe(detail.text);
     });
     publishLiveTranscriptEvent(result({ meetingId: "event-meeting", text: "Mount前の発話" }));
     unsubscribe();
-    expect(store.getInterim()?.text).toBe("Mount前の発話");
+    expect(store.getInterims()[0]?.text).toBe("Mount前の発話");
     publishLiveTranscriptEvent(result({ meetingId: "event-meeting", isFinal: true }));
     expect(store.getHistory()).toHaveLength(1);
-    expect(store.getInterim()).toBeNull();
+    expect(store.getInterims()).toEqual([]);
   });
 
   it("updates only the draft for hundreds of changing hypotheses", () => {
@@ -43,7 +73,7 @@ describe("live transcript snapshots", () => {
     expect(historyListener).not.toHaveBeenCalled();
     expect(interimListener).toHaveBeenCalledTimes(500);
     expect(store.getHistory()).toBe(history);
-    expect(store.getInterim()?.text).toBe("修正された文499");
+    expect(store.getInterims()[0]?.text).toBe("修正された文499");
   });
 
   it("replaces hypotheses including shorter revisions, without concatenating them", () => {
@@ -51,7 +81,7 @@ describe("live transcript snapshots", () => {
     store.accept(result({ text: "仮の長い文章です" }));
     store.accept(result({ text: "短い訂正" }));
     store.accept(result({ text: "" }));
-    expect(store.getInterim()?.text).toBe("短い訂正");
+    expect(store.getInterims()[0]?.text).toBe("短い訂正");
     expect(store.getHistory()).toHaveLength(0);
   });
 
@@ -61,7 +91,7 @@ describe("live transcript snapshots", () => {
     const check = vi.fn(() => {
       expect(store.getHistory()).toHaveLength(1);
       expect(store.getHistory()[0].text).toBe("確定した文。");
-      expect(store.getInterim()).toBeNull();
+      expect(store.getInterims()).toEqual([]);
     });
     store.subscribeHistory(check);
     store.subscribeInterim(check);
@@ -70,7 +100,7 @@ describe("live transcript snapshots", () => {
     store.accept(result({ text: "遅延した仮説" }));
     store.accept(result({ text: "確定した文。", isFinal: true }));
     expect(store.getHistory()).toBe(history);
-    expect(store.getInterim()).toBeNull();
+    expect(store.getInterims()).toEqual([]);
     expect(check).toHaveBeenCalledTimes(2);
   });
 
@@ -78,7 +108,7 @@ describe("live transcript snapshots", () => {
     const store = createLiveTranscriptStore();
     store.accept(result({ resultId: "second", text: "次の発話" }));
     store.accept(result({ resultId: "first", isFinal: true }));
-    expect(store.getInterim()?.id).toBe("second");
+    expect(store.getInterims()[0]?.id).toBe("second");
     expect(store.getHistory()).toHaveLength(1);
   });
 
@@ -100,14 +130,14 @@ describe("live transcript snapshots", () => {
     unsubscribe();
     store.accept(result({ text: "切替後も残す" }));
     expect(listener).toHaveBeenCalledOnce();
-    expect(getLiveTranscriptStore("retained-meeting").getInterim()?.text).toBe("切替後も残す");
-    expect(getLiveTranscriptStore("different-meeting").getInterim()).toBeNull();
+    expect(getLiveTranscriptStore("retained-meeting").getInterims()[0]?.text).toBe("切替後も残す");
+    expect(getLiveTranscriptStore("different-meeting").getInterims()).toEqual([]);
     store.accept(result({ isFinal: true }));
     store.accept({ type: "reset", meetingId: "retained-meeting" });
     expect(store.getHistory()).toHaveLength(0);
-    expect(store.getInterim()).toBeNull();
+    expect(store.getInterims()).toEqual([]);
     store.accept(result());
-    expect(store.getInterim()?.id).toBe("phrase-1");
+    expect(store.getInterims()[0]?.id).toBe("phrase-1");
   });
 
   it("keeps 100 alternating speaker phrases in order without duplicated hypotheses", () => {
@@ -127,7 +157,7 @@ describe("live transcript snapshots", () => {
     expect(store.getHistory().map((segment) => segment.text)).toEqual(
       Array.from({ length: 100 }, (_, i) => "発言" + i),
     );
-    expect(store.getInterim()).toBeNull();
+    expect(store.getInterims()).toEqual([]);
   });
 
   it("clears a withdrawn Soniox draft without removing a newer draft or saved history", () => {
@@ -135,10 +165,10 @@ describe("live transcript snapshots", () => {
     store.accept(result({ resultId: "saved", isFinal: true }));
     store.accept(result({ resultId: "old" }));
     store.accept({ type: "clear-interim", meetingId: "meeting", resultId: "old" });
-    expect(store.getInterim()).toBeNull();
+    expect(store.getInterims()).toEqual([]);
     store.accept(result({ resultId: "new" }));
     store.accept({ type: "clear-interim", meetingId: "meeting", resultId: "old" });
-    expect(store.getInterim()?.id).toBe("new");
+    expect(store.getInterims()[0]?.id).toBe("new");
     expect(store.getHistory()).toHaveLength(1);
   });
 });

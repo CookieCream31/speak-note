@@ -292,6 +292,20 @@ sudo docker compose ps frontend
 
 反映後にブラウザを再読み込みし、新しく録音を開始します。Soniox接続の設定は開始・再接続時に適用されます。文字や話者の確定・保存が遅れても、認識途中の表示を確認してください。2人以上で交互に話し、表示番号が暫定認識の変化だけで増えないこと、原文と翻訳の番号が一致すること、停止後の原文・翻訳を保持することを確認します。[仕様・検証・未確認事項](soniox-transcription.md#diarization-accuracy)。
 
+<a id="soniox-provisional-speakers"></a>
+### Sonioxの途中結果を話者ごとに表示する修正（2026-10-14）
+
+Frontendだけの変更で、追加Migration・依存・環境変数はありません。現行0031まで反映済みの環境では、録音・録画と保存が完了してから実行します。ソース更新済みなら`git pull`は省略できます。
+
+```bash
+cd /home/llm/speak-note
+git pull --ff-only
+sudo docker compose restart frontend
+sudo docker compose ps frontend
+```
+
+ブラウザを再読み込みし、新しい会議で2人以上が交互に話します。Sonioxから途中の話者変更が返ると確定前でも別ブロックになること、訂正・撤回で古い途中ブロックが残らないこと、停止後に途中表示が消えて保存済み原文・翻訳が残ることを確認します。早期確定OFFのままなのでAPI側の話者判定・確定までの遅れは残ります。[公式根拠・検証・未確認事項](soniox-transcription.md#provisional-speaker-blocks)。エージェントはDockerを再起動していません。
+
 <a id="language-picker-ui"></a>
 ### 言語の検索一覧・タグ・詳細設定への表示改善
 

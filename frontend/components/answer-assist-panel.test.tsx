@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { answerAssistApi, type AssistSession, type LiveAnswer } from "@/lib/answer-assist";
 import { AnswerAssistPanel } from "./answer-assist-panel";
+import { getLiveTranscriptStore } from "@/lib/live-transcript-store";
 
 vi.mock("@/lib/answer-assist", async (original) => {
   const actual = await original<typeof import("@/lib/answer-assist")>();
@@ -39,6 +40,7 @@ beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.useFakeTimers();
   vi.resetAllMocks();
+  getLiveTranscriptStore("meeting").accept({ type: "reset", meetingId: "meeting" });
   vi.mocked(answerAssistApi.profiles).mockResolvedValue([
     { id: "local", name: "ローカル", provider_id: "ollama", model: "local-model", temperature: 0.2, is_default: true, created_at: "", updated_at: "" },
     { id: "cloud", name: "クラウド", provider_id: "gemini", model: "gemini-model", temperature: 0.1, is_default: false, created_at: "", updated_at: "" },
@@ -61,6 +63,21 @@ afterEach(() => {
 });
 
 describe("answer assistance profile selection", () => {
+  it("answers the latest speaker's draft instead of concatenating different speakers", async () => {
+    vi.mocked(answerAssistApi.session).mockResolvedValue(session);
+    vi.mocked(answerAssistApi.generate).mockResolvedValue({
+      id: "new", session_id: session.id, sequence: 1, question: "最後の話者の質問", status: "queued",
+      short_answer: null, detailed_answer: null, source_ids: [], insufficient_information: true,
+      input_snapshot: { sources: [], configuration }, error_message: null, created_at: "",
+    });
+    getLiveTranscriptStore("meeting").accept({ type: "replace-interims", meetingId: "meeting", results: [
+      { resultId: "a", text: "前の話者の発言", startMs: 0, endMs: 1000, confidence: null, speakerLabel: "話者 1" },
+      { resultId: "b", text: "最後の話者の質問", startMs: 1000, endMs: 2000, confidence: null, speakerLabel: "話者 2" },
+    ] });
+    await render();
+    await click(button("今の発言に回答"));
+    expect(answerAssistApi.generate).toHaveBeenCalledWith("meeting", session.id, "最後の話者の質問", false);
+  });
   it("requires consent and keeps automatic generation off", async () => {
     await render();
     expect(button("このAIで開始").disabled).toBe(true);

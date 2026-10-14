@@ -52,6 +52,47 @@ mockで早期確定OFF・再接続への引継ぎ、暫定話者による欠番�
 
 実Soniox音声による話者分離精度・確定遅延、実機Safari、Docker反映は未検証です。精度向上の幅を保証するものではありません。反映後は2人以上で交互に話し、認識途中の表示、話者番号の推移、翻訳との一致、停止後の保存履歴を確認します。会議後のより安定した話者分離は、保存音声を使うFinalで確認します。
 
+<a id="provisional-speaker-blocks"></a>
+## 途中結果の話者ブロック表示（2026-10-14）
+
+[公式のリアルタイム認識](https://soniox.com/docs/stt/rt/real-time-transcription#how-processing-works)では、非確定tokenは毎応答で置換し、確定tokenだけを一度ずつ追加します。公式の表示例も途中tokenを含めて話者変更で区切っています。[話者分離仕様](https://soniox.com/docs/stt/concepts/speaker-diarization#real-time-considerations)には追加の音声で話者判定が安定することが明記されています。
+
+従来は途中結果を1件へまとめて先頭の話者を付けていたため、APIが別の話者を返しても確定まで前の文章につながっていました。現在は未保存の確定部分＋当該応答の途中部分を、連続した`speaker`ごとに分割して表示します。話者1→2→1は3ブロックです。本文の短縮、話者の訂正、区切りの結合、空の応答による撤回は途中配列の置換で反映し、確定履歴を変更しません。未知の途中話者には番号を割り当てず「認識中」、既知番号には「認識中・話者は暫定」と表示します。
+
+途中表示の区切りは保存やEvidenceの境界には使いません。APIが確定したtokenだけを従来の話者・単語・時間区切りで保存し、翻訳の原文参照を維持します。切断・停止・finishedではすべての途中表示を消します。接続ごとのIDと話者Map、早期確定OFF、強制finalizeを送らない設定を保持します。Soniox自身がまだ話者変更を返していない場合には、後から分割・結合される表示が残ります。
+
+変更ファイルは以下の17件です。Backend・DB・外部サービス・保存済み履歴は変更しません。反映と実音声の確認は[Frontendのみの手順](operations.md#soniox-provisional-speakers)を使います。
+
+| ファイル | 内容 |
+| --- | --- |
+| `frontend/lib/soniox-speech-stream.ts`、`soniox-speech-stream.test.ts` | 話者ごとの途中配列、訂正・撤回・停止・再接続、確定だけの保存 |
+| `frontend/lib/live-transcript-events.ts`、`live-transcript-store.ts`、`live-transcript-store.test.ts` | 途中配列の一括置換、確定履歴・ACK・旧単一途中結果の保護 |
+| `frontend/components/live-meeting-recorder.tsx`、`shared-audio-recorder.test.tsx` | 配列イベントの通知、確定結果だけBackendへ送信 |
+| `frontend/components/realtime-analysis-panel.tsx`、`live-transcript-dom.test.tsx` | 全途中ブロックの表示、暫定ラベル、訂正・確定時のDOMと翻訳の位置 |
+| `frontend/components/answer-assist-panel.tsx`、`answer-assist-panel.test.tsx` | 「今の発言に回答」は末尾の途中ブロックを参照 |
+| `README.md`、`DESIGN.md`、`docs/{soniox-transcription,usage,development,operations}.md` | 現行動作、公式根拠、検証結果、Frontendだけの反映・確認手順 |
+
+Node 22（`/tmp/node-v22.16.0-linux-x64/bin/node`）と隔離Python環境で実行しました。
+
+```bash
+# frontend内
+node node_modules/vitest/vitest.mjs run lib/soniox-speech-stream.test.ts lib/soniox-translation.test.ts lib/live-transcript-store.test.ts components/live-transcript-dom.test.tsx components/shared-audio-recorder.test.tsx components/realtime-analysis-panel.test.tsx
+node node_modules/vitest/vitest.mjs run components/answer-assist-panel.test.tsx
+node node_modules/vitest/vitest.mjs run
+node node_modules/eslint/bin/eslint.js .
+node node_modules/typescript/bin/tsc --noEmit
+# backend内
+/tmp/speak-note-shared-audio-verify-env/bin/pytest -q
+# Project内
+git diff --check
+```
+
+関連6ファイル76件・回答支援6件、Frontend全53ファイル353件、Backend全346件（既存の非推奨warning 6件）、ESLint・型チェック・空白検査が成功しました。Frontend専用formatterは未設定のため既存の記法に合わせて差分を確認しました。途中の話者1→2→1、話者変更と本文短縮／撤回、確定へのID維持、旧Azureの単一途中表示、原文と翻訳の保持、最後の話者への回答を検証しています。Backendの外部認識・AIはmock、DBはテスト用SQLiteです。
+
+実Component・CSS・原文accumulatorの一時プレビューをChromiumで確認し、ライト／ダーク×幅320・393・560・844・1280・1920pxの12条件で、話者分割・訂正・確定・撤回・原文直下の翻訳・DOM保持・横はみ出しなし・page errorなしが成功しました。検証コマンドは`FONTCONFIG_FILE=/tmp/speak-note-provisional-speakers-browser/fonts.conf PLAYWRIGHT_BROWSERS_PATH=/tmp/speak-note-browsers LD_LIBRARY_PATH=/tmp/speak-note-browser-libs/usr/lib/x86_64-linux-gnu XDG_CACHE_HOME=/tmp/speak-note-browser-font-cache /tmp/speak-note-title-speed-verify-env/bin/python /tmp/speak-note-provisional-speakers-browser/check.py chromium`です。一時環境のフォント設定不足は検証用fontconfigとフォントだけで解消し、アプリの設定を変更していません。
+
+WebKitは環境の`libgles2`・`gstreamer1.0-libav`不足で起動できませんでした。これはコード／テストの失敗とは区別します。実Soniox音声による判定遅延・精度、Safari／iPhone実機、Docker反映は未検証です。稼働サービスは再起動していません。新しいMigration・依存・環境変数は追加しません。
+
 <a id="word-boundaries"></a>
 ## Live原文の単語分断防止（2026-10-13）
 

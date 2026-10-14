@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { LiveMeetingRecorder } from "./live-meeting-recorder";
+import { getLiveTranscriptStore } from "@/lib/live-transcript-store";
 
 const mocks = vi.hoisted(() => ({
   router: { refresh: vi.fn() }, createMixer: vi.fn(), pending: vi.fn(),
@@ -121,6 +122,25 @@ afterEach(() => {
 });
 
 describe("shared audio recording", () => {
+  it("publishes Soniox speaker drafts together and sends only confirmed results to the backend", async () => {
+    mocks.start.mockResolvedValue({ chunk_ms: 15000, transcription_provider: "soniox" });
+    await render(); await click("画面共有を開始");
+    const options = mocks.soniox.mock.calls[0][0] as Parameters<typeof import("@/lib/soniox-speech-stream").startSonioxSpeechStream>[0];
+    const first = { resultId: "s:0", text: "Hello", speakerLabel: "話者 1", startMs: 0, endMs: 1000, confidence: null };
+    const second = { ...first, resultId: "s:1", text: "こんにちは", speakerLabel: "SPEAKER_UNKNOWN", startMs: 1000, endMs: 2000 };
+    act(() => options.onInterims?.([first, second]));
+    expect(getLiveTranscriptStore("m").getInterims().map((row) => row.text)).toEqual(["Hello", "こんにちは"]);
+    expect(mocks.send).not.toHaveBeenCalled();
+    act(() => options.onResult(first));
+    expect(mocks.send).toHaveBeenCalledOnce();
+    expect(mocks.send.mock.calls[0][0]).toMatchObject({ type: "soniox_result", result_id: "s:0", text: "Hello" });
+    act(() => options.onInterims?.([second]));
+    expect(getLiveTranscriptStore("m").getInterims().map((row) => row.text)).toEqual(["こんにちは"]);
+    act(() => options.onInterims?.([]));
+    expect(getLiveTranscriptStore("m").getInterims()).toEqual([]);
+    expect(mocks.send).toHaveBeenCalledOnce();
+    await click("録音を終了して確定");
+  });
   it.each(["shared_audio", "display"] as const)("uses named icon-only controls during %s capture and keeps original recording quality", async (mode) => {
     mocks.start.mockResolvedValue({ chunk_ms: 15000, transcription_provider: "soniox" });
     await render(true, false, mode); await click("画面共有を開始");

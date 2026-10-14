@@ -131,7 +131,7 @@ export function groupLiveTranscriptSegments(
           ? "provisional:" + segment.provisional_speaker_label
           : null)
       : null;
-    // Interim speaker IDs may change while Azure is recognizing a phrase. Keep
+    // Interim speaker IDs may change while recognizing a phrase. Keep
     // that phrase independent and only group it after the final event arrives.
     // Unknown final labels also stay separate because they do not prove identity.
     const speakerKey = !isFinal
@@ -304,6 +304,8 @@ const LiveTranscriptPhrase = memo(function LiveTranscriptPhrase({
   translations?: LiveTranslation[];
 }) {
   const final = segment.isFinal ?? true;
+  const knownSpeaker = Boolean(segment.provisional_speaker_label
+    && segment.provisional_speaker_label !== "SPEAKER_UNKNOWN");
   return (
     <article
       className={styles.streamPhrase}
@@ -313,8 +315,8 @@ const LiveTranscriptPhrase = memo(function LiveTranscriptPhrase({
     >
       <div className={styles.transcriptMeta} hidden={continuation}>
         <time>{formatTime(segment.start_ms)}</time>
-        <strong>{final ? speakerName(segment) : "認識中"}</strong>
-        <span>{final ? "暫定" : "話者は確定後に表示"}</span>
+        <strong>{final || knownSpeaker ? speakerName(segment) : "認識中"}</strong>
+        <span>{final ? "暫定" : "認識中・話者は暫定"}</span>
       </div>
       <div className={styles.streamBody}>
         <p className={styles.transcriptText} id={"live-segment-" + segment.id}>
@@ -327,7 +329,7 @@ const LiveTranscriptPhrase = memo(function LiveTranscriptPhrase({
   );
 });
 
-/** History and the active phrase are read from the same committed snapshot. */
+/** History and all active phrases are read from the same committed snapshot. */
 export const LiveTranscriptStream = memo(function LiveTranscriptStream({
   meetingId,
   recording,
@@ -354,17 +356,16 @@ export const LiveTranscriptStream = memo(function LiveTranscriptStream({
     () => new Set(turns.map((turn) => turn.segments[0].id)),
     [turns],
   );
-  const visible = snapshot.interim ? [...history, snapshot.interim] : history;
+  const visible = [...history, ...snapshot.interims];
   const translations = useLiveTranslations(meetingId, persistedTranslations);
-  const interimId = snapshot.interim?.id;
   const sources = useMemo(() => {
     const anchors = history.map((segment) => {
       const persistedId = (segment as StreamingTranscriptSegment).persistedId;
       return { id: segment.id, aliases: persistedId ? [persistedId] : [] };
     });
-    if (interimId) anchors.push({ id: interimId, aliases: [] });
+    anchors.push(...snapshot.interims.map((segment) => ({ id: segment.id, aliases: [] })));
     return anchors;
-  }, [history, interimId]);
+  }, [history, snapshot.interims]);
   const { bySource, unmatched } = useMemo(
     () => partitionLiveTranslations(translations, sources), [translations, sources],
   );
@@ -393,22 +394,24 @@ export const LiveInterimTranscript = memo(function LiveInterimTranscript({
   recording: boolean;
 }) {
   const store = getLiveTranscriptStore(meetingId);
-  const interim = useSyncExternalStore(
-    store.subscribeInterim, store.getInterim, store.getServerInterim,
+  const interims = useSyncExternalStore(
+    store.subscribeInterim, store.getInterims, store.getServerInterims,
   );
-  if (!recording && !interim) return null;
+  if (!recording && !interims.length) return null;
   return (
     <div className={styles.interimDocument} aria-label="認識途中の文字起こし">
-      <article className={styles.interimTurn}>
-        <div className={styles.transcriptMeta}>
-          {interim && <time>{formatTime(interim.start_ms)}</time>}
-          <strong>認識中</strong>
-          <span>話者は確定後に表示</span>
-        </div>
-        <p className={styles.interimText}>
-          {interim?.text ?? "次の発話を待っています…"}
-        </p>
-      </article>
+      {!interims.length && (
+        <article className={styles.interimTurn}>
+          <div className={styles.transcriptMeta}>
+            <strong>認識中</strong>
+            <span>話者は確定後に表示</span>
+          </div>
+          <p className={styles.interimText}>次の発話を待っています…</p>
+        </article>
+      )}
+      {interims.map((segment) => (
+        <LiveTranscriptPhrase key={segment.id} segment={segment} continuation={false} />
+      ))}
     </div>
   );
 });

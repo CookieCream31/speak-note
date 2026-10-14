@@ -25,8 +25,7 @@ interface StreamOptions {
   tokenUrl: string;
   audioStream: MediaStream;
   getTimelinePositionMs?: () => number;
-  onInterim?: (result: AzureSpeechResult) => void;
-  onInterimCleared?: (resultId: string) => void;
+  onInterims?: (results: AzureSpeechResult[]) => void;
   onResult: (result: AzureSpeechResult) => void;
   onError: (message: string) => void;
   onTranslation?: (result: LiveTranslationResult, isFinal: boolean) => void;
@@ -49,13 +48,13 @@ export class SonioxTranscriptAccumulator {
   constructor(private prefix: string, private offsetMs: number) {}
   get resultId() { return `${this.prefix}:${this.sequence}`; }
 
-  private result(tokens: SonioxToken[]): AzureSpeechResult | null {
+  private result(tokens: SonioxToken[], resultId = this.resultId): AzureSpeechResult | null {
     const text = tokens.map((token) => token.text).join("").trim();
     const timed = tokens.filter((token) => Number.isFinite(token.start_ms) && Number.isFinite(token.end_ms));
     if (!text || !timed.length) return null;
     const confidences = tokens.flatMap((token) => typeof token.confidence === "number" ? [token.confidence] : []);
     return {
-      resultId: this.resultId,
+      resultId,
       startMs: this.offsetMs + Math.max(0, Math.round(timed[0].start_ms!)),
       endMs: this.offsetMs + Math.max(Math.round(timed[0].start_ms!) + 1, Math.round(timed.at(-1)!.end_ms!)),
       text, confidence: confidences.length ? confidences.reduce((sum, value) => sum + value, 0) / confidences.length : null,
@@ -87,8 +86,20 @@ export class SonioxTranscriptAccumulator {
       this.pending.push(token);
     }
     if (response.finished) flush();
-    // Non-final tokens replace the hypothesis on each response.
-    return { finals, interim: this.result([...this.pending, ...drafts]), sourceResultIds };
+    // Render pending final tokens plus this response's hypotheses by speaker.
+    // Draft boundaries/IDs are display-only; they never advance the save sequence.
+    const groups: SonioxToken[][] = [];
+    for (const token of response.finished ? [] : [...this.pending, ...drafts]) {
+      const previous = groups.at(-1);
+      if (previous && previous[0].speaker === token.speaker) previous.push(token);
+      else groups.push([token]);
+    }
+    const interims: AzureSpeechResult[] = [];
+    for (const group of groups) {
+      const result = this.result(group, `${this.prefix}:${this.sequence + interims.length}`);
+      if (result) interims.push(result);
+    }
+    return { finals, interims, sourceResultIds };
   }
 
   flush(): AzureSpeechResult[] { return this.accept({ finished: true }).finals; }
@@ -147,11 +158,9 @@ export async function startSonioxSpeechStream(options: StreamOptions): Promise<A
   const publishTranslation = (result: LiveTranslationResult, isFinal = true) => options.onTranslation?.({ ...result, speakerLabel: presentSpeaker(result.speakerLabel, isFinal) }, isFinal);
   const publishFinal = (result: AzureSpeechResult) => options.onResult(present(result));
   const publish = (response: SonioxResponse) => {
-    const previousId = accumulator?.resultId;
     const results = accumulator?.accept(response);
     results?.finals.forEach(publishFinal);
-    if (results?.interim) options.onInterim?.(present(results.interim, false));
-    else if (previousId) options.onInterimCleared?.(previousId);
+    options.onInterims?.(results?.interims.map((result) => present(result, false)) ?? []);
     const previousTranslationId = translations?.resultId;
     const translated = translations?.accept(response, (token) => results?.sourceResultIds.get(token));
     translated?.finals.forEach((result) => publishTranslation(result));
@@ -209,11 +218,10 @@ export async function startSonioxSpeechStream(options: StreamOptions): Promise<A
     };
     next.onclose = () => {
       if (socket !== next) return;
-      const draftId = accumulator?.resultId;
       accumulator?.flush().forEach(publishFinal);
       translations?.flush().forEach((result) => publishTranslation(result));
       if (translations) options.onTranslationCleared?.(translations.resultId);
-      if (draftId) options.onInterimCleared?.(draftId);
+      options.onInterims?.([]);
       socket = null;
       if (stopping) { finishStop?.(); return; }
       scheduleReconnect();
@@ -271,6 +279,7 @@ export async function startSonioxSpeechStream(options: StreamOptions): Promise<A
         });
       }
       accumulator?.flush().forEach(publishFinal);
+      options.onInterims?.([]);
       translations?.flush().forEach((result) => publishTranslation(result));
       if (translations) options.onTranslationCleared?.(translations.resultId);
       socket?.close();

@@ -40,6 +40,54 @@ afterEach(() => {
 });
 
 describe("mounted live transcript transitions", () => {
+  it("shows separate provisional speakers immediately and replaces corrected boundaries without stale text", () => {
+    render();
+    update("first", "保存済み原文", true, "話者 1");
+    const saved = container.querySelector('[data-result-id="first"]');
+    const replace = (results: { resultId: string; text: string; speakerLabel: string }[]) => act(() => getLiveTranscriptStore(meetingId).accept({
+      type: "replace-interims", meetingId, results: results.map((row, index) => ({ ...row, startMs: 2000 + index * 1000, endMs: 3000 + index * 1000, confidence: null })),
+    }));
+    replace([
+      { resultId: "second", text: "話者1の途中", speakerLabel: "話者 1" },
+      { resultId: "third", text: "新しい話者の途中", speakerLabel: "SPEAKER_UNKNOWN" },
+      { resultId: "fourth", text: "話者1へ戻った途中", speakerLabel: "話者 1" },
+    ]);
+    const drafts = container.querySelectorAll('[data-final="false"]');
+    expect(drafts).toHaveLength(3);
+    expect(drafts[0].textContent).toContain("話者 1");
+    expect(drafts[0].textContent).not.toContain("新しい話者の途中");
+    expect(drafts[1].textContent).toContain("認識中");
+    expect(drafts[1].textContent).not.toContain("話者1の途中");
+    expect(container.textContent).not.toContain("SPEAKER_UNKNOWN");
+    const second = drafts[0];
+    replace([{ resultId: "second", text: "短い訂正", speakerLabel: "話者 2" }]);
+    expect(container.querySelector('[data-result-id="second"]')).toBe(second);
+    expect(second.textContent).toContain("話者 2");
+    expect(container.querySelectorAll('[data-final="false"]')).toHaveLength(1);
+    expect(container.textContent).not.toContain("戻った途中");
+    expect(container.textContent).not.toContain("新しい話者の途中");
+    replace([]);
+    expect(container.querySelectorAll('[data-final="false"]')).toHaveLength(0);
+    expect(container.querySelector('[data-result-id="first"]')).toBe(saved);
+  });
+  it("keeps translations below each original draft and retains its node when the speaker becomes final", () => {
+    render();
+    act(() => getLiveTranscriptStore(meetingId).accept({ type: "replace-interims", meetingId, results: [
+      { resultId: "first", text: "Hello", speakerLabel: "話者 1", startMs: 0, endMs: 1500, confidence: null },
+      { resultId: "second", text: "Thank you", speakerLabel: "話者 2", startMs: 2000, endMs: 4000, confidence: null },
+    ] }));
+    const first = container.querySelector('[data-result-id="first"]');
+    const second = container.querySelector('[data-result-id="second"]');
+    act(() => getLiveTranslationStore(meetingId).accept({ resultId: "t", text: "ありがとう", sourceLanguage: "en", targetLanguage: "ja", speakerLabel: "話者 2", sourceResultId: "second" }, false));
+    expect(first?.textContent).not.toContain("ありがとう");
+    expect(second?.textContent).toContain("ありがとう");
+    update("first", "Hello", true, "話者 1");
+    expect(container.querySelector('[data-result-id="second"]')).toBe(second);
+    update("second", "Thank you", true, "話者 2");
+    expect(container.querySelector('[data-result-id="second"]')).toBe(second);
+    expect(second?.textContent).toContain("ありがとう");
+    expect(container.querySelectorAll('[data-final="false"]')).toHaveLength(0);
+  });
   it("updates the translation directly below its original while retaining both original DOM nodes", () => {
     render();
     update("first", "Hello", true, "話者 1");

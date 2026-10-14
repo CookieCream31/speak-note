@@ -29,9 +29,9 @@ async function tick() { for (let i = 0; i < 8; i += 1) await Promise.resolve(); 
 describe("Soniox token assembly", () => {
   it("replaces hypotheses, appends final subwords once, and keeps milliseconds", () => {
     const accumulator = new SonioxTranscriptAccumulator("stream", 2000);
-    expect(accumulator.accept({ tokens: [token("Hel", false)] }).interim?.text).toBe("Hel");
-    expect(accumulator.accept({ tokens: [token("Hello", false)] }).interim?.text).toBe("Hello");
-    expect(accumulator.accept({ tokens: [token("Hel"), token("lo", false)] }).interim?.text).toBe("Hello");
+    expect(accumulator.accept({ tokens: [token("Hel", false)] }).interims[0]?.text).toBe("Hel");
+    expect(accumulator.accept({ tokens: [token("Hello", false)] }).interims[0]?.text).toBe("Hello");
+    expect(accumulator.accept({ tokens: [token("Hel"), token("lo", false)] }).interims[0]?.text).toBe("Hello");
     const result = accumulator.accept({ tokens: [token("lo"), token(" world."), { text: "<end>", is_final: true }] });
     expect(result.finals[0]).toMatchObject({ resultId: "stream:0", text: "Hello world.", startMs: 2100, endMs: 2500 });
     expect(accumulator.flush()).toEqual([]);
@@ -42,6 +42,62 @@ describe("Soniox token assembly", () => {
     expect(result.finals.map((item) => item.text)).toEqual(["はい", "了解"]);
     expect(result.finals.map((item) => item.speakerLabel)).toEqual(["SONIOX_connection-2_1", "SONIOX_connection-2_2"]);
     expect(new SonioxTranscriptAccumulator("connection-3", 0).accept({ tokens: [token("はい")], finished: true }).finals[0].speakerLabel).not.toBe(result.finals[0].speakerLabel);
+  });
+  it("splits every provisional speaker turn without saving hypotheses or reserving IDs", () => {
+    const accumulator = new SonioxTranscriptAccumulator("drafts", 2000);
+    const response = accumulator.accept({ tokens: [
+      token("Hello", false), token(" there", false),
+      token("こんにちは", false, "2"), token(" Again", false),
+    ] });
+    expect(response.interims.map((row) => [row.resultId, row.text, row.speakerLabel])).toEqual([
+      ["drafts:0", "Hello there", "SONIOX_drafts_1"],
+      ["drafts:1", "こんにちは", "SONIOX_drafts_2"],
+      ["drafts:2", "Again", "SONIOX_drafts_1"],
+    ]);
+    expect(response.interims[0].startMs).toBe(2100);
+    expect(response.finals).toEqual([]);
+    expect(response.sourceResultIds.size).toBe(0);
+    expect(accumulator.resultId).toBe("drafts:0");
+    expect(accumulator.flush()).toEqual([]);
+  });
+  it("replaces speaker assignments and withdrawn words instead of accumulating stale draft blocks", () => {
+    const accumulator = new SonioxTranscriptAccumulator("revisions", 0);
+    accumulator.accept({ tokens: [token("Long initial phrase", false), token(" Second speaker", false, "2")] });
+    const corrected = accumulator.accept({ tokens: [token("Short", false, "3"), token(" revision", false, "3")] });
+    expect(corrected.interims).toEqual([expect.objectContaining({ resultId: "revisions:0", text: "Short revision", speakerLabel: "SONIOX_revisions_3" })]);
+    expect(accumulator.accept({ tokens: [] }).interims).toEqual([]);
+    expect(accumulator.flush()).toEqual([]);
+  });
+  it("keeps confirmed pending text separate from a new provisional speaker and preserves final IDs", () => {
+    const accumulator = new SonioxTranscriptAccumulator("mixed", 0);
+    const first = token("Hello");
+    const mixed = accumulator.accept({ tokens: [first, token(" there", false), token("こんにちは", false, "2")] });
+    expect(mixed.interims.map((row) => [row.resultId, row.text])).toEqual([["mixed:0", "Hello there"], ["mixed:1", "こんにちは"]]);
+    expect(mixed.finals).toEqual([]);
+    expect(mixed.sourceResultIds.get(first)).toBe("mixed:0");
+    const second = token("こんにちは", true, "2");
+    const finalized = accumulator.accept({ tokens: [token(" there"), second], finished: true });
+    expect(finalized.finals.map((row) => [row.resultId, row.text])).toEqual([["mixed:0", "Hello there"], ["mixed:1", "こんにちは"]]);
+    expect(finalized.sourceResultIds.get(second)).toBe("mixed:1");
+    expect(finalized.interims).toEqual([]);
+    expect(accumulator.flush()).toEqual([]);
+  });
+  it("keeps unknown speakers and translation/control tokens out of other speakers' drafts", () => {
+    const accumulator = new SonioxTranscriptAccumulator("unknown", 0);
+    const result = accumulator.accept({ tokens: [
+      { ...token("不明", false), speaker: undefined }, token("既知", false, "2"),
+      { ...token("訳文", false), translation_status: "translation" }, { text: "<end>", is_final: false },
+    ] });
+    expect(result.interims.map((row) => [row.text, row.speakerLabel])).toEqual([["不明", "SPEAKER_UNKNOWN"], ["既知", "SONIOX_unknown_2"]]);
+    expect(result.finals).toEqual([]);
+  });
+  it("discards all provisional speakers on finished and saves only previously confirmed tokens", () => {
+    const accumulator = new SonioxTranscriptAccumulator("finished", 0);
+    accumulator.accept({ tokens: [token("保存する"), token("保存しない", false, "2"), token("別の途中", false, "3")] });
+    const result = accumulator.accept({ tokens: [token("終了時も未確定", false, "2")], finished: true });
+    expect(result.finals.map((row) => row.text)).toEqual(["保存する"]);
+    expect(result.interims).toEqual([]);
+    expect(accumulator.flush()).toEqual([]);
   });
   it.each([
     ["Capac", "itance"],
@@ -58,12 +114,12 @@ describe("Soniox token assembly", () => {
     const continuation = { ...token(tail), start_ms: 10_001, end_ms: 10_500 };
     const middle = accumulator.accept({ tokens: [continuation] });
     expect(middle.finals).toEqual([]);
-    expect(middle.interim?.text).toBe(head + tail);
+    expect(middle.interims[0]?.text).toBe(head + tail);
     expect(middle.sourceResultIds.get(continuation)).toBe("words:0");
     const next = { ...token(" Next word."), start_ms: 11_000, end_ms: 11_500 };
     const split = accumulator.accept({ tokens: [next] });
     expect(split.finals).toEqual([expect.objectContaining({ resultId: "words:0", text: head + tail, startMs: 2000, endMs: 12_500 })]);
-    expect(split.interim?.text).toBe("Next word.");
+    expect(split.interims[0]?.text).toBe("Next word.");
     expect(split.sourceResultIds.get(next)).toBe("words:1");
     expect(accumulator.flush().map((result) => result.text)).toEqual(["Next word."]);
     expect(accumulator.flush()).toEqual([]);
@@ -95,12 +151,12 @@ describe("Soniox streaming lifecycle", () => {
   });
   afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
   async function start() {
-    const onResult = vi.fn(), onInterim = vi.fn(), onError = vi.fn(), onInterimCleared = vi.fn(), onTranslation = vi.fn();
-    const promise = startSonioxSpeechStream({ tokenUrl: "/soniox-token", audioStream: {} as MediaStream, getTimelinePositionMs: () => 3000, onResult, onInterim, onError, onInterimCleared, onTranslation });
+    const onResult = vi.fn(), onInterims = vi.fn(), onError = vi.fn(), onTranslation = vi.fn();
+    const promise = startSonioxSpeechStream({ tokenUrl: "/soniox-token", audioStream: {} as MediaStream, getTimelinePositionMs: () => 3000, onResult, onInterims, onError, onTranslation });
     await tick();
     const socket = FakeSocket.instances[0]; socket.open(); await tick();
     const controller = await promise;
-    return { socket, controller, onResult, onInterim, onError, onInterimCleared, onTranslation };
+    return { socket, controller, onResult, onInterims, onError, onTranslation };
   }
   it("streams originals and translations independently and retains the saved translation config after reconnect", async () => {
     const translation = { type: "one_way", target_language: "ja" };
@@ -155,17 +211,55 @@ describe("Soniox streaming lifecycle", () => {
     await controller.stop();
   });
   it("does not allocate speakers from changing hypotheses and reuses only previously confirmed labels", async () => {
-    const { socket, controller, onResult, onInterim } = await start();
+    const { socket, controller, onResult, onInterims } = await start();
     socket.receive({ tokens: [token("途中", false, "1")] });
     socket.receive({ tokens: [token("別の途中", false, "9")] });
-    expect(onInterim.mock.calls.map((call) => call[0].speakerLabel)).toEqual(["SPEAKER_UNKNOWN", "SPEAKER_UNKNOWN"]);
+    expect(onInterims.mock.calls.map((call) => call[0][0].speakerLabel)).toEqual(["SPEAKER_UNKNOWN", "SPEAKER_UNKNOWN"]);
     socket.receive({ tokens: [token("最初の確定", true, "2")], finished: true });
     expect(onResult.mock.calls[0][0].speakerLabel).toBe("話者 1");
     await controller.stop();
   });
+  it("publishes complete speaker draft snapshots and clears withdrawn blocks without saving them", async () => {
+    const { socket, controller, onResult, onInterims } = await start();
+    socket.receive({ tokens: [token("最初の確定"), { text: "<end>", is_final: true }] });
+    socket.receive({ tokens: [token("話者1の途中", false), token("新しい話者の途中", false, "9")] });
+    expect(onInterims.mock.calls.at(-1)![0]).toEqual([
+      expect.objectContaining({ text: "話者1の途中", speakerLabel: "話者 1" }),
+      expect.objectContaining({ text: "新しい話者の途中", speakerLabel: "SPEAKER_UNKNOWN" }),
+    ]);
+    socket.receive({ tokens: [token("訂正された途中", false, "2")] });
+    expect(onInterims.mock.calls.at(-1)![0]).toEqual([expect.objectContaining({ text: "訂正された途中", speakerLabel: "SPEAKER_UNKNOWN" })]);
+    socket.receive({ tokens: [] });
+    expect(onInterims.mock.calls.at(-1)![0]).toEqual([]);
+    expect(onResult).toHaveBeenCalledOnce();
+    socket.receive({ tokens: [token("次の確定", true, "2")], finished: true });
+    expect(onResult.mock.calls[1][0].speakerLabel).toBe("話者 2");
+    expect(onInterims.mock.calls.at(-1)![0]).toEqual([]);
+    await controller.stop();
+    expect(onResult).toHaveBeenCalledTimes(2);
+  });
+  it("clears all provisional speakers on disconnect, ignores stale responses and scopes new drafts to reconnect", async () => {
+    const { socket, controller, onResult, onInterims } = await start();
+    socket.receive({ tokens: [token("古い途中", false), token("別の途中", false, "2")] });
+    const oldId = onInterims.mock.calls.at(-1)![0][0].resultId;
+    socket.close();
+    expect(onInterims.mock.calls.at(-1)![0]).toEqual([]);
+    expect(onResult).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1000); await tick();
+    const next = FakeSocket.instances[1]; next.open(); await tick();
+    next.receive({ tokens: [token("新しい途中", false)] });
+    expect(onInterims.mock.calls.at(-1)![0][0].resultId).not.toBe(oldId);
+    const calls = onInterims.mock.calls.length;
+    socket.receive({ tokens: [token("遅れて届いた古い結果")], finished: true });
+    socket.close();
+    expect(onInterims).toHaveBeenCalledTimes(calls);
+    await controller.stop();
+    expect(onInterims.mock.calls.at(-1)![0]).toEqual([]);
+    expect(onResult).not.toHaveBeenCalled();
+  });
   it("shares confirmed original and translation labels without counting provisional translation speakers", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ api_key: "temporary", model: "stt-rt-v5", language: "en", translation: { type: "one_way", target_language: "ja" } }) })));
-    const { socket, controller, onResult, onInterim, onTranslation } = await start();
+    const { socket, controller, onResult, onInterims, onTranslation } = await start();
     const translated = (text: string, is_final: boolean, speaker: string) => ({ text, is_final, speaker, translation_status: "translation", language: "ja", source_language: "en" });
     socket.receive({ tokens: [translated("変わる話者", false, "99")] });
     expect(onTranslation.mock.calls[0][0].speakerLabel).toBe("SPEAKER_UNKNOWN");
@@ -173,23 +267,23 @@ describe("Soniox streaming lifecycle", () => {
     expect(onResult.mock.calls[0][0].speakerLabel).toBe("話者 1");
     expect(onTranslation.mock.calls.at(-1)![0].speakerLabel).toBe("話者 1");
     socket.receive({ tokens: [token("続きの途中", false, "3")] });
-    expect(onInterim.mock.calls.at(-1)![0].speakerLabel).toBe("SPEAKER_UNKNOWN");
+    expect(onInterims.mock.calls.at(-1)![0][0].speakerLabel).toBe("SPEAKER_UNKNOWN");
     socket.receive({ tokens: [translated("次の話者", true, "3")], finished: true });
     expect(onResult.mock.calls[1][0].speakerLabel).toBe("話者 2");
     expect(onTranslation.mock.calls.at(-1)![0].speakerLabel).toBe("話者 2");
     await controller.stop();
   });
   it("keeps naturally finalized speech and drafts flowing without endpoints or forced finalize requests", async () => {
-    const { socket, controller, onResult, onInterim } = await start();
+    const { socket, controller, onResult, onInterims } = await start();
     socket.receive({ tokens: [token("未確定", false)] });
     await vi.advanceTimersByTimeAsync(21_000);
     expect(onResult).not.toHaveBeenCalled();
-    expect(onInterim.mock.calls[0][0].text).toBe("未確定");
+    expect(onInterims.mock.calls[0][0][0].text).toBe("未確定");
     const confirmed = { ...token("確定部分"), start_ms: 0, end_ms: 500 };
     socket.receive({ tokens: [confirmed, token(" 途中", false)] });
     socket.receive({ tokens: [{ ...token("続き"), start_ms: 10_001, end_ms: 10_500 }, token(" 最後の途中", false)] });
     expect(onResult.mock.calls[0][0]).toMatchObject({ text: "確定部分", speakerLabel: "話者 1" });
-    expect(onInterim.mock.calls.at(-1)![0].text).toBe("続き 最後の途中");
+    expect(onInterims.mock.calls.at(-1)![0][0].text).toBe("続き 最後の途中");
     await controller.stop();
     expect(onResult.mock.calls.map((call) => call[0].text)).toEqual(["確定部分", "続き"]);
     expect(socket.sent.filter((value) => typeof value === "string" && value !== "").map((value) => JSON.parse(value as string).type)).not.toContain("finalize");

@@ -2,15 +2,18 @@ import { getLiveTranscriptStore } from "./live-transcript-store";
 
 export const LIVE_TRANSCRIPT_EVENT = "speak-note:live-transcript";
 
-export interface LiveTranscriptUpsertDetail {
-  type: "upsert";
-  meetingId: string;
+export interface LiveTranscriptResult {
   resultId: string;
   startMs: number;
   endMs: number;
   text: string;
   confidence: number | null;
   speakerLabel: string;
+}
+
+export interface LiveTranscriptUpsertDetail extends LiveTranscriptResult {
+  type: "upsert";
+  meetingId: string;
   isFinal: boolean;
 }
 
@@ -24,6 +27,7 @@ export interface LiveTranscriptPersistedDetail {
 export type LiveTranscriptEventDetail =
   | LiveTranscriptUpsertDetail
   | LiveTranscriptPersistedDetail
+  | { type: "replace-interims"; meetingId: string; results: LiveTranscriptResult[] }
   | { type: "clear-interim"; meetingId: string; resultId: string }
   | { type: "reset"; meetingId: string };
 

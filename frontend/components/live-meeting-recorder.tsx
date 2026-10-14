@@ -555,6 +555,9 @@ export function LiveMeetingRecorder({
           tokenUrl: `/api/v1/meetings/${meetingId}/live/${isSoniox ? "soniox" : "azure"}-token`,
           audioStream: audioCaptureStream,
           ...(isSoniox ? {
+            onInterims: (results: import("@/lib/azure-speech-stream").AzureSpeechResult[]) => {
+              publishLiveTranscriptEvent({ type: "replace-interims", meetingId, results });
+            },
             onTranslation: (result: import("@/lib/soniox-translation").LiveTranslationResult, isFinal: boolean) => {
               getLiveTranslationStore(meetingId).accept(result, isFinal);
               if (isFinal) {
@@ -571,9 +574,6 @@ export function LiveMeetingRecorder({
             onTranslationCleared: (resultId: string) => getLiveTranslationStore(meetingId).clearInterim(resultId),
           } : {}),
           getTimelinePositionMs: currentElapsedMs,
-          onInterimCleared: (resultId: string) => {
-            publishLiveTranscriptEvent({ type: "clear-interim", meetingId, resultId });
-          },
           onDiagnostic: (event) => {
             const events = speechDiagnosticsRef.current;
             // Retain low-frequency finals/reconnects longer than hypotheses.
