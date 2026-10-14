@@ -177,6 +177,27 @@ sudo docker compose ps frontend
 
 反映後にブラウザを再読み込みし、同じ言語・話者の短い翻訳断片がカードを積まず一つの文章になること、原文と訳文の左端・本文幅・文字サイズが揃うこと、PCとスマートフォンで読み進められることを確認します。停止後のLive履歴と、高精度版の「リアルタイム原文と翻訳」でも同じ表示を確認します。[変更・検証記録](realtime-translation.md#translation-paragraphs)。
 
+<a id="realtime-template-values"></a>
+## リアルタイム解析の追加項目保存の修正（2026-10-14）
+
+テンプレートに追加フィールドがある解析で`dict.model_validate`によって失敗する問題を修正しました。変更はBackendの解析処理と回帰テストです。追加Migration・依存・環境変数はなく、現在のheadは0031のままです。今回、エージェントによるDocker再起動や運用DBへの変更は行っていません。
+
+**録音・録画・保存と実行中の解析Jobが終了してから**、更新したソースを読み込むため専用Workerを再起動します。同じ環境ですでにソースが更新されている場合は`git pull`を省略できます。現行ComposeではBackendのソースをWorkerへ共有しているため、再buildは不要です。
+
+```bash
+cd /home/llm/speak-note
+git pull --ff-only
+sudo docker compose restart realtime-ai-worker
+sudo docker compose ps realtime-ai-worker
+```
+
+1. 文字起こし・過去の要約が残っていることを確認します。修正前に失敗した「リアルタイム解析」Jobは処理状況からそのJobだけを再試行します。保存済み原文を使うので文字起こしの再生成は不要です。
+2. 「リアルタイム」のカードへ独自フィールドを追加したテンプレートで新しい会議を作り、AIをONにして録音します。既存会議は保存したテンプレート定義を使うため、後から編集したテンプレートを自動反映しません。
+3. Sonioxの原文が確定・保存され、解析が更新された後に追加項目と根拠が表示されることを確認します。数値0やfalseは空欄と区別します。内容が不明な値はnullとして保持します。話者分離の精度優先によって原文の確定・AI更新が遅れることは、この修正とは別の動作です。
+4. 次の解析で新しい項目だけでなく、根拠が残っている以前の項目も保持されることを確認します。AI接続の障害等があれば、以前の結果を表示したまま失敗したJobを再試行できます。
+
+実LLM・Sonioxでの表示と運用環境への反映は未検証です。[修正と検証記録](function-audit-20261014.md#realtime-template-fix)を参照してください。
+
 <a id="player-settings"></a>
 ## 再生設定・音声表示・チャプター表示の修正（2026-10-14）
 
@@ -455,7 +476,7 @@ curl --fail http://localhost:8001/api/v1/health
 | 録画停止後にFinalがない | 停止後はリアルタイム版を表示し、要約は保存済みLiveからも作れる。Finalは「その他」から全体文字起こしを明示して作成する。録画は動画変換完了を待つ |
 | Live文字起こしは動くがAI要約がない | 会議のAI設定、用途の無効設定、Default、Provider有効性、realtime-ai-worker |
 | すべて同じ話者 / 認識停止 | Soniox接続・会議言語・入力音声を確認。表示と認識結果を分離する。旧Azure SessionではResource設定と診断イベントも確認 |
-| Live解析がテンプレート追加値で失敗 | `dict.model_validate`の既知問題。[再現条件と未修正事項](function-audit-20261014.md)を確認。文字起こしエンジンの障害と混同しない |
+| Live解析がテンプレート追加値で失敗 | `dict.model_validate`の問題は修正済み。[専用Workerへの反映](#realtime-template-values)後、失敗した解析Jobを再試行する。AI接続・不正な根拠等の別のエラーはメッセージを確認 |
 
 ### 旧Azure Sessionの診断（互換機能）
 

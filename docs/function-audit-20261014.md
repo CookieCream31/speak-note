@@ -3,6 +3,7 @@
 [README](../README.md) · [現行Soniox構成](soniox-realtime-only.md)
 
 対象はコード版`20b7989`、Migration headは`20261014_0031`。AGENTS.md・DESIGN.md・README・設定画面・録音開始／再接続・各Worker・停止後の要約とテンプレート・既存テストを照合しました。今回は調査と文書の訂正で、機能の削除・API／DBの変更・Docker操作はしていません。運用DBの状態や旧セッション／未処理Jobの有無は未確認です。
+同日の後続作業で、項目1の解析保存エラーは修正しました。以下の検証結果は初回調査時点の記録で、現在の修正内容・追加検証は末尾の[修正記録](#realtime-template-fix)へ分けて記載します。他の整理候補は未修正です。
 
 ## 現行の構成で保持するもの
 
@@ -23,11 +24,11 @@
 
 ### 1. リアルタイム解析の追加項目が返ると処理が失敗する
 
-**優先度: 高。再現済み。** [realtime.py](../backend/app/services/analysis/realtime.py)の887行で`type(value).model_validate(value)`を呼んでいます。[merge_realtime_template_values](../backend/app/services/analysis/realtime_templates.py)の返り値は辞書の一覧なので、値が1件でもあれば`type object 'dict' has no attribute 'model_validate'`になります。
+**調査時の優先度: 高。再現後、同日修正済み。** 修正前の[realtime.py](../backend/app/services/analysis/realtime.py)の887行で`type(value).model_validate(value)`を呼んでいました。[merge_realtime_template_values](../backend/app/services/analysis/realtime_templates.py)の返り値は辞書の一覧なので、値が1件でもあれば`type object 'dict' has no attribute 'model_validate'`になりました。
 
 隔離したSQLiteと保存先、SonioxのLive Session、正しい追加フィールド1件・存在するEvidence IDを返すmock AIを使い、`process_realtime_analysis_job`まで実行して再現しました。通常のテストは追加値が空のため、この保存処理を通過します。音声認識そのものの不具合ではなく、AI解析の結果保存の不具合です。
 
-推奨: `TemplateValueOutput.model_validate`へ変換を統一し、追加項目がある初回生成・既存値を残す更新・数値0／真偽値falseを実際のProcessorまで検証する回帰テストを追加します。既存snapshotと根拠検証は保持します。今回、機能側の修正はしていません。
+後続修正では`TemplateValueOutput.model_validate`へ変換を統一し、追加項目がある初回生成・既存値を残す更新・数値0／真偽値falseを実際のProcessorまで検証する回帰テストを追加しました。既存snapshotと根拠検証を維持します。[反映手順](operations.md#realtime-template-values)。
 
 ### 2. テンプレートと「要約形式」の指定が重複している
 
@@ -75,7 +76,7 @@ READMEに「Liveエンジンを選択」「両方WhisperXが初期値」「既�
 
 要約形式の重複、使われない用途別設定、上記の解析保存エラーは現行の制約としてREADMEへ記載しました。過去の反映ログや旧Azureガイドは削除せず、互換性の記録として残します。AGENTS.mdの「全体WhisperX処理をFinalとして優先」の記載も、現在のWhisperX／Soniox全体処理に合わせる整理候補です。今回、作業規則自体は変更していません。
 
-## 検証結果
+## 検証結果（初回調査時点）
 
 | 実行コマンド | 結果 |
 | --- | --- |
@@ -95,3 +96,25 @@ READMEに「Liveエンジンを選択」「両方WhisperXが初期値」「既�
 実Soniox／WhisperX／LLMでの認識精度、運用DB上の旧データ、実機・Docker反映は未検証です。全テストの成功だけで、上記の未修正条件も正常とは判断しません。
 
 推奨順序は、解析保存エラーの修正 → テンプレートへの設定集約 → 未使用用途のUI整理 → 言語の用途別制約を設計 → 旧依存の遅延読み込み・型／名称の整理です。今回の文書・コメント変更だけならDockerへの反映やMigrationは必要ありません。
+
+<a id="realtime-template-fix"></a>
+## 後続修正: リアルタイム解析の追加項目保存（2026-10-14）
+
+ユーザー指定により、項目1の不具合だけを修正しました。`app/services/analysis/realtime.py`でマージ後の辞書を`TemplateValueOutput.model_validate`へ渡し、正式なSchemaの値として保存します。同ファイルのimport順とformatterの指摘も整えました。テンプレート／Evidenceの既存検証とマージの条件は変更していません。
+
+追加した`tests/test_realtime_analysis_template_values.py`の11ケースは、短文・長文・数値・日付・真偽値・単一選択とnullを実際のProcessorからDBへ保存し、取得APIでも確認します。更新時には新しい根拠へ対応する値だけを変更し、以前の0・false・nullとその根拠を保持します。不正な根拠・選択肢・AI障害では専用Workerの失敗処理でも以前のsnapshotを表示でき、Job再試行APIから同じ解析を成功させることを検証します。文字起こしJobは追加しません。11件は修正前にすべて同じAttributeErrorで失敗することも確認しました。
+
+| 実行コマンド | 結果 |
+| --- | --- |
+| `pytest -q tests/test_realtime_analysis_template_values.py tests/test_realtime_analysis.py tests/test_analysis_templates.py tests/test_template_row_mapping.py` | 関連28件成功 |
+| `pytest -q` | Backend全346件成功、既存warning 6件 |
+| Frontend: `node node_modules/vitest/vitest.mjs run` | 全340件成功 |
+| `ruff format --check app/services/analysis/realtime.py tests/test_realtime_analysis_template_values.py` | 2ファイル成功 |
+| `ruff check app/services/analysis/realtime.py tests/test_realtime_analysis_template_values.py` | 成功 |
+| `ruff check app tests` | 既存7件が残る。修正ファイルのimport指摘を解消し8件から減少 |
+| `ruff format --check app tests` | 既存24ファイルに整形差分。131ファイルは整形済み |
+| `mypy app --cache-dir /tmp/speak-note-realtime-template-fix-mypy` | 既存4ファイル・6件。辞書へのmodel_validateの型エラーを解消し7件から減少 |
+
+残る型エラーには同じ解析ファイルの既存row_idマッピングの代入型1件も含みます。型チェックを無効化したり、型エラーを隠したりしていません。テンプレートと旧要約形式の重複、言語の用途別制限、未使用の用途別UI等は未修正です。
+
+DB・環境変数・依存・Frontendコードの変更はありません。専用Workerへの反映と失敗した解析Jobの再試行は[運用ガイド](operations.md#realtime-template-values)を使用します。エージェントはDockerの再起動・運用DBへの変更・実APIでの録音／生成を行っていません。

@@ -98,7 +98,7 @@ AI設定の「リアルタイム文字起こし」にSonioxのキーとモデル
 SonioxはAPI Keyを入力して「モデル一覧を取得」を押し、モデル（既定`stt-rt-v5`）を選択します。保存済みキーでの取得もできます。設定を保存して接続テストし、文字起こし言語は会議作成時に選びます。音声はSonioxへ送信されます。キー未設定では録音を開始せず設定を案内します。下の「アップロード・録音終了後の文字起こし」ではWhisperXまたはSonioxを選べます。Sonioxの場合は非同期モデル（既定`stt-async-v5`）とキーを別途保存します。WhisperXは既存のWhisperX API Serverを使います。過去のAzure・WhisperX Live履歴は保持されます。[必要なキー権限・詳しい手順と制約](soniox-transcription.md)。
 
 Soniox Liveは話者分離の精度を優先します。早期確定をOFFにし、認識途中の文章を表示しながら自然な確定を待ちます。文字・話者の確定、保存、リアルタイムAIの更新が遅れる場合があります。暫定の話者IDが変わっても表示番号を増やさず、原文・翻訳は同じ確定話者の番号を使います。再接続後や会議後のFinalの番号が同じ人物になる保証はありません。「WhisperXの話者数」はWhisperX用の設定で、Soniox・Azureの人数判定は自動です。[精度優先の確認手順](soniox-transcription.md#diarization-accuracy)。
-Realtimeテンプレートの追加フィールド値が返ると解析の保存処理で失敗する既知問題があります。これはSoniox認識の停止とは別です。今回の調査では機能を修正していません。[再現条件](function-audit-20261014.md)。
+Realtimeテンプレートの追加フィールド値が返ると解析保存に失敗していた問題は修正済みです。数値0・false・不明値も保存し、更新時に既存値と根拠を保持します。修正を反映した後も失敗した解析Jobが残る場合は、会議画面の処理状況からその解析Jobを再試行してください。文字起こしの再作成は不要です。[Worker反映・確認手順](operations.md#realtime-template-values)。
 API KeyはBackendで暗号化保存し、ブラウザには有効期限のある認識用Tokenを渡します。
 新しいLiveではSonioxの話者分離を使用します。
 

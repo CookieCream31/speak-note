@@ -17,13 +17,7 @@ from app.models.meeting import Meeting, utc_now
 from app.models.realtime import RealtimeSession, RealtimeSessionStatus
 from app.models.realtime_analysis import RealtimeAnalysisState, RealtimeAnalysisStatus
 from app.models.transcript import TranscriptSegment, TranscriptVersion
-from app.services.analysis.realtime_templates import (
-    RealtimeTemplateValueError,
-    merge_realtime_template_values,
-    realtime_core_rows,
-    validate_realtime_template_values,
-)
-from app.services.analysis.templates import template_instruction
+from app.schemas.analysis import TemplateValueOutput
 from app.schemas.realtime_analysis import (
     RealtimeActionItemOutput,
     RealtimeAnalysisOutput,
@@ -33,6 +27,13 @@ from app.schemas.realtime_analysis import (
     RealtimeSummaryOutput,
     RealtimeSupersededItemOutput,
 )
+from app.services.analysis.realtime_templates import (
+    RealtimeTemplateValueError,
+    merge_realtime_template_values,
+    realtime_core_rows,
+    validate_realtime_template_values,
+)
+from app.services.analysis.templates import template_instruction
 from app.services.llm import LLMProvider, SecretCipher, build_llm_provider
 
 
@@ -72,9 +73,7 @@ def schedule_realtime_analysis(
     )
     cadence_ms = max(
         1,
-        interval_ms
-        if interval_ms is not None
-        else get_settings().realtime_analysis_interval_ms,
+        interval_ms if interval_ms is not None else get_settings().realtime_analysis_interval_ms,
     )
     scheduled_through_ms = state.scheduled_through_ms if state is not None else 0
     if not force and realtime_session.duration_ms < scheduled_through_ms + cadence_ms:
@@ -237,10 +236,7 @@ def _segments_represent_same_time(
     )
     if overlap_ms > 0 and overlap_ms / shorter_duration_ms >= 0.5:
         return True
-    return (
-        abs(previous_start - current_start) <= 1_500
-        and abs(previous_end - current_end) <= 1_500
-    )
+    return abs(previous_start - current_start) <= 1_500 and abs(previous_end - current_end) <= 1_500
 
 
 def _evidence_replacements(
@@ -400,22 +396,17 @@ def _validate_result(
         raise RealtimeAnalysisError("AIが現在のLive TranscriptにないEvidenceを返しました")
 
     draft_ids = {
-        uuid.UUID(str(item["evidence_id"]))
-        for item in current
-        if item["status"] == "draft"
+        uuid.UUID(str(item["evidence_id"])) for item in current if item["status"] == "draft"
     }
     if changed_evidence_ids is not None and any(
         not set(item.evidence_segment_ids).intersection(changed_evidence_ids)
         for item in superseded_items
     ):
         raise RealtimeAnalysisError("過去のRealtime解析を変更する新しいEvidenceがありません")
-    if any(
-        set(item.evidence_segment_ids).intersection(draft_ids) for item in superseded_items
-    ):
+    if any(set(item.evidence_segment_ids).intersection(draft_ids) for item in superseded_items):
         raise RealtimeAnalysisError("暫定発言を過去のRealtime解析の変更根拠にはできません")
     if any(
-        decision.status == "explicit"
-        and bool(set(decision.evidence_segment_ids) & draft_ids)
+        decision.status == "explicit" and bool(set(decision.evidence_segment_ids) & draft_ids)
         for decision in result.decisions
     ):
         raise RealtimeAnalysisError("暫定発言を決定事項の確定根拠にはできません")
@@ -430,9 +421,7 @@ def _discard_unverified_superseded(
 ) -> None:
     allowed_ids = {uuid.UUID(str(item["evidence_id"])) for item in current}
     draft_ids = {
-        uuid.UUID(str(item["evidence_id"]))
-        for item in current
-        if item["status"] == "draft"
+        uuid.UUID(str(item["evidence_id"])) for item in current if item["status"] == "draft"
     }
     confirmed_changed_ids = changed_evidence_ids - draft_ids
 
@@ -468,9 +457,7 @@ def _normalize_realtime_text(value: str) -> str:
 
 def _summary_sentences(value: str) -> list[str]:
     return [
-        sentence.strip()
-        for sentence in re.split(r"(?<=[。！？!?])|\n+", value)
-        if sentence.strip()
+        sentence.strip() for sentence in re.split(r"(?<=[。！？!?])|\n+", value) if sentence.strip()
     ]
 
 
@@ -543,9 +530,7 @@ def _merge_snapshot_items[RealtimeItem: BaseModel](
             remaining.pop(match_index)
 
         retained_ids = [
-            evidence_id
-            for evidence_id in evidence_ids(old_item)
-            if evidence_id in allowed_ids
+            evidence_id for evidence_id in evidence_ids(old_item) if evidence_id in allowed_ids
         ]
         if retained_ids:
             stabilized.append(old_item.model_copy(update={"evidence_segment_ids": retained_ids}))
@@ -643,17 +628,13 @@ def _core_row_identities(snapshot: Any) -> dict[tuple[str, str], tuple[str, tupl
     def rows(field: str) -> list[dict[str, Any]]:
         values = snapshot.get(field, [])
         return (
-            [item for item in values if isinstance(item, dict)]
-            if isinstance(values, list)
-            else []
+            [item for item in values if isinstance(item, dict)] if isinstance(values, list) else []
         )
 
     def identity(content: str, item: dict[str, Any]) -> tuple[str, tuple[str, ...]]:
         evidence = item.get("evidence_segment_ids", [])
         evidence_ids = (
-            tuple(sorted(str(value) for value in evidence))
-            if isinstance(evidence, list)
-            else ()
+            tuple(sorted(str(value) for value in evidence)) if isinstance(evidence, list) else ()
         )
         return _normalize_realtime_text(content), evidence_ids
 
@@ -753,9 +734,7 @@ def _enqueue_followup_if_needed(
     processed_revision: int,
 ) -> bool:
     latest_revision = session.scalar(
-        select(RealtimeAnalysisState.input_revision).where(
-            RealtimeAnalysisState.id == state.id
-        )
+        select(RealtimeAnalysisState.input_revision).where(RealtimeAnalysisState.id == state.id)
     )
     if latest_revision is None or latest_revision <= processed_revision:
         return False
@@ -797,9 +776,7 @@ def process_realtime_analysis_job(
     transcript = session.scalar(
         select(TranscriptVersion)
         .where(TranscriptVersion.id == state.transcript_version_id)
-        .options(
-            selectinload(TranscriptVersion.segments).selectinload(TranscriptSegment.speaker)
-        )
+        .options(selectinload(TranscriptVersion.segments).selectinload(TranscriptSegment.speaker))
     )
     if transcript is None or not transcript.segments:
         raise RealtimeAnalysisError("Realtime解析対象の発言がありません")
@@ -884,7 +861,7 @@ def process_realtime_analysis_job(
         "template_values": previous_template_values,
     }
     result.template_values = [
-        type(value).model_validate(value)
+        TemplateValueOutput.model_validate(value)
         for value in merge_realtime_template_values(
             previous_for_merge, normalized_template_values, current
         )
