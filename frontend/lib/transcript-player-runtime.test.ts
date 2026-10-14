@@ -111,6 +111,65 @@ function initializeGappedTranscript() {
 }
 
 describe("transcript playback runtime", () => {
+  it("adjusts only transcript display immediately, including paused playback and negative offsets", () => {
+    const [highlight] = initializeGappedTranscript();
+    const player = document.querySelector<HTMLElement>("[data-transcript-player]")!;
+    Object.defineProperty(media, "paused", { configurable: true, value: true });
+    advance(0.06, 300);
+    expect(highlight.textContent).toBe("He");
+    player.dataset.transcriptSyncMs = "200";
+    player.dispatchEvent(new Event("speak-note:transcript-sync"));
+    expect(highlight.textContent).toBe("w");
+    expect(media.currentTime).toBe(0.06);
+    player.dataset.transcriptSyncMs = "-100";
+    player.dispatchEvent(new Event("speak-note:transcript-sync"));
+    expect(highlight.textContent).toBe("");
+    expect(media.currentTime).toBe(0.06);
+    for (const value of ["0", "NaN", "2100", "10.5"]) {
+      player.dataset.transcriptSyncMs = value;
+      player.dispatchEvent(new Event("speak-note:transcript-sync"));
+      expect(highlight.textContent).toBe("He");
+    }
+  });
+  it("keeps chapter progress, video subtitles and displayed media time on the original clock", () => {
+    document.body.innerHTML = `<section data-transcript-player data-media-kind="video" data-subtitles-enabled="true" data-transcript-sync-ms="1000">
+      <video data-meeting-media></video><output data-media-time></output>
+      <div data-chapter-track><button data-chapter-segment data-chapter-title="会議全体" data-chapter-start-ms="0" data-chapter-end-ms="20000"><span data-chapter-progress></span></button></div>
+      <div data-subtitle-overlay><span data-subtitle-speaker></span><p data-subtitle-text></p></div>
+      <span data-subtitle-cue data-subtitle-start-ms="0" data-subtitle-end-ms="14000">元の字幕</span>
+      <span data-subtitle-cue data-subtitle-start-ms="14000" data-subtitle-end-ms="20000">次の字幕</span>
+      <div data-transcript-document><article data-transcript-turn><button data-transcript-text data-turn-index="0">
+        <span data-karaoke-before></span><span data-karaoke-highlight></span><span data-karaoke-after>字</span>
+      </button></article></div><script type="application/json" data-transcript-timeline>[[[13900,14100,1]]]</script></section>`;
+    media = document.querySelector("video")!;
+    Object.defineProperty(media, "readyState", { value: 4 });
+    Object.defineProperty(media, "duration", { value: 20 });
+    const player = media.closest<HTMLElement>("[data-transcript-player]")!;
+    (window as unknown as { speakNoteTranscriptPlayer: { initialize: () => void } }).speakNoteTranscriptPlayer.initialize();
+    media.currentTime = 13;
+    player.dispatchEvent(new Event("speak-note:transcript-sync"));
+    expect(document.querySelector("[data-karaoke-highlight]")?.textContent).toBe("字");
+    expect(document.querySelector("[data-subtitle-text]")?.textContent).toBe("元の字幕");
+    expect(document.querySelector<HTMLElement>("[data-chapter-progress]")?.style.width).toBe("65%");
+    expect(document.querySelector("[data-media-time]")?.textContent).toBe("0:13 / 0:20");
+    expect(media.currentTime).toBe(13);
+    expect(media.playbackRate).toBe(1);
+  });
+  it("follows the adjusted character with the correction applied once", () => {
+    const targets: string[] = [];
+    Object.defineProperty(Range.prototype, "getBoundingClientRect", {
+      configurable: true, value: function (this: Range) {
+        targets.push(this.toString());
+        return new DOMRect(820, lineTop, 20, 32);
+      },
+    });
+    document.querySelector<HTMLElement>("[data-transcript-player]")!.dataset.transcriptSyncMs = "1000";
+    advance(2.5, 950);
+    expect(targets.at(-1)).toBe("い");
+    advance(3.9, 950);
+    expect(targets.at(-1)).toBe("う");
+    expect(media.currentTime).toBe(3.9);
+  });
   it("keeps the completed token visible through brief gaps and standalone whitespace without flashing", () => {
     const [highlight] = initializeGappedTranscript();
     for (const [time, expected] of [[0.09, "Hel"], [0.11, "Hel"], [0.149, "Hel"], [0.15, "l"],

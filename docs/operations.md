@@ -350,6 +350,20 @@ sudo docker compose ps frontend
 
 ページを再読み込みし、単語時刻のある保存済みLive／Finalを再生します。短い単語間でハイライトが消えて点滅せず、長い無音や話者切替では解除されること、単語クリック・後ろへのシークで位置が合うことを確認してください。録音し直しや文字起こしの再処理は不要です。公開JSのURLを更新してcacheを避けます。エージェントは稼働Dockerを再起動していません。[原因・変更ファイル・検証](soniox-transcription.md#playback-flicker)。
 
+<a id="transcript-display-sync"></a>
+### 会議ごとのハイライト同期調整の反映（2026-10-14）
+
+Frontendだけの変更です。録音・録画と保存を終えてから反映します。ソース更新済みなら`git pull`は不要です。Backend・Worker・DB変更や新しい環境変数はありません。
+
+```bash
+cd /home/llm/speak-note
+git pull --ff-only
+sudo docker compose restart frontend
+sudo docker compose ps frontend
+```
+
+ページを再読み込みし、既存会議の文字起こし欄で「同期」を開きます。文字が遅い場合は「0.1秒早める」で合わせ、保存音声の時間表示が変わらないこと、停止中にもハイライトが変わること、再読込後もこの会議の設定が残ること、別会議は補正なしのままであることを確認します。音声・動画・ライト／ダーク・スマートフォンで表示を確認し、リセットして補正なしへ戻せることも確認してください。録音し直し・文字起こしJobの追加は不要です。エージェントは稼働Dockerを再起動していません。[調査と検証](soniox-transcription.md#playback-sync)。
+
 <a id="language-picker-ui"></a>
 ### 言語の検索一覧・タグ・詳細設定への表示改善
 

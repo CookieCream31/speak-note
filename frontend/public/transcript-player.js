@@ -256,6 +256,7 @@
 
     function followPlaybackPosition(currentMs, force = false) {
       if (!shouldAutoFollow() || !transcriptIsVisible()) return;
+      currentMs = transcriptTimeMs(currentMs);
       const anchor = findPlaybackAnchor(currentMs);
       if (!anchor) return;
       const now = performance.now();
@@ -650,11 +651,12 @@
     }
 
     function showActiveWord() {
-      const currentMs = media.currentTime * 1000;
+      const mediaMs = media.currentTime * 1000;
+      const currentMs = transcriptTimeMs(mediaMs);
       updateMediaControls();
-      renderChapters(currentMs);
+      renderChapters(mediaMs);
       const nextIndex = findActiveWord(currentMs);
-      renderSubtitle(currentMs);
+      renderSubtitle(mediaMs);
       if (nextIndex !== activeIndex) {
         const previousWord = activeIndex >= 0 ? words[activeIndex] : null;
         const nextWord = nextIndex >= 0 ? words[nextIndex] : null;
@@ -670,8 +672,15 @@
       }
 
       if (activeIndex >= 0) renderKaraoke(words[activeIndex], currentMs);
-      if (!media.paused) followPlaybackPosition(currentMs);
+      if (!media.paused) followPlaybackPosition(mediaMs);
     }
+
+    function transcriptTimeMs(mediaMs) {
+      const offset = Number(root.dataset.transcriptSyncMs || 0);
+      return mediaMs + (Number.isInteger(offset) && Math.abs(offset) <= 2000 ? offset : 0);
+    }
+
+    root.addEventListener("speak-note:transcript-sync", showActiveWord);
 
     function stopAnimation() {
       if (animationFrame !== null) cancelAnimationFrame(animationFrame);

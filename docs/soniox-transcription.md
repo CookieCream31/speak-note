@@ -1,6 +1,6 @@
 # Soniox文字起こし
 
-最終照合: 2026-10-14（再生ハイライトのちらつき抑制、Liveの単語時刻保存・再生追従、非同期SonioxとWhisperXの共通再生経路、録音時計とPCM取得時刻の同期、途中の話者ブロック、LiveのSoniox固定、独立した全体処理を照合）。[README](../README.md) · [操作ガイド](usage.md) · [現行構成・反映](soniox-realtime-only.md)
+最終照合: 2026-10-14（小さなハイライトのずれの調査と会議ごとの同期調整、再生ハイライトのちらつき抑制、Liveの単語時刻保存・再生追従、非同期SonioxとWhisperXの共通再生経路、録音時計とPCM取得時刻の同期、途中の話者ブロック、LiveのSoniox固定、独立した全体処理を照合）。[README](../README.md) · [操作ガイド](usage.md) · [現行構成・反映](soniox-realtime-only.md)
 
 ## 公式仕様と実装の境界
 
@@ -92,6 +92,51 @@ git diff --check
 実Component・CSS・原文accumulatorの一時プレビューをChromiumで確認し、ライト／ダーク×幅320・393・560・844・1280・1920pxの12条件で、話者分割・訂正・確定・撤回・原文直下の翻訳・DOM保持・横はみ出しなし・page errorなしが成功しました。検証コマンドは`FONTCONFIG_FILE=/tmp/speak-note-provisional-speakers-browser/fonts.conf PLAYWRIGHT_BROWSERS_PATH=/tmp/speak-note-browsers LD_LIBRARY_PATH=/tmp/speak-note-browser-libs/usr/lib/x86_64-linux-gnu XDG_CACHE_HOME=/tmp/speak-note-browser-font-cache /tmp/speak-note-title-speed-verify-env/bin/python /tmp/speak-note-provisional-speakers-browser/check.py chromium`です。一時環境のフォント設定不足は検証用fontconfigとフォントだけで解消し、アプリの設定を変更していません。
 
 WebKitは環境の`libgles2`・`gstreamer1.0-libav`不足で起動できませんでした。これはコード／テストの失敗とは区別します。実Soniox音声による判定遅延・精度、Safari／iPhone実機、Docker反映は未検証です。稼働サービスは再起動していません。新しいMigration・依存・環境変数は追加しません。
+
+<a id="playback-sync"></a>
+## 小さなハイライトのずれの調査と同期調整（2026-10-14）
+
+ユーザー指定の保存済み画面共有会議（Soniox Live）をGETのみで調査しました。29 Segment・532 Wordが保存され、ページのcompact timelineにも同じ532件が渡されています。最新の配信JSはソースと一致し、再生中のハイライトには固定1秒の待ち時間がありません。短い隙間の保持は次のtokenの開始を遅らせません。tokenの大半は60msの区間で、token内の文字補間も1秒の遅れの原因にはなりません。
+
+再生MP4の音声を冒頭12秒だけデコードし、文字起こし用WAVと20ms窓の音量波形を比較しました。最も一致するoffsetは0msで、その窓の差は0でした。これはこの範囲で音声の結合・変換によるずれがないことを支持します。音声活動の開始が約3.7秒、最初の認識tokenが3.9秒であることも確認しましたが、音声活動は単語境界を保証せず、この200msを全単語に適用する根拠にはしません。[公式のtoken時刻仕様](https://soniox.com/docs/stt/concepts/timestamps)も単語・subwordの開始／終了時刻であり、音素ごとの同期を保証するものではありません。
+
+ローカルheadlessでNextの自動初期化待ちがtimeoutしたため、同じ配信再生JSを明示読み込みして表示処理を切り分けました。原文29 tokenのシーク後の表示対象は保存時刻と一致しました。実再生中のサンプルは取得できていないため、これを実機での遅延解消や完全なブラウザ検証とは扱いません。体感の遅れの原因は断定できませんでした。稼働サービス、保存済み原文・音声・Jobは変更せず、全会議へ固定offsetを付けていません。HostのFFmpeg不足は既存の静的ツールを一時ディレクトリへコピーして診断だけに使用し、Project依存や既存サービスは変更していません。
+
+ユーザーの「原因調査を続けて特に原因がない場合は同期調整」という指定により、会議ごとに表示だけを合わせる操作を追加しました。操作:
+
+1. 保存済み会議の文字起こし欄にある「同期」を開きます。
+2. 文字が遅いときは「0.1秒早める」、早すぎるときは「0.1秒遅らせる」を押します。±2秒の範囲で停止中も即時に反映します。初期値は補正なしです。
+3. 再生して小幅に調整し、リセットで補正なしへ戻します。再録音・文字起こし再処理は不要です。
+
+設定はlocalStorageへブラウザの会議ごとに保存し、再読込と同じoriginの別タブへ引き継ぎます。同じ会議のLive／Finalは共用し、別端末・別ブラウザ・別originへは同期しません。保存できない場合はその画面だけへ適用する旨を表示します。不正・範囲外の保存値は0にします。ハイライトと自動スクロールだけに適用し、再生時刻・単語クリックのシーク・字幕・チャプター・保存済み単語時刻・AI入力は変更しません。
+
+変更した14ファイル:
+
+| ファイル | 内容 |
+| --- | --- |
+| `frontend/components/transcript-sync-control.{tsx,module.css,test.tsx}` | 会議ごとの調整・保存・リセット・キーボード・失敗時の操作 |
+| `frontend/components/transcript-player.tsx`、`transcript-player.module.css` | 文字起こし欄への配置、狭い画面での折返し、公開JSのcache更新 |
+| `frontend/public/transcript-player.js` | 表示時計と音声時計を分けて補正、停止中の即更新 |
+| `frontend/lib/transcript-player-runtime.test.ts`、`frontend/components/meeting-workspace.test.tsx` | 補正の方向・不正値・字幕／チャプター／再生時刻の保持・JS URL |
+| `README.md`、`DESIGN.md`、`docs/{soniox-transcription,usage,development,operations}.md` | 調査結果・操作・適用範囲・制約・検証・反映 |
+
+実行コマンド（Node 22の`/tmp/node-v22.16.0-linux-x64/bin/node`）:
+
+```bash
+# frontend内
+node node_modules/vitest/vitest.mjs run components/transcript-sync-control.test.tsx lib/transcript-player-runtime.test.ts components/meeting-workspace.test.tsx
+node node_modules/vitest/vitest.mjs run
+node node_modules/typescript/bin/tsc --noEmit
+node node_modules/eslint/bin/eslint.js .
+# Project内
+git diff --check
+```
+
+関連37件・全体54ファイル390件、ESLint・型チェック・空白検査が成功しました。Frontend専用formatterは未設定で、既存の記法に合わせて差分を確認しました。Backend・DB・Migrationを変更していないため、Backend検証は再実行していません。テストでは初期値0、連打・100ms刻み・±2秒、リセット、別会議、別タブ、不正値、storage失敗、SSR、Escapeとプレイヤーのショートカット分離、停止中の更新、負の補正、字幕・チャプター・再生時刻の保持と、追従への補正が1回だけであることを確認しています。
+
+Chromiumの実Component・CSS・再生runtimeで、ライト／ダーク×幅320・393・560・844・1280・1920px×音声／動画の24条件が成功しました。補正方向・停止中の更新・再読込・別会議・キーボード・横はみ出しなし・page errorなしを確認しました。検証コマンドは`FONTCONFIG_FILE=/tmp/speak-note-provisional-speakers-browser/fonts.conf PLAYWRIGHT_BROWSERS_PATH=/tmp/speak-note-browsers LD_LIBRARY_PATH=/tmp/speak-note-browser-libs/usr/lib/x86_64-linux-gnu XDG_CACHE_HOME=/tmp/speak-note-browser-font-cache /tmp/speak-note-title-speed-verify-env/bin/python /tmp/speak-note-word-timings-browser/check_sync.py`です。一時プレビューと生成WAVを使い、外部APIへ音声を送信していません。
+
+実機での体感のずれ、実Soniox認識・Safari／iPhone、Docker反映は未検証です。固定の正解offsetを推測せず、実際の再生に合わせて調整してください。追加Migration・依存・環境変数はありません。[Frontendのみの反映](operations.md#transcript-display-sync)。
 
 <a id="playback-flicker"></a>
 ## 再生ハイライトのちらつき抑制（2026-10-14）
