@@ -353,7 +353,7 @@ export default async function MeetingDetailPage({
           <span aria-current="page">{meeting.title}</span>
         </nav>
         <Link
-          className={styles.headerButton}
+          className={`${styles.headerButton} ${styles.settingsButton}`}
           href="/settings/ai"
           target={keepCapturePageOpen ? "_blank" : undefined}
           rel={keepCapturePageOpen ? "noopener noreferrer" : undefined}
@@ -361,7 +361,6 @@ export default async function MeetingDetailPage({
           title={keepCapturePageOpen ? "設定（別タブで開く）" : "設定"}
         >
           <Settings size={16} aria-hidden="true" />
-          設定
         </Link>
         <Link
           className={`${styles.headerButton} ${styles.newMeetingButton}`}

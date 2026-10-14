@@ -1,7 +1,7 @@
 /* Redesign 3-2: player + chapters/transcript on the left, notes tabs on the right. */
 .shell {
   display: grid;
-  grid-template-columns: minmax(460px, 620px) minmax(0, 1fr);
+  grid-template-columns: minmax(460px, 720px) minmax(0, 1fr);
   gap: 24px;
   align-items: start;
 }

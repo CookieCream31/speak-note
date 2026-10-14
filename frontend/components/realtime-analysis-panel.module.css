@@ -142,7 +142,7 @@
 .transcriptToolbar strong { color: var(--blue); font-size: 12px; letter-spacing: .12em; }
 .transcriptToolbar > span { white-space: nowrap; font-weight: 800; }
 .transcriptPane > .empty { margin: 22px; }
-.transcriptDocument { max-width: 1100px; margin: 0 auto; padding: 12px 22px 42px; font-size: clamp(16px, 1.45vw, 20px); line-height: 1.85; }
+.transcriptDocument { max-width: 1100px; margin: 0 auto; padding: 12px 22px 42px; font-size: 16px; line-height: 1.85; }
 
 .transcriptTurn {
   display: grid;
@@ -161,7 +161,7 @@
   margin: 0;
   color: var(--ink);
   font-family: inherit;
-  font-size: clamp(16px, 1.45vw, 20px);
+  font-size: 16px;
   line-height: 1.85;
   letter-spacing: .015em;
   overflow-wrap: anywhere;
@@ -255,7 +255,7 @@
 .interimText {
   margin: 0;
   color: var(--text-secondary);
-  font-size: clamp(16px, 1.45vw, 20px);
+  font-size: 16px;
   letter-spacing: .015em;
   line-height: 1.85;
   overflow-wrap: anywhere;
@@ -301,7 +301,7 @@
 }
 
 /* Redesign 3-4: recording layout (recorder + live transcript | analysis and answer assist tabs). */
-.liveLayout { display: grid; grid-template-columns: minmax(460px, 620px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.liveLayout { display: grid; grid-template-columns: minmax(460px, 720px) minmax(0, 1fr); gap: 24px; align-items: start; }
 .liveMain { min-width: 0; display: grid; gap: 12px; }
 .liveTranscript { min-width: 0; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
 .liveTranscript > header { min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-bottom: 1px solid var(--line); }

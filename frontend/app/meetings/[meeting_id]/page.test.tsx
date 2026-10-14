@@ -120,6 +120,12 @@ describe("meeting summary regeneration presentation", () => {
     const html = renderToStaticMarkup(header(element));
     expect(html).toContain('href="/?create=1"');
     expect(html).toContain('href="/settings/ai"');
+    const settingsContent = html.match(/<a\b[^>]*href="\/settings\/ai"[^>]*>([\s\S]*?)<\/a>/)?.[1];
+    expect(settingsContent).toContain("<svg");
+    expect(settingsContent).not.toContain("設定");
+    const settingsLabel = status === "completed" ? "設定" : "設定（別タブで開く）";
+    expect(html).toContain(`aria-label="${settingsLabel}"`);
+    expect(html).toContain(`title="${settingsLabel}"`);
     expect(html).not.toContain("AI設定");
     expect(html).not.toContain("data-theme-option");
     if (status === "completed") expect(html).not.toContain('target="_blank"');
