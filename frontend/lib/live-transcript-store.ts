@@ -30,7 +30,9 @@ export function createLiveTranscriptStore() {
     sequence: history.length,
     speaker: null,
     provisional_speaker_label: result.speakerLabel,
-    words: [],
+    words: (result.words ?? []).map((word, sequence) => ({
+      ...word, id: `${result.resultId}:word:${sequence}`, sequence, speaker_id: null,
+    })),
     isFinal,
     persistedId: persistedIds.get(result.resultId),
   });

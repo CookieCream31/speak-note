@@ -318,7 +318,23 @@ sudo docker compose restart frontend
 sudo docker compose ps frontend
 ```
 
-録音停止後にブラウザを再読み込みし、新しい短い会議で冒頭と終盤に発言して、保存音声の再生・文字起こしクリックの位置を確認します。マイク録音・画面共有録画・共有音声のみの3方式に適用します。過去に保存した時刻は変更されません。Sonioxモデルの認識誤差・Liveの単語位置の推定は別の制約です。[原因・検証・既存会議の注意](soniox-transcription.md#audio-timeline)。エージェントは稼働Dockerを再起動していません。
+録音停止後にブラウザを再読み込みし、新しい短い会議で冒頭と終盤に発言して、保存音声の再生・文字起こしクリックの位置を確認します。マイク録音・画面共有録画・共有音声のみの3方式に適用します。過去に保存した時刻は変更されません。Sonioxモデルの認識誤差・単語時刻のない旧Liveの推定は別の制約です。[原因・検証・既存会議の注意](soniox-transcription.md#audio-timeline)。エージェントは稼働Dockerを再起動していません。
+
+<a id="soniox-word-timings"></a>
+### Soniox Liveの単語時刻保存と再生追従の反映（2026-10-14）
+
+Backendの保存処理とFrontendの送信・Storeの変更です。既存の`TranscriptWord`を使うため、追加Migration・依存・環境変数はありません。録音・録画・保存・処理中Jobを終えてから反映します。現行Composeはソースをmountするため、Backendを先に反映してHealthyを確認し、Frontendを反映します。ソース更新済みなら`git pull`を省略します。
+
+```bash
+cd /home/llm/speak-note
+git pull --ff-only
+sudo docker compose restart backend
+sudo docker compose up -d --wait --no-deps backend
+sudo docker compose restart frontend
+sudo docker compose ps backend frontend
+```
+
+新しい録音で早口・ゆっくりした発話・途中の無音を混ぜ、停止・保存後に再読み込みします。再生中に各単語の位置が速度と間に合わせて動き、原文をクリックすると対応する単語の先頭へ移ることを確認します。Soniox非同期も全体処理設定で選び、新しいアップロードのFinalを同様に確認します。既存WhisperXの単語追従・速度変更・話者名変更も確認してください。旧Liveは保存済み単語時刻がないため従来の推定表示で、再処理や時刻の書換えはしません。実Soniox・iPhone実機・Docker反映は未検証です。[公式根拠と検証](soniox-transcription.md#word-timing-playback)。エージェントはDockerを再起動していません。
 
 <a id="language-picker-ui"></a>
 ### 言語の検索一覧・タグ・詳細設定への表示改善

@@ -15,6 +15,16 @@ function result(overrides: Partial<LiveTranscriptUpsertDetail> = {}): LiveTransc
 }
 
 describe("live transcript snapshots", () => {
+  it("retains confirmed word times before the persistence ACK and never replaces them with late drafts", () => {
+    const store = createLiveTranscriptStore();
+    const words = [{ text: "最初", start_ms: 100, end_ms: 250, confidence: 0.9 }, { text: " 次", start_ms: 800, end_ms: 900, confidence: null }];
+    store.accept(result({ text: "最初 次", words, isFinal: true }));
+    expect(store.getHistory()[0].words).toEqual(words.map((word, sequence) => ({ ...word, sequence, speaker_id: null, id: `phrase-1:word:${sequence}` })));
+    const savedWords = store.getHistory()[0].words;
+    store.accept(result({ text: "遅れた途中結果" }));
+    store.accept({ type: "persisted", meetingId: "meeting", resultId: "phrase-1", segmentId: "db-1" });
+    expect(store.getHistory()[0].words).toBe(savedWords);
+  });
   it("replaces all speaker drafts atomically, including corrections, withdrawal and empty snapshots", () => {
     const store = createLiveTranscriptStore();
     store.accept(result({ resultId: "saved", isFinal: true }));

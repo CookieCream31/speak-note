@@ -1,4 +1,5 @@
 import * as SpeechSDK from "microsoft-cognitiveservices-speech-sdk";
+import type { TranscriptWordTiming } from "./api";
 
 export interface AzureSpeechResult {
   resultId: string;
@@ -7,6 +8,7 @@ export interface AzureSpeechResult {
   text: string;
   confidence: number | null;
   speakerLabel: string;
+  words?: TranscriptWordTiming[];
 }
 
 interface AzureSpeechToken {

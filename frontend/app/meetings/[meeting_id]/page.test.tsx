@@ -6,6 +6,7 @@ import { AppStatusPage } from "@/components/app-status-page";
 import { SummaryRegenerationButton } from "@/components/final-transcript-button";
 import { MeetingWorkspace } from "@/components/meeting-workspace";
 import { LiveTranscriptStream } from "@/components/realtime-analysis-panel";
+import type { TranscriptWord } from "@/lib/api";
 
 vi.mock("@/app/actions", () => ({ updateSegmentAction: vi.fn() }));
 vi.mock("@/components/meeting-review-panel", () => ({ MeetingReviewPanel: () => null }));
@@ -14,7 +15,7 @@ type ReviewProps = ComponentProps<typeof MeetingReviewPanel>;
 type RegenerationProps = ComponentProps<typeof SummaryRegenerationButton>;
 const finalTranscript = { id: "final", kind: "final", status: "completed", model: "whisperx", segments: [{
   id: "final-segment", text: "確定発言", start_ms: 0, end_ms: 1000,
-  speaker: null as { id: string; internal_name: string; display_name: string | null } | null, words: [],
+  speaker: null as { id: string; internal_name: string; display_name: string | null } | null, words: [] as TranscriptWord[],
 }] };
 const liveTranscript = { ...finalTranscript, id: "live", kind: "live", segments: [{
   ...finalTranscript.segments[0], id: "live-segment", text: "Realtimeの発言",
@@ -63,6 +64,13 @@ async function page(search: { analysis_id?: string; transcript_kind?: string } =
   return panel;
 }
 beforeEach(() => {
+  finalTranscript.model = "whisperx";
+  finalTranscript.segments[0].text = "確定発言";
+  finalTranscript.segments[0].words = [];
+  finalTranscript.segments[0].end_ms = 1000;
+  liveTranscript.segments[0].text = "Realtimeの発言";
+  liveTranscript.segments[0].words = [];
+  liveTranscript.segments[0].end_ms = 1000;
   finalTranscript.segments[0].speaker = null;
   liveTranscript.segments.splice(1);
   liveTranscript.segments[0].provisional_speaker_name = null;
@@ -95,6 +103,26 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("meeting summary regeneration presentation", () => {
+  it.each(["whisperx", "stt-async-v5", "stt-rt-v5"])("uses stored word times for %s without stretching the whole segment", async (model) => {
+    sharedAudio = model === "stt-rt-v5";
+    const transcript = sharedAudio ? liveTranscript : finalTranscript;
+    transcript.model = model;
+    const segment = transcript.segments[0];
+    segment.text = "Hello world.";
+    segment.end_ms = 3000;
+    segment.words = [
+      { id: "w1", text: "Hel", start_ms: 100, end_ms: 250, confidence: 0.9, sequence: 0, speaker_id: null },
+      { id: "w2", text: "lo", start_ms: 300, end_ms: 450, confidence: 0.9, sequence: 1, speaker_id: null },
+      { id: "w3", text: " world.", start_ms: 2000, end_ms: 2200, confidence: 0.9, sequence: 2, speaker_id: null },
+    ];
+    const element = await MeetingDetailPage({ params: Promise.resolve({ meeting_id: "m" }),
+      searchParams: Promise.resolve({ transcript_kind: sharedAudio ? "live" : "final" }) });
+    expect(workspace(element)?.props.playback.turns[0].words).toEqual([
+      { id: "w1", text: "Hel", startMs: 100, endMs: 250, exact: true },
+      { id: "w2", text: "lo", startMs: 300, endMs: 450, exact: true },
+      { id: "w3", text: " world.", startMs: 2000, endMs: 2200, exact: true },
+    ]);
+  });
   it("never sends a provisional label as a Speaker ID and edits saved Live by segment", async () => {
     sharedAudio = true;
     liveTranscript.segments[0].provisional_speaker_name = "エージェント";

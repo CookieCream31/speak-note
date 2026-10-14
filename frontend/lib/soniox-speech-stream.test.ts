@@ -28,6 +28,40 @@ const token = (text: string, is_final = true, speaker = "1") => ({ text, is_fina
 async function tick() { for (let i = 0; i < 8; i += 1) await Promise.resolve(); }
 
 describe("Soniox token assembly", () => {
+  it("preserves nonuniform token times and text while excluding drafts, translations and boundary whitespace", () => {
+    const accumulator = new SonioxTranscriptAccumulator("timed", 1250);
+    const at = (text: string, start_ms: number, end_ms: number, is_final = true) => ({ ...token(text, is_final), start_ms, end_ms });
+    const draft = accumulator.accept({ tokens: [at("Hel", 100, 250), at("lo?", 300, 450, false)] });
+    expect(draft.interims[0].words).toBeUndefined();
+    const saved = accumulator.accept({ tokens: [
+      at("lo", 300, 450), at("", 500, 500), at("  world.", 2000, 2200),
+      { ...at("はい", 2800, 3000), confidence: undefined }, at(" ", 3050, 3050),
+      { ...at("訳文", 3100, 3200), translation_status: "translation" },
+    ], finished: true }).finals[0];
+    expect(saved.text).toBe("Hello  world.はい");
+    expect(saved.words).toEqual([
+      { text: "Hel", start_ms: 1350, end_ms: 1500, confidence: 0.9 },
+      { text: "lo", start_ms: 1550, end_ms: 1700, confidence: 0.9 },
+      { text: "  world.", start_ms: 3250, end_ms: 3450, confidence: 0.9 },
+      { text: "はい", start_ms: 4050, end_ms: 4250, confidence: null },
+    ]);
+    expect(saved.words?.map((word) => word.text).join("")).toBe(saved.text);
+    expect(accumulator.flush()).toEqual([]);
+  });
+  it("keeps word timing inside each confirmed speaker and save boundary", () => {
+    const accumulator = new SonioxTranscriptAccumulator("boundaries", 0);
+    const response = accumulator.accept({ tokens: [
+      { ...token(" First"), start_ms: 0, end_ms: 1000 },
+      { ...token(" next"), start_ms: 10_100, end_ms: 10_200 },
+      { ...token("別の話者", true, "2"), start_ms: 10_300, end_ms: 10_500 },
+      token("保存しない途中", false, "3"),
+    ], finished: true });
+    expect(response.finals.map((row) => row.words)).toEqual([
+      [{ text: "First", start_ms: 0, end_ms: 1000, confidence: 0.9 }],
+      [{ text: "next", start_ms: 10_100, end_ms: 10_200, confidence: 0.9 }],
+      [{ text: "別の話者", start_ms: 10_300, end_ms: 10_500, confidence: 0.9 }],
+    ]);
+  });
   it("replaces hypotheses, appends final subwords once, and keeps milliseconds", () => {
     const accumulator = new SonioxTranscriptAccumulator("stream", 2000);
     expect(accumulator.accept({ tokens: [token("Hel", false)] }).interims[0]?.text).toBe("Hel");
@@ -203,11 +237,13 @@ describe("Soniox streaming lifecycle", () => {
     await vi.advanceTimersByTimeAsync(5000);
     socket.receive({ tokens: [token("最初の発言")], finished: true });
     expect(onResult.mock.calls[0][0]).toMatchObject({ startMs: 1350, endMs: 1750 });
+    expect(onResult.mock.calls[0][0].words[0]).toMatchObject({ start_ms: 1350, end_ms: 1750 });
     await vi.advanceTimersByTimeAsync(1000); await tick();
     const next = FakeSocket.instances[1]; next.open(); await tick();
     pcm.callback?.(new ArrayBuffer(3200), 25_000);
     next.receive({ tokens: [token("再接続後の発言")], finished: true });
     expect(onResult.mock.calls[1][0]).toMatchObject({ startMs: 25_100, endMs: 25_500 });
+    expect(onResult.mock.calls[1][0].words[0]).toMatchObject({ start_ms: 25_100, end_ms: 25_500 });
     await controller.stop();
   });
   it("prepares deferred PCM without starting it until recording is activated", async () => {

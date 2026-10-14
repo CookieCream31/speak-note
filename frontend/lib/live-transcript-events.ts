@@ -1,4 +1,5 @@
 import { getLiveTranscriptStore } from "./live-transcript-store";
+import type { TranscriptWordTiming } from "./api";
 
 export const LIVE_TRANSCRIPT_EVENT = "speak-note:live-transcript";
 
@@ -9,6 +10,7 @@ export interface LiveTranscriptResult {
   text: string;
   confidence: number | null;
   speakerLabel: string;
+  words?: TranscriptWordTiming[];
 }
 
 export interface LiveTranscriptUpsertDetail extends LiveTranscriptResult {

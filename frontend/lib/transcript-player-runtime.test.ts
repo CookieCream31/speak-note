@@ -96,6 +96,30 @@ function initializeAudio(timeline = "[]") {
 }
 
 describe("transcript playback runtime", () => {
+  it("follows API token times through pauses and changes of speaking speed instead of a constant phrase speed", () => {
+    document.body.innerHTML = `<section data-transcript-player data-media-kind="video">
+      <video data-meeting-media></video><div data-transcript-document>
+        <article data-transcript-turn><button data-transcript-text data-turn-index="0" data-seek-ms="100">
+          <span data-karaoke-before></span><span data-karaoke-highlight></span><span data-karaoke-after>Hello world.はい</span>
+        </button></article></div>
+      <script type="application/json" data-transcript-timeline>[[[100,250,3],[300,450,2],[2000,2200,7],[2800,3000,2]]]</script></section>`;
+    media = document.querySelector("video")!;
+    Object.defineProperty(media, "paused", { configurable: true, value: false });
+    Object.defineProperty(media, "readyState", { value: 4 });
+    (window as unknown as { speakNoteTranscriptPlayer: { initialize: () => void } }).speakNoteTranscriptPlayer.initialize();
+    const highlight = () => document.querySelector("[data-karaoke-highlight]")?.textContent;
+    advance(0.18, 300);
+    expect(highlight()).toBe("He");
+    advance(0.35, 300);
+    expect(highlight()).toBe("l");
+    advance(1.5, 300);
+    expect(highlight()).toBe("");
+    expect(document.querySelector("[data-transcript-text]")?.textContent?.replace(/\s+/g, "").trim()).toBe("Helloworld.はい");
+    advance(2.1, 300);
+    expect(highlight()).toBe(" wor");
+    advance(2.95, 300);
+    expect(highlight()).toBe("はい");
+  });
   it("keeps audio time on the left without repeating normal playback status", () => {
     const { audio, status } = initializeAudio();
     let paused = true;

@@ -423,6 +423,7 @@ WhisperX固有処理は `transcription` Service層へ隔離する。
 - 話者の表示番号は確定履歴として採用する原文・翻訳だけで作成し、暫定表示では既知の表示番号を参照するだけとする。未知の暫定話者は`SPEAKER_UNKNOWN`で、IDが変化しても番号を消費しない。原文・翻訳で表示Mapを共用し、接続をまたぐ話者を推測で統合しない。最小／最大の人数指定はWhisperXにだけ適用されることを設定画面に明示する。
 - 通信断・送信遅延では最大3回、新しい一時キーで再接続する。認証・残高・権限エラーで再接続を繰り返さない。保存用録音は継続し、切断区間は非同期Finalで処理する。無音だけを再接続の理由にしない。keepaliveは20秒間隔。
 - タイムライン（2026-10-14）: 一時キー・WebSocket・PCM Workletを音声入力未接続で準備し、保存用MediaRecorderを開始する時点で会議時計を0にする。MediaRecorderの開始後にPCM入力を接続する。Workletは各frameとflush末尾の先頭sampleのAudioContext時刻を返し、入力接続時の会議時刻と対応付ける。接続ごとの最初の送信frameが実際に取得された時刻へAPI tokenの整数msを加える。通知を受け取った壁時計から100msを引く推定を使用せず、準備時間・メインスレッド待ち時間を時刻へ混入させない。再接続でも同じ録音時計を使う。既存の保存時刻は推測で変更しない。[検証・制約](docs/soniox-transcription.md#audio-timeline)。
+- 単語時刻（2026-10-14）: Liveの確定原文tokenについて、同じ会議時計の`start_ms`／`end_ms`・本文・信頼度を`soniox_result.words`で送る。Backendは整数ms・範囲・開始時刻順・信頼度・本文との一致を構造化検証し、Segmentと既存`TranscriptWord`へ同一Transactionで保存する。tokenは単語・subword・空白を含むため、本文の境界空白だけを除き、APIの順序と内部空白を保持する。翻訳・制御marker・非確定tokenは単語履歴へ保存しない。同じ結果IDの再送は重複を作らず、異なる本文・時刻・話者等による上書きは拒否する。正式Speakerを推測で作成しない。旧payloadの単語なしは受け付け、過去の履歴を変更しない。追加Migrationは不要。[公式根拠・検証](docs/soniox-transcription.md#word-timing-playback)。
 - 非同期: `stt-async-v5`、`https://api.soniox.com/v1`。通常の`transcribe` Job／Workerがローカル保存音声をFiles APIへuploadし、`file_id`でTranscriptions APIへ予約、queued／processingをpollし、completed後に時刻・話者付きtokenを取得する。HTTP Requestで完了まで待たない。予約時点のエンジン・モデル・言語をJobの`transcription_request`に固定する。動画アップロードは変換前のJobから設定を引き継ぐ。既存Jobのnull設定はWhisperXとして扱う。
 - Soniox側file／transcriptionのUUIDと送信状態をDBへcheckpointする。POSTを無条件に再試行しない。送信応答を失った場合はJob UUIDを`client_reference_id`として一覧を照合し、一致が一つの場合だけ再開する（Soniox側ではunique／idempotency keyではない）。不明・重複の場合はJobをfailedにし、再送を止める。GET／DELETEは最大3回、全体処理待機は最大2時間。再試行は保存した同一処理IDから再開する。
 - tokenの時刻・信頼度を検証し、subwordと空白を保持して既存TranscriptのSegment／Wordへ保存する。DBは整数ms。Final commit後にSoniox側TranscriptionとFileだけを削除する。削除失敗はcleanup_pendingを残し、既存Final・元音声を失敗扱いで削除しない。失敗時や未完了のリモートデータは再試行／調査用に残るため、Consoleで管理する。
@@ -665,7 +666,7 @@ TranscriptSegment
 
 ### TranscriptWord
 
-必要になった場合:
+WhisperX・Soniox非同期のFinalと、単語時刻に対応したSoniox Liveで使用する既存テーブル。SonioxではAPIのtoken（単語・単語の一部・空白）の単位を保持する。正式話者のないLiveでは`speaker_id`はnullとする。
 
 ```text
 TranscriptWord
@@ -675,7 +676,8 @@ TranscriptWord
 - end_ms
 - text
 - confidence nullable
-- speaker_id
+- sequence
+- speaker_id nullable
 ```
 
 ### Speaker
@@ -794,6 +796,7 @@ start_ms <= current_ms < end_ms
 となるSegmentをactive表示する。
 
 現在発言をハイライトし、自動スクロールする。同一話者の長い文章でも、現在の文字のDOM Rangeを使って表示行を追従する。
+`TranscriptWord`がある場合は各単語／tokenの保存済み開始・終了時刻で対象を選び、WhisperX・Soniox非同期・Soniox Liveで共通の再生処理を使う。ブロック全体へ均等な時間を割り当てない。文字の塗り進みはその単語／token区間内で補間するため、音素ごとの時刻を保証しない。単語時刻のない旧履歴と本文編集で時刻を無効化した発言は、従来どおり発話区間から推定する。
 話者Blockの切り替わりだけを追従条件にせず、文字が表示領域の外側へ近づいた場合にスクロールする。
 単語間の無音でも直前の文字位置を維持し、Block先頭へ戻らない。
 

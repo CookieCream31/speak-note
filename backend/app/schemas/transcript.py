@@ -36,6 +36,17 @@ class TranscriptWordRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class TranscriptWordTiming(BaseModel):
+    """Client-side confirmed token timing, without persistent IDs or speaker identity."""
+
+    text: str = Field(min_length=1, max_length=20_000)
+    start_ms: int = Field(ge=0)
+    end_ms: int = Field(ge=0)
+    confidence: float | None = Field(default=None, ge=0, le=1)
+
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+
+
 class TranscriptSegmentRead(BaseModel):
     id: uuid.UUID
     start_ms: int

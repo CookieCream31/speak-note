@@ -54,12 +54,29 @@ export class SonioxTranscriptAccumulator {
     const timed = tokens.filter((token) => Number.isFinite(token.start_ms) && Number.isFinite(token.end_ms));
     if (!text || !timed.length) return null;
     const confidences = tokens.flatMap((token) => typeof token.confidence === "number" ? [token.confidence] : []);
+    // Keep API token timings for confirmed text only. A token may be a word,
+    // subword or whitespace; do not distribute the whole phrase uniformly.
+    const words = tokens.every((token) => token.is_final) ? timed.filter((token) => token.text).map((token) => ({
+      text: token.text,
+      start_ms: this.offsetMs + Math.max(0, Math.round(token.start_ms!)),
+      end_ms: this.offsetMs + Math.max(Math.round(token.start_ms!), Math.round(token.end_ms!)),
+      confidence: token.confidence ?? null,
+    })) : undefined;
+    if (words) {
+      while (words.length && !words[0].text.trim()) words.shift();
+      while (words.length && !words.at(-1)!.text.trim()) words.pop();
+      if (words.length) {
+        words[0].text = words[0].text.trimStart();
+        words.at(-1)!.text = words.at(-1)!.text.trimEnd();
+      }
+    }
     return {
       resultId,
       startMs: this.offsetMs + Math.max(0, Math.round(timed[0].start_ms!)),
-      endMs: this.offsetMs + Math.max(Math.round(timed[0].start_ms!) + 1, Math.round(timed.at(-1)!.end_ms!)),
+      endMs: this.offsetMs + timed.reduce((end, token) => Math.max(end, Math.round(token.end_ms!)), Math.round(timed[0].start_ms!) + 1),
       text, confidence: confidences.length ? confidences.reduce((sum, value) => sum + value, 0) / confidences.length : null,
       speakerLabel: tokens[0]?.speaker ? `SONIOX_${this.prefix}_${tokens[0].speaker}` : "SPEAKER_UNKNOWN",
+      ...(words ? { words } : {}),
     };
   }
 

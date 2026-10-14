@@ -22,10 +22,12 @@ from app.models.transcript import (
     TranscriptSegment,
     TranscriptStatus,
     TranscriptVersion,
+    TranscriptWord,
 )
 from app.models.transcription import RealtimeTranscriptionProvider
 from app.services.analysis.realtime import schedule_realtime_analysis
 from app.services.media import MediaStorage
+from app.services.realtime.transcript_words import validate_streaming_words
 from app.services.realtime.windows import build_realtime_transcription_windows
 
 ALLOWED_REALTIME_MIME_TYPES = frozenset({"video/webm", "video/mp4"})
@@ -348,6 +350,7 @@ def append_streaming_transcript_segment(
     text: str,
     speaker_label: str | None = None,
     confidence: float | None = None,
+    words: object = None,
 ) -> TranscriptSegment:
     if realtime_session.status != RealtimeSessionStatus.RECORDING:
         raise RealtimeCaptureError("録画セッションは終了しています")
@@ -357,7 +360,11 @@ def append_streaming_transcript_segment(
     }:
         raise RealtimeCaptureError("この録音セッションはストリーミング認識を使用していません")
     normalized_result_id = result_id.strip()
-    normalized_text = " ".join(text.split())
+    try:
+        timed_words = validate_streaming_words(words, text=text, start_ms=start_ms, end_ms=end_ms)
+    except ValueError as exc:
+        raise RealtimeCaptureError(str(exc)) from exc
+    normalized_text = text.strip() if timed_words else " ".join(text.split())
     normalized_speaker_label = (speaker_label or "SPEAKER_UNKNOWN").strip()
     if not normalized_result_id or len(normalized_result_id) > 200:
         raise RealtimeCaptureError("認識結果IDの形式が不正です")
@@ -374,6 +381,16 @@ def append_streaming_transcript_segment(
     segment_id = uuid.uuid5(realtime_session.id, f"{namespace}:{normalized_result_id}")
     existing = db.get(TranscriptSegment, segment_id)
     if existing is not None:
+        if timed_words is not None and (
+            existing.text != normalized_text
+            or existing.start_ms != start_ms
+            or existing.end_ms != end_ms
+            or existing.confidence != confidence
+            or existing.provisional_speaker_label != normalized_speaker_label
+            or [(word.text, word.start_ms, word.end_ms, word.confidence) for word in existing.words]
+            != [(word.text, word.start_ms, word.end_ms, word.confidence) for word in timed_words]
+        ):
+            raise RealtimeCaptureError("保存済み認識結果と内容が一致しません")
         return existing
     transcript = db.get(TranscriptVersion, realtime_session.transcript_version_id)
     if transcript is None:
@@ -394,6 +411,17 @@ def append_streaming_transcript_segment(
         confidence=confidence,
         sequence=next_sequence,
     )
+    segment.words = [
+        TranscriptWord(
+            id=uuid.uuid5(segment_id, f"word:{sequence}"),
+            text=word.text,
+            start_ms=word.start_ms,
+            end_ms=word.end_ms,
+            confidence=word.confidence,
+            sequence=sequence,
+        )
+        for sequence, word in enumerate(timed_words or [])
+    ]
     db.add(segment)
     db.commit()
     db.refresh(segment)

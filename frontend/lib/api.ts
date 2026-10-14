@@ -188,6 +188,8 @@ export interface TranscriptWord {
   speaker_id: string | null;
 }
 
+export type TranscriptWordTiming = Pick<TranscriptWord, "start_ms" | "end_ms" | "text" | "confidence">;
+
 export interface TranscriptSegment {
   id: string;
   start_ms: number;

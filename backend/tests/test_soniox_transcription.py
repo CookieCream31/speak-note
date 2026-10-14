@@ -351,6 +351,11 @@ def test_first_final_uses_frozen_soniox_and_ai_template_then_reuses_final(
         final = db.get(TranscriptVersion, db.get(Meeting, meeting_id).active_transcript_version_id)
         assert final.kind == TranscriptKind.FINAL and final.model == "stt-async-v5"
         assert final.segments[0].start_ms == 125 and final.segments[0].text == "Hello world."
+        assert [(word.text, word.start_ms, word.end_ms) for word in final.segments[0].words] == [
+            ("Hel", 125, 200),
+            ("lo", 200, 325),
+            (" world.", 325, 1100),
+        ]
         assert final.segments[0].speaker.display_name == "話者 1"
         assert db.get(TranscriptVersion, live.id) is not None
         analysis = db.scalar(select(AnalysisVersion))
@@ -370,6 +375,12 @@ def test_first_final_uses_frozen_soniox_and_ai_template_then_reuses_final(
             lambda: pytest.fail("must not build a provider client"),
             MediaStorage(tmp_path, 1),
         )
+    saved = client.get(f"/api/v1/meetings/{meeting_id}/transcript?kind=final")
+    assert saved.status_code == 200
+    assert [
+        (word["text"], word["start_ms"], word["end_ms"])
+        for word in saved.json()["segments"][0]["words"]
+    ] == [("Hel", 125, 200), ("lo", 200, 325), (" world.", 325, 1100)]
 
 
 def test_cleanup_failure_preserves_final_and_original(

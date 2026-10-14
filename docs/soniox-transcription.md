@@ -1,6 +1,6 @@
 # Soniox文字起こし
 
-最終照合: 2026-10-14（録音時計とPCM取得時刻の同期、途中の話者ブロック、LiveのSoniox固定、独立した全体処理を照合）。[README](../README.md) · [操作ガイド](usage.md) · [現行構成・反映](soniox-realtime-only.md)
+最終照合: 2026-10-14（Liveの単語時刻保存・再生追従、非同期SonioxとWhisperXの共通再生経路、録音時計とPCM取得時刻の同期、途中の話者ブロック、LiveのSoniox固定、独立した全体処理を照合）。[README](../README.md) · [操作ガイド](usage.md) · [現行構成・反映](soniox-realtime-only.md)
 
 ## 公式仕様と実装の境界
 
@@ -93,6 +93,69 @@ git diff --check
 
 WebKitは環境の`libgles2`・`gstreamer1.0-libav`不足で起動できませんでした。これはコード／テストの失敗とは区別します。実Soniox音声による判定遅延・精度、Safari／iPhone実機、Docker反映は未検証です。稼働サービスは再起動していません。新しいMigration・依存・環境変数は追加しません。
 
+<a id="word-timing-playback"></a>
+## 単語時刻を使う再生追従（2026-10-14）
+
+Sonioxはリアルタイム・非同期ともに、tokenごとの`start_ms`／`end_ms`を返します。tokenは単語全体だけでなく単語の一部や空白になる場合があります。非同期でもcompleted後の`GET /v1/transcriptions/{id}/transcript`の`tokens`に時刻が含まれるため、単語単位の追従が可能です。[公式の時刻仕様](https://soniox.com/docs/stt/concepts/timestamps)、[公式の非同期結果取得](https://soniox.com/docs/api-reference/stt/transcriptions/get_transcription_transcript)。
+
+従来のSoniox Liveは発話全体の開始・終了時刻だけを保存し、単語時刻を捨てていました。再生時はその発話全体に一定の文字速度を割り当てるため、途中の間・早口・速度の変化でずれて見える状態でした。現在は確定原文tokenの時刻・本文・信頼度を既存の`TranscriptWord`へ保存し、WhisperXと同じプレイヤーへ渡します。接続ごとの音声取得offsetも各tokenへ反映します。AI要約を使わない録音でも保存します。
+
+Backendは整数ms・発話の範囲・開始時刻順・信頼度・本文との一致を検証し、Segmentと単語を一緒にcommitします。同じ結果IDの再送は同じ保存結果を返し、異なる内容による上書きを拒否します。不正な単語データで既存の文字起こし・音声・Jobを変更しません。原文の内部空白とsubwordの順序を保ち、翻訳・制御marker・非確定tokenを単語履歴へ保存しません。正式話者IDを推測で作りません。
+
+非同期Sonioxは、既存の`normalize_soniox_transcript`→Worker→`TranscriptWord`の保存がすでに対応しています。今回はこの経路のDB・Transcript GET応答と、会議ページから再生への引き渡しも回帰テストで確認しました。新しい非同期APIや文字起こしJobは追加しません。
+
+操作確認:
+
+1. 録音・録画・保存・処理中Jobを終え、[Backendを先に反映する手順](operations.md#soniox-word-timings)を実行します。
+2. ページを再読み込みし、新しい録音で早口・ゆっくりした発話・途中の無音を混ぜます。停止・保存後に再読み込みします。
+3. 再生し、単語のハイライトが速度と間に合わせて移ることを確認します。無音では文字の塗り進みを止め、単語をクリックするとその先頭へシークします。速度変更・後ろへのシークも確認します。
+4. 全体処理をSonioxに設定し、新しいファイルをアップロードしてFinalを確認します。WhisperXのFinalでも同じ操作を確認します。
+
+適用範囲と制約: Liveの改善は更新後に新しく開始する録音からです。単語時刻のない旧Liveや、本文編集で単語時刻を無効化した発言は従来の推定表示です。保存履歴を再処理・書換えません。単語／subwordの内部の文字位置はその区間内で補間し、音素ごとの時刻は保証しません。モデルの認識時刻の誤差とは別で、翻訳には原文の単語時刻を割り当てません。追加Migration・環境変数・依存はありません。
+
+変更ファイル:
+
+| ファイル | 内容 |
+| --- | --- |
+| `frontend/lib/soniox-speech-stream.ts`・同テスト | 確定tokenの時刻・空白・信頼度、再接続offset、話者／保存区切り |
+| `frontend/components/live-meeting-recorder.tsx`、`shared-audio-recorder.test.tsx` | 単語を保存payloadとStoreへ送信。途中結果は保存しない |
+| `frontend/lib/{api,azure-speech-stream,live-transcript-events,live-transcript-store}.ts`、Storeテスト | 共通型と一時Word ID、ACK前後の時刻保持、旧Azure互換性 |
+| `frontend/app/meetings/[meeting_id]/page.test.tsx`、`frontend/lib/transcript-player-runtime.test.ts` | WhisperX／非同期Soniox／Liveの時刻使用、間・速度変化・subwordでの再生 |
+| `backend/app/api/routes/realtime.py`、`schemas/transcript.py` | Sonioxの追加payloadと単語schema |
+| `backend/app/services/realtime/{capture,transcript_words}.py` | 検証、SegmentとWordの同時保存、同一再送・競合拒否 |
+| `backend/tests/{test_streaming_word_timings,test_soniox_transcription}.py` | WebSocket→DB→停止・再読込、不正設定、履歴・音声保持、非同期の保存とGET |
+| `README.md`、`DESIGN.md`、`docs/{soniox-transcription,usage,development,operations}.md` | 操作・仕様・検証・反映と旧履歴の制約 |
+
+実行コマンド（FrontendはNode 22、Backendは既存の検証用venv）:
+
+```bash
+# frontend内
+node node_modules/vitest/vitest.mjs run lib/soniox-speech-stream.test.ts lib/live-transcript-store.test.ts components/shared-audio-recorder.test.tsx lib/transcript-player-runtime.test.ts 'app/meetings/[meeting_id]/page.test.tsx'
+node node_modules/vitest/vitest.mjs run
+node node_modules/typescript/bin/tsc --noEmit
+node node_modules/eslint/bin/eslint.js .
+# backend内
+/tmp/speak-note-shared-audio-verify-env/bin/pytest -q tests/test_streaming_word_timings.py tests/test_soniox_transcription.py
+/tmp/speak-note-shared-audio-verify-env/bin/pytest -q
+/tmp/speak-note-shared-audio-verify-env/bin/ruff format --check app/api/routes/realtime.py app/schemas/transcript.py app/services/realtime/capture.py app/services/realtime/transcript_words.py tests/test_streaming_word_timings.py tests/test_soniox_transcription.py
+/tmp/speak-note-shared-audio-verify-env/bin/ruff check app/api/routes/realtime.py app/schemas/transcript.py app/services/realtime/capture.py app/services/realtime/transcript_words.py tests/test_streaming_word_timings.py tests/test_soniox_transcription.py
+/tmp/speak-note-shared-audio-verify-env/bin/mypy --follow-imports=silent --cache-dir /tmp/speak-note-word-timings-mypy app/schemas/transcript.py app/services/realtime/transcript_words.py app/services/realtime/capture.py app/api/routes/realtime.py
+# 全体の既存エラーも確認（変更対象外のため未修正）
+/tmp/speak-note-shared-audio-verify-env/bin/ruff format --check app tests
+/tmp/speak-note-shared-audio-verify-env/bin/ruff check app tests
+/tmp/speak-note-shared-audio-verify-env/bin/mypy --cache-dir /tmp/speak-note-word-timings-full-mypy app
+# Project内
+git diff --check
+```
+
+関連Frontend 90件・Backend 37件、全体Frontend 53ファイル370件・Backend 364件（既存warning 6件）、FrontendのESLint・型チェック、変更Python 6ファイルのRuff format／lintと4ファイルのmypyが成功しました。Frontend専用formatterは未設定のため既存の記法で差分を確認しました。
+
+Backend全体には今回の変更対象外の既存エラーが残ります。Ruff lint 7件は`meeting_templates.py`、`meeting_template.py`、`analysis/manual.py`、`transcription/azure.py`。mypy 6件は`transcription/azure.py`、`analysis/realtime_template_rows.py`、`analysis/realtime.py`、`meeting_templates.py`。全体formatは既存24ファイルが未整形、133ファイルが整形済みでした。これらを解消するための無関係な変更は含めていません。
+
+Chromiumでは実accumulator・Component・CSS・再生runtimeを一時プレビューへbundleし、ライト／ダーク×幅320・393・560・844・1280・1920pxの12条件でtoken時刻のハイライト、無音、速度変化、後ろへのシーク、長文の単語クリック、横はみ出しなし・page errorなしを確認しました。ブラウザの音声シークを検証するため、一時serverもHTTP Rangeへ対応させました。外部APIへ音声を送らず、稼働サービスを使っていません。実行コマンドは`FONTCONFIG_FILE=/tmp/speak-note-provisional-speakers-browser/fonts.conf PLAYWRIGHT_BROWSERS_PATH=/tmp/speak-note-browsers LD_LIBRARY_PATH=/tmp/speak-note-browser-libs/usr/lib/x86_64-linux-gnu XDG_CACHE_HOME=/tmp/speak-note-browser-font-cache /tmp/speak-note-title-speed-verify-env/bin/python /tmp/speak-note-word-timings-browser/check.py`です。一時serverは検証後に終了しました。
+
+実Sonioxへの音声送信・時刻の認識精度、実PostgreSQL、Safari／iPhone実機、Dockerへの反映は未検証です。BackendテストはSQLiteとmockを使い、運用DBと保存済み会議を変更していません。
+
 <a id="audio-timeline"></a>
 ## 録音と文字起こしの開始時刻ずれ（2026-10-14）
 
@@ -102,7 +165,7 @@ WebKitは環境の`libgles2`・`gstreamer1.0-libav`不足で起動できませ�
 
 ユーザー指定の停止済みマイク会議を読取APIで確認し、Soniox Live・保存会議時間118.012秒・音声の再生時間115.497秒を確認しました。差は2.515秒で、準備時間が含まれる不具合と整合します。ただし当時の録音開始差・生PCM時刻は保存されていないため、差の全量が各発言の正確な補正量であるとは断定しません。元音声・保存済み文字起こし・要約・Jobを変更する操作は行っていません。
 
-この修正は更新後に新しく開始する録音へ適用します。過去の時刻を推測で変更せず、保存履歴の再処理も自動で行いません。Live版の単語位置は保存された発話区間から推定しており、この修正はその区間の時計を合わせるものです。Sonioxモデル自身のtoken時刻の精度を保証する変更ではありません。[Frontendのみの反映・確認手順](operations.md#soniox-audio-timeline)。
+この修正は更新後に新しく開始する録音へ適用します。過去の時刻を推測で変更せず、保存履歴の再処理も自動で行いません。この時計の修正時点ではLiveの単語位置は発話区間から推定していました。後続の[単語時刻の保存](#word-timing-playback)により、新しいLiveは各token時刻で追従します。時刻のない旧Liveは推定表示です。Sonioxモデル自身のtoken時刻の精度を保証する変更ではありません。[時計の修正だけの反映・確認手順](operations.md#soniox-audio-timeline)。
 
 変更した13ファイル:
 

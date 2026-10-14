@@ -613,6 +613,7 @@ export function LiveMeetingRecorder({
               confidence: result.confidence,
               speakerLabel: result.speakerLabel,
               isFinal: true,
+              words: result.words,
             });
             try {
               queuePayload({
@@ -623,6 +624,7 @@ export function LiveMeetingRecorder({
                 text: result.text,
                 confidence: result.confidence,
                 speaker_label: result.speakerLabel,
+                ...(isSoniox && result.words ? { words: result.words } : {}),
               });
             } catch (error) {
               setMessage(

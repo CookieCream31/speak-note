@@ -463,6 +463,7 @@ async def realtime_websocket(
                     text=text,
                     speaker_label=speaker_label,
                     confidence=_optional_number(message, "confidence"),
+                    words=message.get("words") if expected_provider == "soniox" else None,
                 )
                 await websocket.send_json(
                     {
