@@ -307,7 +307,7 @@ sudo docker compose ps frontend
 - [docker-compose.yml](../docker-compose.yml): コンテナへ渡す変数、volume、port、起動コマンド。
 - [.env.example](../.env.example): 設定テンプレート。実値はローカル `.env` のみ。
 - [config.py](../backend/app/core/config.py): Backendの既定値と検証。
-- AI設定画面: Provider接続情報、Profile、用途、独立したLive／非同期文字起こしエンジン、Azure／Soniox認証情報。
+- AI設定画面: Provider接続情報、Profile、用途、Soniox固定のLive設定、WhisperX／Sonioxを選ぶ全体処理設定、用途別のSonioxキー。新規Azure設定のUIは廃止済みで、既存の暗号化キーを互換処理用に保持します。
 
 ルートの `.env` はComposeの展開元です。変数を追記するだけで全コンテナへ渡るわけではありません。
 新しい設定を追加するときは、必要な各サービスの `environment` も確認します。
@@ -328,7 +328,7 @@ sudo docker compose ps frontend
 | UPLOAD_CHUNK_MB | 50。ファイルアップロードの分割サイズ、設定範囲1〜90MB |
 | WORKER_POLL_INTERVAL_SECONDS | 2。Job取得間隔 |
 | REALTIME_CHUNK_MS | 15000。録音保存用Chunk間隔 |
-| REALTIME_WINDOW_MS | 30000。WhisperX Liveの音声Window |
+| REALTIME_WINDOW_MS | 30000。旧WhisperX Live Jobの音声Window。Sonioxの認識区切りには使わない |
 | REALTIME_MAX_CHUNK_MB | 64。録音WebSocketのChunk受付上限 |
 | REALTIME_RESUME_TIMEOUT_SECONDS | 600。切断された録音を再開待ちにしておく秒数。最後にデータを受信してからこの時間を過ぎると `live-worker` が受信済みデータで確定する。ブラウザの再接続時間（5分）より長くする |
 | REALTIME_ANALYSIS_INTERVAL_MS | 30000。Live AI解析を予約する会議時間間隔（処理完了時間の保証ではない） |
@@ -339,9 +339,9 @@ sudo docker compose ps frontend
 | WHISPERX_MODEL / WHISPERX_LANGUAGE | large-v3 / ja |
 | WHISPERX_TIMEOUT_SECONDS | 7200 |
 | WHISPERX_MAX_ATTEMPTS / WHISPERX_RETRY_DELAY_SECONDS | 3 / 1。再試行上限・基準待機秒 |
-| AZURE_SPEECH_TIMEOUT_SECONDS | 60。BackendのAzure HTTP Client用 |
-| AZURE_SPEECH_MAX_ATTEMPTS / AZURE_SPEECH_RETRY_DELAY_SECONDS | 3 / 1。BackendのAzure HTTP Client用 |
-| MASTER_ENCRYPTION_KEY | Gemini・Azure API Keyを暗号化するFernet key。復号にも同じ値が必要 |
+| AZURE_SPEECH_TIMEOUT_SECONDS | 60。旧Azure Session／JobのBackend HTTP Client用 |
+| AZURE_SPEECH_MAX_ATTEMPTS / AZURE_SPEECH_RETRY_DELAY_SECONDS | 3 / 1。旧AzureのBackend HTTP Client用 |
+| MASTER_ENCRYPTION_KEY | Gemini・Soniox・旧Azure API Keyを暗号化するFernet key。復号にも同じ値が必要 |
 | LLM_TIMEOUT_SECONDS | 1800。通常AI処理のAPI timeout |
 | OLLAMA_NUM_CTX | 65536。Ollamaのcontext window |
 | OLLAMA_ALLOWED_HOSTS | host.docker.internal,localhost,127.0.0.1。許可するPrivate接続先、scheme/portなし |
@@ -452,13 +452,14 @@ curl --fail http://localhost:8001/api/v1/health
 | WhisperX / Ollamaへ接続できない | コンテナのlocalhostを指定していないか、host.docker.internalから到達できるか、許可host・認証・外部サービス状態 |
 | Geminiで404等 | 選択モデルの提供状況・利用権限・モデルIDを確認。Profileのモデル取得結果と実行時エラーを確認する |
 | 画面共有・マイクを開始できない | Secure Context、権限、ブラウザAPI対応、音声共有の選択。非対応時は保存済みファイルで取り込む |
-| 録画停止後にFinalがない | 画面共有・マイク録音はリアルタイム版を表示。「要約を再生成」の初回にFinalを作成する。画面共有は動画変換完了を待つ |
+| 録画停止後にFinalがない | 停止後はリアルタイム版を表示し、要約は保存済みLiveからも作れる。Finalは「その他」から全体文字起こしを明示して作成する。録画は動画変換完了を待つ |
 | Live文字起こしは動くがAI要約がない | 会議のAI設定、用途の無効設定、Default、Provider有効性、realtime-ai-worker |
-| すべて同じ話者 / 認識停止 | Azure Resource設定、入力音声、接続、診断イベントを確認。表示の問題と認識結果を分離する |
+| すべて同じ話者 / 認識停止 | Soniox接続・会議言語・入力音声を確認。表示と認識結果を分離する。旧Azure SessionではResource設定と診断イベントも確認 |
+| Live解析がテンプレート追加値で失敗 | `dict.model_validate`の既知問題。[再現条件と未修正事項](function-audit-20261014.md)を確認。文字起こしエンジンの障害と混同しない |
 
-### Azure診断
+### 旧Azure Sessionの診断（互換機能）
 
-録音カードの「文字起こしの診断情報」→「診断情報を保存」からJSONを取得できます。
+旧Azureの認識イベントがある場合、録音カードの「文字起こしの診断情報」→「診断情報を保存」からJSONを取得できます。新しいSoniox録音ではこのAzure診断は使いません。
 直近最大300件で、接続世代・時刻・Azure話者ID・表示話者番号・文字数などを含みます。
 本文・音声・API Key・Tokenは含めませんが、共有前には内容を確認してください。
 ブラウザ内の情報なので、再読み込み前に保存します。
@@ -520,7 +521,7 @@ Backend・Worker・他サービス・Docker Volumeは操作しません。別環
 <a id="live-worker"></a>
 ## Live文字起こし専用Workerの反映
 
-録音中のLive文字起こし（`transcribe_live` Job）は `live-worker` が担当します。通常の `worker` はこのJobをclaimせず、再起動時のrecover対象にもしません。DB Migration・環境変数の追加はありません。`live-worker` は `worker` と同じWhisperX・Azure・storageの設定を使います。
+現行の新しいLive認識はSonioxのブラウザWebSocketです。`live-worker`は旧`transcribe_live` Jobを担当するほか、Sonioxでも切断された録音の再開期限を確認し、受信済みデータを保存・終了処理するため必要です。通常の`worker`は旧Live Jobをclaimせず、recover対象にもしません。以下はLive専用Worker追加時の反映手順で、WhisperX・Azureの設定は旧Session／Jobの互換性用に保持します。[整理時の注意](function-audit-20261014.md)。
 
 録音・録画を終え、実行中のLive文字起こしJobがないことを確認してから反映します。
 

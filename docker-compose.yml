@@ -94,7 +94,7 @@ services:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
-  # Live文字起こし専用。長いFinal文字起こしやAI解析の後ろで待たないよう分離する。
+  # 切断された録音の保存・終了処理と旧Live文字起こしJob用。Soniox固定でも必要。
   # 同じ録音の区間を順番に保存するため、1台だけで動かす。
   live-worker:
     build:

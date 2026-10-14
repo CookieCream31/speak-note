@@ -5,6 +5,7 @@
 ## 作業前の確認
 
 現行のリアルタイム認識はSonioxのみ、アップロード・録音終了後の全体処理はWhisperX／Sonioxです。[現行構成と検証・Migration 0031](soniox-realtime-only.md)を確認してください。過去のWhisperX／Azure Liveの節は互換コード・履歴の実装記録です。
+最新の[機能・設定の整合性確認](function-audit-20261014.md)には、全テスト成功でも再現したRealtimeテンプレート保存の不具合と、未使用の設定・整理対象を記録しています。廃止前には旧Session／Jobの処理経路と録音保存のmaintenanceを確認します。
 
 1. [AGENTS.md](../AGENTS.md) → [DESIGN.md](../DESIGN.md)の対象節 → 対象コード → 既存テストの順に読む。
 2. 依頼の範囲と既存の変更を確認する。Gitがある環境では `git status --short` を確認し、他者の変更を戻さない。

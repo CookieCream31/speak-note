@@ -4,7 +4,7 @@
 確定版の文字起こし・話者分離にはWhisperXまたはSoniox非同期API、要約・質問回答にはOllama / Geminiを使用します。
 録音中のリアルタイム文字起こしはSonioxを使用します。ファイルアップロード・録音終了後の全体文字起こしはWhisperXまたはSonioxから選べます。
 
-最終照合: **2026-10-14**（再生設定のクリック修正、音声の重複状態表示の削除とチャプター表示の比率修正、録画中のコンパクトな共有プレビューと全画面幅のアイコン操作、リアルタイム認識をSonioxに統一、アップロード・録音終了後はWhisperX／Sonioxを独立選択、終了後の同じ話者番号の名前を全体へ反映、再生UI・言語初期値・保存済み原文からの要約、現行Migration 0031、既存の会議・録音・AI・質問・翻訳・Git運用・新規環境の導入手順を照合）。この文書は現在のソースコードとCompose設定を説明します。機能ごとの検証と過去の反映ログは関連ガイドへ記録しています。
+最終照合: **2026-10-14**（[機能・設定の整合性確認](docs/function-audit-20261014.md)、Soniox固定後の旧説明・Workerの役割・生成設定の制約を訂正。再生設定、録音UI、言語、保存済み原文からの要約、話者名、現行Migration 0031、Git運用・新規環境の導入手順を照合）。この文書は現在のソースコードとCompose設定を説明します。機能ごとの検証と過去の反映ログは関連ガイドへ記録しています。
 外部APIの実接続、認識精度、すべての端末での動作を保証するものではありません。
 
 今後の機能追加・修正では毎回、実装とこのREADMEを照合し、操作・構成・設定・制約などの説明に影響する変更を同じ作業で反映します。詳しい作業ルールは[AGENTS.md](AGENTS.md)と[開発ガイド](docs/development.md)を参照してください。
@@ -22,6 +22,7 @@
 | [操作ガイド](docs/usage.md) | 会議作成、AI設定、再生、Live / Finalの使い分け |
 | [議事録テンプレートガイド](docs/meeting-templates.md) | テンプレートの管理、会議ごとのsnapshot、表示 |
 | [要約再生成の実装・検証記録](docs/summary-regeneration.md) | 変更ファイル、テスト結果、未検証事項 |
+| [機能・設定の整合性確認（2026-10-14）](docs/function-audit-20261014.md) | 未修正の不具合、使われない設定、残す互換処理と整理の優先順位 |
 | [共有音声録音の実装・検証記録](docs/shared-audio.md) | 映像を保存しない録音、テスト、Migration 0025 |
 | [Soniox文字起こし](docs/soniox-transcription.md) | リアルタイム／非同期の設定、公式仕様、再試行 |
 | [会議ごとの文字起こし言語](docs/meeting-transcription-languages.md) | 自動判定・言語ヒント・Strict、互換性、Migration 0027 |
@@ -78,7 +79,7 @@ AI設定の「リアルタイム文字起こし」にSonioxのキー・モデル
 プレイヤー内の操作ボタンをクリックした後はフォーカスを解除し、Spaceを再生・一時停止に使えます。Tab・Enterによるボタン操作ではフォーカスを維持します。
 全画面切替後にボタンへフォーカスが戻ってもSpaceは再生・一時停止を優先します。設定メニュー内は選択操作を優先します。
 
-Phase 1〜6の機能に加え、マイク録音、Azureストリーミング、モバイル向け表示などが追加されています。
+Phase 1〜6の機能に加え、マイク録音、Sonioxストリーミング、モバイル向け表示などが追加されています。旧Azure処理は過去Session／Jobの互換性のため保持しています。
 「Phase 6実装済み」だけを根拠に、設計書のすべてが実装・実機検証済みとは判断しないでください。
 
 ### プロジェクトと共通プロフィール
@@ -95,12 +96,13 @@ Phase 1〜6の機能に加え、マイク録音、Azureストリーミング、�
 | --- | --- | --- |
 | 音声ファイル | なし | 選択した非同期エンジンでFinalを自動作成 |
 | 動画ファイル | なし | FFmpeg変換 → 選択した非同期エンジンでFinalを自動作成 |
-| マイク録音 | 選択したLive認識エンジン | リアルタイム版を保存・表示。要約は保存済み文字起こしから生成。Final作成は詳細操作 |
-| 画面共有録画 | 選択したLive認識エンジン | 停止後は動画変換とリアルタイム版の表示。要約は保存済み文字起こしから生成。Final作成は詳細操作 |
+| マイク録音 | Soniox | リアルタイム版を保存・表示。要約は保存済み文字起こしから生成。Final作成は詳細操作 |
+| 画面共有録画・共有音声のみ | Soniox | 録画は動画変換、音声のみは録音保存。要約は保存済み文字起こしから生成。Final作成は詳細操作 |
 
 会議のAI利用の有無・プロファイル・要約形式・背景は、取り込み方法によらず会議作成画面で選べます（画面共有・マイク録音ではリアルタイム解析と「要約を再生成」の初期値に使用）。Final完了後、会議のAIが有効で利用可能なプロファイルがあればAI解析Jobを作成します。
 Liveの発話確定は、会議全体のFinal作成とは別です。Liveの話者番号を永久的な人物IDとみなしません。
 会議テンプレートはAI Profileとは別に管理します。会議と解析Versionは選択時の定義をsnapshotとして保持するため、後日のテンプレート編集は過去の表示を変えません。[テンプレートの仕様と操作](docs/meeting-templates.md)。
+会議作成には従来の「要約形式」も残っていますが、テンプレートを使う通常生成では反映されません。テンプレート未使用会議の互換設定です。手動AI取り込みでは両方の指示を含む不整合が残っています。[整理候補・未修正事項](docs/function-audit-20261014.md)。
 
 ## 構成
 
@@ -112,7 +114,7 @@ Dockerfileだけで判断せず、[docker-compose.yml](docker-compose.yml)のcom
 | frontend | Next.js / React / TypeScript | 3000 |
 | backend | FastAPI / SQLAlchemy、API・WebSocket、起動時Migration | 8001 |
 | worker | 動画変換、WhisperX / Soniox非同期文字起こし、確定議事録、質問回答 | 公開なし |
-| live-worker | 録音中のLive文字起こし（WhisperX / Azure短時間音声）専用。1台で動かす | 公開なし |
+| live-worker | 切断された録音の保存・終了処理と、旧Live文字起こしJob。Soniox固定でも必要。1台で動かす | 公開なし |
 | realtime-ai-worker | Live文字起こしを使うAI解析 | 公開なし |
 | answer-worker | 会議中の回答支援専用の生成Job | 公開なし |
 | postgres | PostgreSQL 17、Jobと会議データ | 公開なし |
@@ -130,7 +132,7 @@ WhisperX（ホスト8000）とOllama（ホスト11434）は既存の別サービ
 ### 1. 前提とSSHでclone
 
 - UbuntuにGit、Python 3、curl、OpenSSH client、[Docker Engine](https://docs.docker.com/engine/install/ubuntu/)と[Docker Composeプラグイン](https://docs.docker.com/compose/install/linux/)を用意します。Dockerはリンク先の公式手順で導入してください。
-- WhisperXを使う場合は、このリポジトリに含まれないWhisperX API ServerとAPI Keyが必要です。既定の接続先はホストの8000番です。Sonioxを使う場合はSonioxのアカウント・残高・用途に必要な権限を持つAPI KeyをAI設定で保存します。AI解析には別途Ollama（既定はホストの11434番）かGemini API Keyを用意します。Azure LiveにはSpeech Resource、リージョン、API Keyが必要です。[Sonioxの導入手順](docs/soniox-transcription.md)も参照してください。
+- 全体文字起こしにWhisperXを使う場合は、このリポジトリに含まれないWhisperX API ServerとAPI Keyが必要です。既定の接続先はホストの8000番です。リアルタイム認識にはSonioxのアカウント・残高・用途に必要な権限を持つAPI KeyをAI設定で保存します。AI解析には別途Ollama（既定はホストの11434番）かGemini API Keyを用意します。新しい環境ではAzure設定は不要です。[Sonioxの導入手順](docs/soniox-transcription.md)も参照してください。
 - GitHubの `CookieCream31/speak-note` へのSSH読み取り権限が必要です。新しいホストでは新しい鍵を作り、**公開鍵だけ**をリポジトリの **Settings → Deploy keys** に登録します。cloneだけなら読み取り権限、以後このホストからpushするなら **Allow write access** を有効にします。既存の鍵を上書きせず、必要ならファイル名を変えてください。[GitHubのDeploy key手順](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys)。
 
 ```bash
@@ -247,7 +249,8 @@ DB・環境変数の変更はありません。リデザイン第2段階でFront
 
 - アプリ内のログイン・利用者ごとの権限分離は未実装です。インターネットへ無認証で公開しないでください。Cloudflare利用時もAccess設定と、迂回できる公開ポートがないことを確認します。
 - iOS / iPadOSを含む画面共有は、実行時のブラウザAPI対応判定に依存します。非対応時は端末の画面収録ファイルをアップロードする案内です。ネイティブ画面共有の実装はありません。
-- Azureの認識精度・話者分離は音源・接続・リソース設定の影響を受けます。モックテストの成功だけで実録音の品質を保証しません。
+- Soniox／WhisperXの認識精度・話者分離は音源・接続・設定の影響を受けます。モックテストの成功だけで実録音の品質を保証しません。
+- リアルタイム解析でテンプレートの追加項目が返ると、結果保存時に`dict.model_validate`で失敗する既知問題を確認しました。追加値が空の場合のテスト成功だけでは正常とは判断できません。調査では機能を変更しておらず、修正が必要です。[再現条件と優先順位](docs/function-audit-20261014.md)。
 - 「質問候補」「チャプター」の用途別Profileは保存UI/APIがありますが、現在の一括議事録生成では個別には参照されません。確定議事録と同じProfileで生成します。会議への質問回答も確定議事録側のProfile解決を使用します。
 - `generate_thumbnails` はJob種別にありますが、Workerの処理分岐は未実装です。
 - 運用データは `storage/`、PostgreSQL Volume、暗号化キーを含む設定に分かれます。Volume削除は初期化ではなくデータ消失です。
@@ -269,7 +272,7 @@ DB・環境変数の変更はありません。リデザイン第2段階でFront
 
 ### Sonioxのリアルタイム・非同期文字起こし
 
-AI設定で「リアルタイム文字起こし」と「非同期・確定版の文字起こし」のエンジン・モデル・API Keyを別々に保存します。文字起こし言語は会議ごとに選択します。初期値は両方WhisperXで、既存設定を自動変更しません。Sonioxの既定モデルはリアルタイムが`stt-rt-v5`、非同期が`stt-async-v5`です。API Keyを入力し「モデル一覧を取得」を押すと、その用途に対応するモデルを選択できます。保存済みキーでも取得でき、取得だけではキー・設定を保存しません。選択後に「設定を保存」と接続テストを行います。両方でSonioxを使う場合はそれぞれの欄にキーを保存します。同じキーを入力しても構いません。録音中の音声と非同期処理の保存音声はSonioxへ送信され、料金が発生します。
+AI設定の「リアルタイム文字起こし」はSoniox固定です。「アップロード・録音終了後の文字起こし」はWhisperX／Sonioxを選べ、既定はWhisperXです。モデル・API Keyは用途ごとに保存し、文字起こし言語は会議ごとに選択します。Migration 0031はLiveの既存providerをSonioxへ変更し、キー・履歴・非同期設定を保持します。Sonioxの既定モデルはリアルタイムが`stt-rt-v5`、非同期が`stt-async-v5`です。API Keyを入力し「モデル一覧を取得」を押すと、その用途に対応するモデルを選択できます。保存済みキーでも取得でき、取得だけではキー・設定を保存しません。選択後に「設定を保存」と接続テストを行います。両方でSonioxを使う場合はそれぞれの欄にキーを保存します。同じキーを入力しても構いません。録音中の音声と、Sonioxを選んだ非同期処理の保存音声はSonioxへ送信され、料金が発生します。
 
 両用途を同じキーで使う場合はFull accessをOFFにし、Speech-to-text, real-time／Model listing／Temporary API keysをAccess、Speech-to-text, async／FilesをWrite、その他をNo Accessにします。WriteにはReadが含まれます。用途別の最小権限は[Sonioxガイド](docs/soniox-transcription.md#モデル一覧とapiキーの権限)を参照してください。権限変更の反映には数分かかる場合があります。
 
@@ -285,7 +288,7 @@ Language hintsは認識のヒントで、Sonioxでは他の言語も認識しま
 
 この追加にはMigration `20261012_0027`が必要です。利用者の提示ログで運用DBの`20261012_0027 (head)`、BackendのHealthy、4つのWorkerの起動を確認しました。言語UI変更後のログでは、再起動後のFrontendの`Up 5 seconds`も確認しています。新UIの画面表示・実APIでの音声認識は未確認です。[反映記録](docs/meeting-transcription-languages.md#deployment-confirmation)、[反映手順](docs/operations.md#meeting-languages)、[操作・検証・制約](docs/meeting-transcription-languages.md)を参照してください。
 
-検索一覧・タグの表示改善自体にはDB変更はありません。最新コードは下記のリアルタイム翻訳も含むため、今回は[Migration 0029までの反映手順](docs/operations.md#realtime-translation)を使用してください。
+検索一覧・タグの表示改善自体にはDB変更はありません。最新コードの反映は[Migration 0031までの手順](docs/operations.md#soniox-realtime-only)を使用してください。過去の0027〜0029の反映ログは、その時点の記録です。
 
 ### Sonioxのリアルタイム翻訳
 
