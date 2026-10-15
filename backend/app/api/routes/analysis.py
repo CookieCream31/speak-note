@@ -40,7 +40,12 @@ from app.services.analysis import (
     save_manual_analysis,
     validate_manual_response,
 )
-from app.services.analysis.regeneration import regenerate_summary
+from app.services.analysis.processor import validate_analysis_transcript
+from app.services.analysis.regeneration import (
+    ensure_capture_stopped,
+    lock_meeting,
+    regenerate_summary,
+)
 
 router = APIRouter(prefix="/meetings", tags=["analysis"])
 
@@ -208,6 +213,7 @@ def update_analysis_item(
     meeting: MeetingDep,
     session: DbSession,
 ) -> AnalysisItem:
+    meeting = lock_meeting(session, meeting)
     item = session.scalar(
         select(AnalysisItem)
         .join(AnalysisVersion)
@@ -220,6 +226,20 @@ def update_analysis_item(
     )
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis item not found")
+    if item.analysis_version.status != AnalysisStatus.COMPLETED:
+        raise HTTPException(status_code=409, detail="完了した会議後の要約だけ編集できます")
+    try:
+        ensure_capture_stopped(session, meeting)
+        validate_analysis_transcript(
+            session,
+            meeting,
+            item.analysis_version.transcript_version,
+            {"reuse_saved_transcript": True},
+        )
+    except AnalysisProcessingError as exc:
+        raise HTTPException(
+            status_code=409, detail="会議の終了と原文の保存完了後に編集できます"
+        ) from exc
     fields = payload.model_dump(exclude_unset=True)
     content_changed = "content" in fields or "assignee" in fields or "deadline" in fields
     for field, value in fields.items():

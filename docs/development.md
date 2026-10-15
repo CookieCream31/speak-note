@@ -229,6 +229,10 @@ Migrationの検証は、バックアップまたは検証用DBを準備してか
 - `frontend/public/transcript-player.js` とAudioWorkletはTypeScriptの型チェック対象外。JSの変更はブラウザ確認を省略しない。
 - `frontend/public/transcript-player.js` を変更した場合は、[TranscriptRuntime](../frontend/components/transcript-player.tsx)のScript URLに付く版番号も更新し、ブラウザが旧版を再利用しないようにする。確認時はページを完全に再読み込みする。
 
+## 会議後要約の編集・質問（2026-10-16）
+
+2026-10-16の会議後要約の編集・質問では、`questions/processor.py`が`analysis_id`から原文とProfileを解決し、質問行の既存`transcript_version_id`に固定します。API・Worker・再試行と編集APIが停止・保存完了を確認します。`MeetingReviewPanel`はRealtime SnapshotのIDと会議後AnalysisVersionを区別し、原文のkindで編集を制限しません。会議詳細から質問へ選択した原文の版を渡します。関連する新規テスト、既存テストfixtureの更新理由、実行結果は[会議後要約ガイド](post-meeting-notes.md)を参照してください。
+
 ## 作業終了時の報告
 
 変更ファイル、実装内容、実行コマンド、成功・失敗した検証、未確認事項、反映手順を残してください。
@@ -266,7 +270,7 @@ sudo docker compose run --rm --no-deps --user root backend sh -c '
 
 ## 停止後のLive版の閲覧
 
-`GET /meetings/{id}/transcript?kind=live|final` と download の同じパラメータで版を指定できます。未指定はactive（高精度版）を優先し、なければ最新停止済みRealtimeSessionのcompleted Transcriptへフォールバックします。録音中Sessionはこのフォールバックで返しません。Live版をactive Finalへ昇格しないため既存の解析・会議後質問APIの境界を維持します。
+`GET /meetings/{id}/transcript?kind=live|final` と download の同じパラメータで版を指定できます。未指定はactive（高精度版）を優先し、なければ最新停止済みRealtimeSessionのcompleted Transcriptへフォールバックします。録音中Sessionはこのフォールバックで返しません。Live版をactive Finalへ昇格しません。2026-10-16から、会議後要約の編集・質問では選択した要約の保存済み原文を明示して使用します。
 
 停止済みSessionは共通会議ノートへ移行し、Snapshotを既存の読み取り専用履歴カードに変換します。全体処理の入口は以下の要約再生成へ統合しました。マイク録音・共有音声のみの録音停止のfinalized.job_idはnullで、自動TRANSCRIBE Jobは発行しません。画面共有録画のメディア変換とアップロード会議の従来処理は維持します。停止後表示だけの変更はDB変更なしでしたが、要約再生成は0023、共有音声録音は0025の適用が必要です。
 

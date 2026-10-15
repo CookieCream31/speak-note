@@ -18,7 +18,10 @@ def list_meeting_questions(
     return list(
         session.scalars(
             select(MeetingQuestion)
-            .options(selectinload(MeetingQuestion.evidence))
+            .options(
+                selectinload(MeetingQuestion.evidence),
+                selectinload(MeetingQuestion.transcript_version),
+            )
             .where(MeetingQuestion.meeting_id == meeting.id)
             .order_by(MeetingQuestion.created_at)
         )
@@ -40,6 +43,7 @@ def ask_meeting_question(
             session,
             meeting,
             payload.question,
+            analysis_id=payload.analysis_id,
         )
     except MeetingQuestionError as exc:
         session.rollback()

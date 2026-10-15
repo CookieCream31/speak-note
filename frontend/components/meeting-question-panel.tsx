@@ -11,6 +11,10 @@ interface MeetingQuestionPanelProps {
   meetingId: string;
   initialQuestions: MeetingQuestion[];
   available: boolean;
+  analysisId?: string | null;
+  transcriptVersionId?: string | null;
+  transcriptKind?: "live" | "final";
+  unavailableReason?: string;
 }
 
 async function errorMessage(response: Response): Promise<string> {
@@ -27,6 +31,10 @@ export function MeetingQuestionPanel({
   meetingId,
   initialQuestions,
   available,
+  analysisId,
+  transcriptVersionId,
+  transcriptKind = "final",
+  unavailableReason = "会議終了後の要約、または確定文字起こしが必要です",
 }: MeetingQuestionPanelProps) {
   const [questions, setQuestions] = useState(initialQuestions);
   const [questionText, setQuestionText] = useState("");
@@ -36,7 +44,10 @@ export function MeetingQuestionPanel({
   const pending = questions.some(
     (question) => question.status === "queued" || question.status === "processing",
   );
-  const latestQuestion = questions.at(-1);
+  const visibleQuestions = transcriptVersionId
+    ? questions.filter((question) => question.transcript_version_id === transcriptVersionId)
+    : questions;
+  const latestQuestion = visibleQuestions.at(-1);
   const latestQuestionState = latestQuestion
     ? [
         latestQuestion.id,
@@ -84,7 +95,7 @@ export function MeetingQuestionPanel({
       const response = await fetch(`/api/v1/meetings/${meetingId}/questions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: normalized }),
+        body: JSON.stringify({ question: normalized, ...(analysisId ? { analysis_id: analysisId } : {}) }),
       });
       if (!response.ok) throw new Error(await errorMessage(response));
       const created = await response.json() as MeetingQuestion;
@@ -98,7 +109,7 @@ export function MeetingQuestionPanel({
   }
 
   async function retryQuestion(question: MeetingQuestion) {
-    if (!question.job_id || submitting) return;
+    if (!question.job_id || submitting || pending || !available) return;
     setSubmitting(true);
     setError("");
     try {
@@ -122,18 +133,20 @@ export function MeetingQuestionPanel({
     <section className={styles.panel} aria-label="会議内容への質問">
       <header className={styles.header}>
         <h3 className={styles.visuallyHidden}>会議内容について質問</h3>
-        <span>確定文字起こしを根拠に回答します</span>
+        <span>{transcriptKind === "live"
+          ? "保存済みリアルタイム文字起こしを根拠に回答します（原文・話者は暫定）"
+          : "確定文字起こしを根拠に回答します"}</span>
       </header>
 
       <div ref={conversationRef} className={styles.conversation} aria-live="polite">
-        {questions.length === 0 && (
+        {visibleQuestions.length === 0 && (
           <div className={styles.empty}>
             <span aria-hidden="true"><Sparkles size={16} /></span>
             <strong>会議の内容を確認できます</strong>
             <p>決定理由、担当者、発言内容などを自然な文章で質問してください。</p>
           </div>
         )}
-        {questions.map((question) => (
+        {visibleQuestions.map((question) => (
           <article className={styles.exchange} key={question.id}>
             <div className={styles.userMessage}>
               <span className={styles.visuallyHidden}>あなた</span>
@@ -144,6 +157,7 @@ export function MeetingQuestionPanel({
                 <span className={styles.aiMark} aria-hidden="true"><Sparkles size={16} /></span>
                 <strong>AI回答</strong>
                 <small>· {question.model}</small>
+                {question.transcript_kind === "live" && <small>· 暫定の原文に基づく回答</small>}
               </div>
               {(question.status === "queued" || question.status === "processing") && (
                 <p className={styles.processing}>
@@ -164,7 +178,7 @@ export function MeetingQuestionPanel({
                   <p>{question.error_message ?? "回答を作成できませんでした"}</p>
                   <button
                     type="button"
-                    disabled={submitting || !question.job_id}
+                    disabled={submitting || pending || !available || !question.job_id}
                     onClick={() => void retryQuestion(question)}
                   >
                     再試行
@@ -195,7 +209,7 @@ export function MeetingQuestionPanel({
           placeholder={
             available
               ? "例：この方針に決まった理由は？"
-              : "確定文字起こしの完了後に質問できます"
+              : unavailableReason
           }
           rows={3}
           maxLength={2000}

@@ -70,7 +70,9 @@ describe("MeetingReviewPanel", () => {
       versions={[{ ...finalVersions[0], id: analysis.id, transcript_kind: "live", version: 2 }]} realtimeHistory={realtimeHistory}
       evidenceSegments={[]} playerAvailable={false} finalTranscriptAvailable={false} />);
     expect(html).toContain("リアルタイム原文からの要約（暫定） v2");
-    expect(html).toContain("リアルタイム文字起こしに基づく要約は暫定版です");
+    expect(html).toContain("要約の編集・確認・質問ができます");
+    expect(html).toContain("原文と話者は暫定のままです");
+    expect(html).not.toContain("高精度版が必要です");
     expect(html).toContain("確認済みにする");
     expect(html).toContain(">編集</button>");
     expect(html).not.toContain("確定版 v2");

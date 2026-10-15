@@ -20,8 +20,14 @@ from app.models.analysis import (
 from app.models.job import Job, JobStatus, JobType
 from app.models.media import Media, MediaKind
 from app.models.meeting import Meeting, MeetingSourceType, MeetingStatus
+from app.models.question import MeetingQuestion, MeetingQuestionStatus
 from app.models.realtime import RealtimeSession, RealtimeSessionStatus
-from app.models.transcript import TranscriptKind, TranscriptStatus, TranscriptVersion
+from app.models.transcript import (
+    TranscriptKind,
+    TranscriptSegment,
+    TranscriptStatus,
+    TranscriptVersion,
+)
 from app.services.jobs import fail_job, finish_job
 from app.services.jobs.meeting_status import AUXILIARY_JOB_TYPES
 from app.services.media import MediaStorage
@@ -403,6 +409,27 @@ def test_auxiliary_retry_does_not_mark_completed_meeting_queued(
         meeting.status = MeetingStatus.COMPLETED
         job = Job(meeting_id=meeting.id, type=job_type, status=JobStatus.FAILED)
         session.add(job)
+        session.flush()
+        if job_type == JobType.ASK_MEETING:
+            session.add(
+                TranscriptSegment(
+                    transcript_version_id=saved_meeting.transcript_id,
+                    sequence=0,
+                    start_ms=0,
+                    end_ms=1000,
+                    text="保存された発言",
+                )
+            )
+            session.add(
+                MeetingQuestion(
+                    meeting_id=meeting.id,
+                    transcript_version_id=saved_meeting.transcript_id,
+                    job_id=job.id,
+                    question="保存済み原文について",
+                    model="test",
+                    status=MeetingQuestionStatus.FAILED,
+                )
+            )
         session.commit()
         job_id = job.id
     response = client.post(f"/api/v1/jobs/{job_id}/retry")

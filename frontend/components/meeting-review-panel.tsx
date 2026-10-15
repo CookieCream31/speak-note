@@ -36,6 +36,7 @@ interface MeetingReviewPanelProps {
   evidenceSegments: EvidenceSegment[];
   playerAvailable: boolean;
   finalTranscriptAvailable?: boolean;
+  captureStopped?: boolean;
   finalTranscription?: { ready: boolean; processing: boolean; jobKey: string };
 }
 
@@ -112,6 +113,7 @@ export function MeetingReviewPanel({
   evidenceSegments,
   playerAvailable,
   finalTranscriptAvailable = true,
+  captureStopped = true,
   finalTranscription,
 }: MeetingReviewPanelProps) {
   const router = useRouter();
@@ -122,7 +124,8 @@ export function MeetingReviewPanel({
   const [busy, setBusy] = useState(false);
   const highlightRanges = useRef<Array<[number, number]>>([]);
   const highlightIndex = useRef(0);
-  const readOnly = analysis?.id === REALTIME_ANALYSIS_HISTORY_ID;
+  const realtimeSnapshot = analysis?.id === REALTIME_ANALYSIS_HISTORY_ID;
+  const readOnly = realtimeSnapshot || !captureStopped || analysis?.status !== "completed";
 
   const evidenceById = new Map(evidenceSegments.map((segment) => [segment.id, segment]));
   const highlights = analysis?.items.filter((item) => item.kind === "highlight") ?? [];
@@ -185,6 +188,7 @@ export function MeetingReviewPanel({
   }
 
   async function saveItem(item: AnalysisItem, fields: Record<string, unknown>) {
+    if (readOnly || busy) return;
     setBusy(true);
     setError("");
     try {
@@ -342,7 +346,7 @@ export function MeetingReviewPanel({
             </label>
           ) : analysis && (
             <span className={styles.versionLabel}>
-              {readOnly ? "リアルタイム解析" : `${analysis.transcript_kind === "live" ? "リアルタイム原文からの要約（暫定）" : "確定版"} v${analysis.version}`} · {analysis.model}
+              {realtimeSnapshot ? "リアルタイム解析" : `${analysis.transcript_kind === "live" ? "リアルタイム原文からの要約（暫定）" : "確定版"} v${analysis.version}`} · {analysis.model}
             </span>
           )}
           <details className={styles.moreMenu}>
@@ -363,7 +367,13 @@ export function MeetingReviewPanel({
         </p>
       )}
 
-      {analysis?.transcript_kind === "live" || !finalTranscriptAvailable ? <p className={styles.notice}>リアルタイム文字起こしに基づく要約は暫定版です。本文の編集・会議への質問には高精度版が必要です。</p> : null}
+      {realtimeSnapshot ? (
+        <p className={styles.notice}>会議中のリアルタイム要約は閲覧用です。編集・質問するには、終了後に「要約を再生成」で要約を作成してください。</p>
+      ) : analysis?.transcript_kind === "live" ? (
+        <p className={styles.notice}>{readOnly
+          ? "会議の終了・保存・要約作成の完了後に編集・質問できます。原文と話者は暫定です。"
+          : "会議終了後に保存済みの原文から作成した要約です。要約の編集・確認・質問ができます。原文と話者は暫定のままです。"}</p>
+      ) : null}
 
       {regeneration && <SummaryRegenerationButton key={regenerationKey} {...regeneration} />}
 
@@ -374,7 +384,7 @@ export function MeetingReviewPanel({
         </div>
       ) : analysis.template_snapshot ? (
         <TemplateAnalysisCards
-          cards={analysis.template_snapshot.definition[readOnly ? "realtime" : "final"]}
+          cards={analysis.template_snapshot.definition[realtimeSnapshot ? "realtime" : "final"]}
           values={(analysis.template_values ?? []) as TemplateDisplayValue[]}
           coreRows={templateCoreRows}
           onSelectEvidence={(segmentId) => {

@@ -39,7 +39,7 @@ describe("MeetingQuestionPanel", () => {
     expect(html).toContain("Enterで送信 / Shift+Enterで改行");
   });
 
-  it("disables input until a final transcript and AI profile are available", () => {
+  it("disables input until saved source and AI are available", () => {
     const html = renderToStaticMarkup(
       <MeetingQuestionPanel
         meetingId="meeting-1"
@@ -48,7 +48,7 @@ describe("MeetingQuestionPanel", () => {
       />,
     );
 
-    expect(html).toContain("確定文字起こしの完了後に質問できます");
+    expect(html).toContain("会議終了後の要約、または確定文字起こしが必要です");
     expect(html).toContain("disabled=\"\"");
   });
 });

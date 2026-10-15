@@ -7,6 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.models.meeting import utc_now
+from app.models.transcript import TranscriptKind, TranscriptVersion
 
 
 class MeetingQuestionStatus(enum.StrEnum):
@@ -18,9 +19,7 @@ class MeetingQuestionStatus(enum.StrEnum):
 
 class MeetingQuestion(Base):
     __tablename__ = "meeting_questions"
-    __table_args__ = (
-        Index("ix_meeting_questions_meeting_created", "meeting_id", "created_at"),
-    )
+    __table_args__ = (Index("ix_meeting_questions_meeting_created", "meeting_id", "created_at"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     meeting_id: Mapped[uuid.UUID] = mapped_column(
@@ -59,6 +58,11 @@ class MeetingQuestion(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    transcript_version: Mapped[TranscriptVersion] = relationship()
+
+    @property
+    def transcript_kind(self) -> TranscriptKind:
+        return self.transcript_version.kind
 
 
 class MeetingQuestionEvidence(Base):

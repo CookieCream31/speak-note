@@ -613,6 +613,22 @@ sudo docker compose ps
 ブラウザを再読み込みし、[要約再生成の操作と動作確認](usage.md#summary-regeneration)を実行します。Final作成失敗は親の文字起こしJob、要約失敗は解析Jobの「再試行」を使用します。Final保存後に予約が失敗した場合、親Jobの再試行は保存済みFinalを使い、WhisperXを再実行しません。接続先を変更した場合は現在の設定で新しい再生成を開始してください。テンプレート版の競合はダイアログを閉じてページを再読み込みし、選び直します。既存サービス・Docker Volumeは操作しません。
 
 
+<a id="post-meeting-notes"></a>
+
+## 会議後要約の編集・質問の反映（2026-10-16）
+
+API・通常Worker・Frontendに変更があります。録音・録画・保存と実行中Jobの終了後に反映してください。Migration・環境変数・依存の追加はありません。
+
+```bash
+cd /home/llm/speak-note
+git pull --ff-only
+sudo docker compose restart backend worker frontend
+sudo docker compose up -d --wait --no-deps backend
+sudo docker compose ps backend worker frontend
+```
+
+Workerはブラウザの再読み込みでは更新されません。再起動後、既存の会議後要約を開き、保存済みLive原文でも項目の編集・確認・質問ができることを確認します。録音時にAIなしだった会議も、会議後要約のProfileで質問できます。要約の再生成や高精度版の作成は不要です。会議中のRealtime Snapshotは引き続き閲覧用です。[操作・検証・制約](post-meeting-notes.md)。
+
 <a id="meeting-status"></a>
 
 ## 処理完了後の会議状態の復旧（2026-10-15）

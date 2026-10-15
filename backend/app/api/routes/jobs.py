@@ -32,6 +32,39 @@ def get_job(job_id: uuid.UUID, session: DbSession) -> Job:
 @router.post("/{job_id}/retry", response_model=JobRead)
 def retry_job(job_id: uuid.UUID, session: DbSession) -> Job:
     job = get_job_or_404(job_id, session)
+    if job.type == JobType.ASK_MEETING:
+        from app.models.transcript import TranscriptVersion
+        from app.services.analysis.regeneration import lock_meeting
+        from app.services.questions.processor import (
+            MeetingQuestionError,
+            validate_question_transcript,
+        )
+
+        meeting = session.get(Meeting, job.meeting_id)
+        question = session.scalar(select(MeetingQuestion).where(MeetingQuestion.job_id == job.id))
+        transcript = (
+            session.get(TranscriptVersion, question.transcript_version_id) if question else None
+        )
+        if meeting is None or transcript is None:
+            raise HTTPException(status_code=409, detail="質問対象の原文が見つかりません")
+        meeting = lock_meeting(session, meeting)
+        session.refresh(job)
+        try:
+            validate_question_transcript(session, meeting, transcript)
+        except MeetingQuestionError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        pending = session.scalar(
+            select(MeetingQuestion.id)
+            .where(
+                MeetingQuestion.meeting_id == meeting.id,
+                MeetingQuestion.status.in_(
+                    [MeetingQuestionStatus.QUEUED, MeetingQuestionStatus.PROCESSING]
+                ),
+            )
+            .limit(1)
+        )
+        if pending is not None:
+            raise HTTPException(status_code=409, detail="前の質問への回答完了を待ってください")
     if job.type == JobType.GENERATE_THUMBNAILS:
         from app.services.media.thumbnails import latest_thumbnail_job, saved_playback_video
 

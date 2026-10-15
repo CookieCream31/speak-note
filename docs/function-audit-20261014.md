@@ -15,7 +15,7 @@
 | 全体文字起こし作成 | 要約の「その他」から別操作 | 要約再生成と区別する |
 | 要約のモデルとテンプレート | JobとAnalysisVersionへ設定を保存 | 過去のsnapshot・Evidence・編集保護を維持 |
 | 話者名 | 保存後、同じLive版・同じ元話者番号へ反映 | 接続世代・別版・Finalの人物を推測で統合しない |
-| 会議への質問・本文編集 | Finalが必要 | Live要約ができることと区別する |
+| 会議への質問・本文編集 | 調査時はFinalが必要 | [2026-10-16に会議後要約の編集・質問をLive原文へ拡張](post-meeting-notes.md)。文字起こし本文の修正はFinalが必要 |
 | live-worker | 旧Live Jobと、切断された録音の保存・終了処理 | Sonioxだけでも録音の終了処理に必要 |
 
 根拠: [文字起こし設定](../backend/app/services/transcription/settings.py)、[再生成予約](../backend/app/services/analysis/regeneration.py)、[Live Worker](../backend/app/workers/live_transcription.py)、[話者名](../backend/app/services/transcription/live_speaker_names.py)。

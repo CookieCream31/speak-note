@@ -4,6 +4,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.question import MeetingQuestionStatus
+from app.models.transcript import TranscriptKind
 
 
 class MeetingAnswerOutput(BaseModel):
@@ -22,6 +23,7 @@ class MeetingAnswerOutput(BaseModel):
 
 class MeetingQuestionCreate(BaseModel):
     question: str = Field(min_length=1, max_length=2_000)
+    analysis_id: uuid.UUID | None = None
 
 
 class MeetingQuestionEvidenceRead(BaseModel):
@@ -34,6 +36,7 @@ class MeetingQuestionRead(BaseModel):
     id: uuid.UUID
     meeting_id: uuid.UUID
     transcript_version_id: uuid.UUID
+    transcript_kind: TranscriptKind
     provider_id: uuid.UUID | None
     profile_id: uuid.UUID | None
     job_id: uuid.UUID | None

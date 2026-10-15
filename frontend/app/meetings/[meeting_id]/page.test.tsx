@@ -6,6 +6,7 @@ import MeetingDetailPage from "./page";
 import { AppStatusPage } from "@/components/app-status-page";
 import { SummaryRegenerationButton } from "@/components/final-transcript-button";
 import { MeetingWorkspace } from "@/components/meeting-workspace";
+import { MeetingQuestionPanel } from "@/components/meeting-question-panel";
 import { LiveTranscriptStream } from "@/components/realtime-analysis-panel";
 import type { TranscriptWord } from "@/lib/api";
 
@@ -31,6 +32,8 @@ let sharedAudio = false;
 let translationsEnabled = false;
 let liveReady = true;
 let liveStatus = "completed";
+let aiDisabled = false;
+let questionProfileReady = false;
 function header(node: ReactNode): ReactElement | undefined {
   if (Array.isArray(node)) {
     for (const child of node) { const found = header(child); if (found) return found; }
@@ -88,13 +91,16 @@ beforeEach(() => {
   liveStatus = "completed";
   finalAnalysis = null;
   sharedAudio = false;
+  aiDisabled = false;
+  questionProfileReady = false;
   vi.stubGlobal("fetch", vi.fn(async (url: string) => {
     const path = new URL(url).pathname + new URL(url).search;
     let data: unknown = [];
     let status = 200;
     if (path === "/api/v1/meetings/m") data = { id: "m", title: "Test", source_type: sharedAudio ? "shared_audio" : "audio_recording",
       status: "analyzing", created_at: "2026-09-27T00:00:00Z", ai_profile_id: null,
-      template_snapshot: null, ai_disabled: false, tags: [], duration_ms: 1000 };
+      template_snapshot: null, ai_disabled: aiDisabled, tags: [], duration_ms: 1000 };
+    else if (path === "/api/v1/ai/profiles") data = questionProfileReady ? [{ id: "selected-profile", name: "選択したAI", model: "model", is_default: true }] : [];
     else if (path === "/api/v1/meetings/m/transcript") { data = sharedAudio ? (liveReady ? liveTranscript : null) : finalTranscript; status = data ? 200 : 404; }
     else if (path.endsWith("/media") && sharedAudio) data = [{ id: "audio", kind: "original_audio", mime_type: "audio/webm" }];
     else if (path.endsWith("/transcript?kind=live")) { data = liveReady ? liveTranscript : null; status = data ? 200 : 404; }
@@ -113,6 +119,42 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("meeting summary regeneration presentation", () => {
+  it("enables questions for a post-meeting Live summary recorded with AI disabled", async () => {
+    sharedAudio = true; aiDisabled = true; questionProfileReady = true;
+    finalAnalysis = { id: "a", transcript_version_id: "live", transcript_kind: "live", status: "completed", profile_id: "selected-profile", items: [] };
+    const element = await MeetingDetailPage({ params: Promise.resolve({ meeting_id: "m" }), searchParams: Promise.resolve({}) });
+    const panel = workspace(element)!.props.questions as ReactElement<ComponentProps<typeof MeetingQuestionPanel>>;
+    expect(panel.type).toBe(MeetingQuestionPanel);
+    expect(panel.props.available).toBe(true);
+    expect(panel.props.analysisId).toBe("a");
+    expect(panel.props.transcriptVersionId).toBe("live");
+    expect(panel.props.transcriptKind).toBe("live");
+  });
+  it("keeps a selected Live summary's question source after Final exists", async () => {
+    questionProfileReady = true;
+    finalAnalysis = { id: "a", transcript_version_id: "live", transcript_kind: "live", status: "completed", profile_id: "selected-profile", items: [] };
+    const element = await MeetingDetailPage({ params: Promise.resolve({ meeting_id: "m" }), searchParams: Promise.resolve({ analysis_id: "a" }) });
+    const panel = workspace(element)!.props.questions as ReactElement<ComponentProps<typeof MeetingQuestionPanel>>;
+    expect(panel.props.available).toBe(true);
+    expect(panel.props.transcriptVersionId).toBe("live");
+    expect(panel.props.analysisId).toBe("a");
+  });
+  it("keeps recording-time snapshot questions unavailable even when Final exists", async () => {
+    questionProfileReady = true;
+    const element = await MeetingDetailPage({ params: Promise.resolve({ meeting_id: "m" }), searchParams: Promise.resolve({ analysis_id: "realtime" }) });
+    const panel = workspace(element)!.props.questions as ReactElement<ComponentProps<typeof MeetingQuestionPanel>>;
+    expect(panel.props.available).toBe(false);
+    expect(panel.props.analysisId).toBeUndefined();
+    expect(panel.props.unavailableReason).toContain("会議中の要約は閲覧用");
+  });
+  it("disables edits and questions until capture and saving finish", async () => {
+    sharedAudio = true; liveStatus = "finalizing"; questionProfileReady = true;
+    finalAnalysis = { id: "a", transcript_version_id: "live", transcript_kind: "live", status: "completed", profile_id: "selected-profile", items: [] };
+    const element = await MeetingDetailPage({ params: Promise.resolve({ meeting_id: "m" }), searchParams: Promise.resolve({ analysis_id: "a" }) });
+    const panel = workspace(element)!.props.questions as ReactElement<ComponentProps<typeof MeetingQuestionPanel>>;
+    expect(panel.props.available).toBe(false);
+    expect(review(element)!.props.captureStopped).toBe(false);
+  });
   it.each(["completed", "recording", "finalizing"])("offers settings and new meeting while preserving the %s capture page", async (status) => {
     sharedAudio = true;
     liveStatus = status;

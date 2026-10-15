@@ -146,6 +146,7 @@ export interface MeetingQuestion {
   id: string;
   meeting_id: string;
   transcript_version_id: string;
+  transcript_kind?: "live" | "final";
   provider_id: string | null;
   profile_id: string | null;
   job_id: string | null;

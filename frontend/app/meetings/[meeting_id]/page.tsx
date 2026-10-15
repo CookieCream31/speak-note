@@ -280,6 +280,20 @@ export default async function MeetingDetailPage({
     );
   }
   const displayedAnalysis = useRealtime && archivedLiveMeeting ? realtimeHistory : analysis;
+  const captureStopped = meeting.status !== "recording"
+    && liveSession?.status !== "recording" && liveSession?.status !== "finalizing"
+    && (!isRealtimeCapture || archivedLiveMeeting || liveSession?.status === "failed");
+  const postMeetingAnalysis = displayedAnalysis?.id !== REALTIME_ANALYSIS_HISTORY_ID
+    && displayedAnalysis?.status === "completed" ? displayedAnalysis : null;
+  const questionTranscript = postMeetingAnalysis
+    ? (transcript?.id === postMeetingAnalysis.transcript_version_id ? transcript : null)
+    : displayedAnalysis?.id === REALTIME_ANALYSIS_HISTORY_ID ? null : finalTranscript;
+  const questionAIAvailable = postMeetingAnalysis?.profile_id
+    ? aiProfiles.some((profile) => profile.id === postMeetingAnalysis.profile_id)
+    : !meeting.ai_disabled && aiProfiles.length > 0;
+  const questionsAvailable = captureStopped && questionAIAvailable
+    && questionTranscript?.status === "completed" && questionTranscript.segments.length > 0
+    && (questionTranscript.kind === "final" || archivedLiveMeeting);
 
   const originalAudio = media.find((item) => item.kind === "original_audio");
   const originalVideo = media.find((item) => item.kind === "original_video");
@@ -555,13 +569,23 @@ export default async function MeetingDetailPage({
               evidenceSegments={evidenceSegments}
               playerAvailable={Boolean(mediaUrl)}
               finalTranscriptAvailable={Boolean(finalTranscript)}
+              captureStopped={captureStopped && (displayedAnalysis?.transcript_kind !== "live" || archivedLiveMeeting)}
             />
           )}
           questions={(
             <MeetingQuestionPanel
+              key={`${postMeetingAnalysis?.id}:${questionTranscript?.id}:${captureStopped}`}
               meetingId={meeting.id}
               initialQuestions={questions}
-              available={Boolean(finalTranscript) && !meeting.ai_disabled && aiProfiles.length > 0}
+              available={Boolean(questionsAvailable)}
+              analysisId={postMeetingAnalysis?.id}
+              transcriptVersionId={questionTranscript?.id}
+              transcriptKind={questionTranscript?.kind}
+              unavailableReason={displayedAnalysis?.id === REALTIME_ANALYSIS_HISTORY_ID
+                ? "会議中の要約は閲覧用です。終了後に要約を再生成してください。"
+                : !captureStopped ? "会議の終了と原文の保存完了後に質問できます"
+                  : !questionAIAvailable ? "質問に使うAIを設定してください"
+                    : "会議終了後の要約、または確定文字起こしが必要です"}
             />
           )}
           transcriptHeader={(
