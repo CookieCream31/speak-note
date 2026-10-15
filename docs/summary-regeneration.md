@@ -1,8 +1,10 @@
 # 要約再生成の実装・検証記録
 
-最終照合: 2026-10-13（保存済みLiveからの暫定要約・原文の版固定・独立した高精度版作成）。[README](../README.md) · [操作手順](usage.md#summary-regeneration) · [Docker反映](operations.md#saved-transcript-summary)
+最終照合: 2026-10-16（全文編集の履歴保持、保存済みLiveからの暫定要約・原文の版固定・独立した高精度版作成）。[README](../README.md) · [操作手順](usage.md#summary-regeneration) · [Docker反映](operations.md#summary-document)
 
 後半のテスト件数は初回実装時点の記録です。最新の保存済み原文の再利用は[今回の実装・検証](#saved-transcript-summary)を参照してください。
+
+2026-10-16から会議後要約を[全文編集](summary-document.md)できます。自由編集した本文は元のAnalysisVersionへ保存します。再生成は新しい本文を作り、以前の本文を上書き・移動しません。以前の要約を履歴で開くと追記・メモも再表示できます。従来の項目編集・確認済み情報とEvidenceも保持します。全文編集の反映にはMigration 0032が必要です。
 
 ## 実装した動作
 

@@ -13,6 +13,7 @@ const analysis: AnalysisVersion = {
   provider_id: "provider", profile_id: "profile", job_id: "analysis-job", version: 1, model: "model",
   temperature: 0, prompt_version: "test", status: "completed", error_message: null,
   created_at: "", completed_at: "", template_values: [],
+  document_text: "全体要約\n元の要約", document_content: null, document_revision: 0,
   template_snapshot: { template_id: "template", revision: 1, name: "標準", definition: { realtime: [], final: [
     { id: "summary", title: "全体要約", visible: true, show_when_empty: true, core_kind: "summary", fields: [] },
   ] } },
@@ -61,27 +62,26 @@ afterEach(() => {
 });
 
 describe("post-meeting Live summary", () => {
-  it("edits and confirms a templated summary without a Final transcript", async () => {
+  it("edits the whole templated summary without a Final and preserves confirmed source items", async () => {
     fetchMock.mockImplementation(async (_url, init) => {
       const patch = JSON.parse(String(init?.body));
-      return response({ ...analysis.items[0], content: "修正した要約", state: patch.state ?? "edited" });
+      return response({ content: patch.content, revision: 1, updated_at: "2026-10-16T00:00:00Z" });
     });
-    await renderReview();
-    expect(host.textContent).toContain("要約の編集・確認・質問ができます");
-    await act(async () => { [...host.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "編集")!.click(); });
-    await input("修正した要約"); await submit();
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/meetings/meeting/analyses/saved-summary/items/summary-item");
-    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body)).content).toBe("修正した要約");
-    expect(host.querySelector('[data-state="edited"]')).not.toBeNull();
-    await act(async () => { [...host.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "確認済みにする")!.click(); });
+    await renderReview({ ...analysis, items: [{ ...analysis.items[0], state: "confirmed" }] });
+    expect(host.textContent).toContain("要約の全文編集・質問ができます");
+    await act(async () => { [...host.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "全文を編集")!.click(); });
+    await input("修正した要約\n\n追記のメモ"); await submit();
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/meetings/meeting/analyses/saved-summary/document");
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ content: "修正した要約\n\n追記のメモ", expected_revision: 0 });
     expect(host.querySelector('[data-state="confirmed"]')).not.toBeNull();
     expect(host.textContent).toContain("修正した要約");
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(host.textContent).toContain("編集済みの本文");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
   it.each(["realtime", "processing", "recording"])("keeps %s notes read-only", async (mode) => {
     await renderReview({ ...analysis, id: mode === "realtime" ? "realtime" : analysis.id,
       status: mode === "processing" ? "processing" : "completed" }, mode !== "recording");
-    expect([...host.querySelectorAll("button")].some((button) => button.textContent === "編集")).toBe(false);
+    expect([...host.querySelectorAll("button")].some((button) => button.textContent === "全文を編集")).toBe(false);
     expect(host.textContent).not.toContain("確認済みにする");
     expect(host.textContent).not.toContain("高精度版が必要");
     expect(fetchMock).not.toHaveBeenCalled();

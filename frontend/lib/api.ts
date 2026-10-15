@@ -297,6 +297,10 @@ export interface AnalysisVersion {
   items: AnalysisItem[];
   template_snapshot?: MeetingTemplateSnapshot | null;
   template_values?: AnalysisTemplateValue[];
+  document_text?: string;
+  document_content?: string | null;
+  document_revision?: number;
+  document_updated_at?: string | null;
 }
 
 export interface AnalysisVersionSummary {

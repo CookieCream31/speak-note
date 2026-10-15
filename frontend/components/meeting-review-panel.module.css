@@ -19,6 +19,9 @@
 .moreMenu > div > div:hover { background: var(--surface-hover); }
 
 .notice { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
+.generatedReference { min-width: 0; border-top: 1px solid var(--line-soft); padding-top: 14px; }
+.generatedReference > summary { width: fit-content; padding: 6px 0; color: var(--muted); font-size: 13px; cursor: pointer; }
+.generatedReference[open] > summary { margin-bottom: 16px; }
 .message, .error { margin: 0; padding: 10px 12px; border-radius: 8px; font-size: 13px; line-height: 1.5; }
 .message { color: var(--success); background: var(--success-soft); }
 .error { color: var(--danger); background: var(--danger-soft); }
@@ -46,23 +49,6 @@
 .analysisItem:hover .timeChip, .analysisItem:focus-within .timeChip { background: var(--surface); }
 .timeChip:hover { color: var(--on-primary); background: var(--blue); }
 .analysisItem:hover .timeChip:hover { color: var(--on-primary); background: var(--blue); }
-/* Edit / confirm appear on hover or keyboard focus; always shown on touch screens. */
-.itemActions { display: inline-flex; gap: 4px; margin-left: auto; opacity: 0; transition: opacity .12s ease; }
-.analysisItem:hover .itemActions, .analysisItem:focus-within .itemActions { opacity: 1; }
-@media (hover: none) { .itemActions { opacity: 1; } }
-.itemActions button { min-height: 26px; padding: 0 8px; color: var(--text-secondary); background: transparent; border: 0; border-radius: 6px; cursor: pointer; font-size: 12px; }
-.itemActions button:hover { color: var(--ink); }
-.itemActions button + button { color: var(--ink); background: var(--surface); border: 1px solid var(--line); }
-.itemActions button:disabled { cursor: wait; opacity: .55; }
-
-.analysisItem form { display: grid; gap: 8px; }
-.analysisItem textarea, .analysisItem input { width: 100%; min-height: 38px; padding: 8px 10px; color: var(--ink); background: var(--surface); border: 1px solid var(--control-border); border-radius: 8px; font: inherit; font-size: 14px; }
-.analysisItem textarea { resize: vertical; line-height: 1.65; }
-.actionFields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.editActions { display: flex; gap: 8px; }
-.editActions button { min-height: 32px; padding: 0 14px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; }
-.editActions button:last-child { color: var(--ink); background: var(--surface-hover); }
-
 .evidence summary { width: fit-content; color: var(--muted); cursor: pointer; font-size: 12px; list-style: none; }
 .evidence summary::-webkit-details-marker { display: none; }
 .evidence summary:hover, .evidence[open] summary { color: var(--blue); }
@@ -76,10 +62,9 @@
 @media (max-width: 620px) {
   .panel { padding: 16px; }
   .heading h2 { flex-basis: 100%; }
-  .actionFields { grid-template-columns: 1fr; }
   .evidence button { grid-template-columns: auto minmax(0, 1fr); }
   .evidence span { grid-column: 1 / -1; }
-  .reviewControls button, .editActions button, .itemActions button { min-height: 44px; }
+  .reviewControls button { min-height: 44px; }
   .versionPicker select { min-height: 44px; font-size: 16px; }
   .moreMenu > summary { width: 44px; height: 44px; }
 }

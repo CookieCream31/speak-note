@@ -13,9 +13,11 @@ from app.models.analysis import (
     AnalysisVersion,
     Bookmark,
 )
-from app.models.meeting import Meeting
+from app.models.meeting import Meeting, utc_now
 from app.models.transcript import TranscriptSegment, TranscriptVersion
 from app.schemas.analysis import (
+    AnalysisDocumentRead,
+    AnalysisDocumentUpdate,
     AnalysisGenerateRead,
     AnalysisGenerateRequest,
     AnalysisItemRead,
@@ -203,6 +205,53 @@ def get_analysis(
 
 
 @router.patch(
+    "/{meeting_id}/analyses/{analysis_id}/document",
+    response_model=AnalysisDocumentRead,
+)
+def update_analysis_document(
+    analysis_id: uuid.UUID,
+    payload: AnalysisDocumentUpdate,
+    meeting: MeetingDep,
+    session: DbSession,
+) -> AnalysisDocumentRead:
+    meeting = lock_meeting(session, meeting)
+    analysis = _load_analysis(session, meeting.id, analysis_id)
+    if analysis is None:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    _ensure_editable_analysis(session, meeting, analysis)
+    if analysis.document_revision != payload.expected_revision:
+        raise HTTPException(
+            status_code=409,
+            detail="別の画面で本文が更新されています。編集中の内容をコピーしてから再読み込みしてください。",
+        )
+    analysis.document_content = payload.content
+    analysis.document_revision += 1
+    analysis.document_updated_at = utc_now()
+    session.commit()
+    return AnalysisDocumentRead(
+        content=analysis.document_content,
+        revision=analysis.document_revision,
+        updated_at=analysis.document_updated_at,
+    )
+
+
+def _ensure_editable_analysis(
+    session: DbSession, meeting: Meeting, analysis: AnalysisVersion
+) -> None:
+    if analysis.status != AnalysisStatus.COMPLETED:
+        raise HTTPException(status_code=409, detail="完了した会議後の要約だけ編集できます")
+    try:
+        ensure_capture_stopped(session, meeting)
+        validate_analysis_transcript(
+            session, meeting, analysis.transcript_version, {"reuse_saved_transcript": True}
+        )
+    except AnalysisProcessingError as exc:
+        raise HTTPException(
+            status_code=409, detail="会議の終了と原文の保存完了後に編集できます"
+        ) from exc
+
+
+@router.patch(
     "/{meeting_id}/analyses/{analysis_id}/items/{item_id}",
     response_model=AnalysisItemRead,
 )
@@ -226,20 +275,7 @@ def update_analysis_item(
     )
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis item not found")
-    if item.analysis_version.status != AnalysisStatus.COMPLETED:
-        raise HTTPException(status_code=409, detail="完了した会議後の要約だけ編集できます")
-    try:
-        ensure_capture_stopped(session, meeting)
-        validate_analysis_transcript(
-            session,
-            meeting,
-            item.analysis_version.transcript_version,
-            {"reuse_saved_transcript": True},
-        )
-    except AnalysisProcessingError as exc:
-        raise HTTPException(
-            status_code=409, detail="会議の終了と原文の保存完了後に編集できます"
-        ) from exc
+    _ensure_editable_analysis(session, meeting, item.analysis_version)
     fields = payload.model_dump(exclude_unset=True)
     content_changed = "content" in fields or "assignee" in fields or "deadline" in fields
     for field, value in fields.items():
@@ -249,6 +285,8 @@ def update_analysis_item(
         item.state = payload.state
     elif content_changed:
         item.state = AnalysisItemState.EDITED
+    if item.analysis_version.document_content is None:
+        item.analysis_version.document_revision += 1
     session.commit()
     session.refresh(item)
     return item

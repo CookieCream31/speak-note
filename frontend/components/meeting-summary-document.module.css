@@ -1,0 +1,22 @@
+.document { min-width: 0; display: grid; gap: 14px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.state, .hint { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+.edit { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 0 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--control-border); border-radius: 8px; font: inherit; font-size: 13px; cursor: pointer; }
+.edit:hover { background: var(--surface-hover); }
+.content { color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.85; }
+.document form { min-width: 0; display: grid; gap: 12px; }
+.document textarea { display: block; width: 100%; min-height: 320px; padding: 16px; color: var(--ink); background: var(--surface); border: 1px solid var(--control-border); border-radius: 10px; font: inherit; font-size: 15px; line-height: 1.85; overflow-wrap: anywhere; resize: vertical; }
+.document textarea:focus-visible, .document button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.actions button { min-height: 38px; padding: 0 16px; color: var(--on-primary); background: var(--primary-bg); border: 0; border-radius: 8px; font: inherit; font-size: 13px; cursor: pointer; }
+.actions button + button { color: var(--ink); background: var(--surface-hover); }
+.actions span { color: var(--muted); font-size: 12px; }
+.document button:disabled, .document textarea:disabled { opacity: .6; cursor: wait; }
+.error, .message { margin: 0; padding: 10px 12px; font-size: 13px; line-height: 1.6; border-radius: 8px; overflow-wrap: anywhere; }
+.error { color: var(--danger); background: var(--danger-soft); }
+.message { display: flex; align-items: center; gap: 6px; color: var(--success); background: var(--success-soft); }
+@media (max-width: 620px) {
+  .edit, .actions button { min-height: 44px; }
+  .document textarea { padding: 12px; font-size: 16px; }
+  .actions span { flex-basis: 100%; }
+}

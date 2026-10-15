@@ -65,16 +65,17 @@ const finalVersions: AnalysisVersionSummary[] = [{
 
 describe("MeetingReviewPanel", () => {
   it("labels persisted Live summaries as provisional while retaining normal user editing", () => {
-    const analysis: AnalysisVersion = { ...realtimeHistory, id: "saved-live-summary", transcript_version_id: "live-source", transcript_kind: "live", version: 2 };
+    const analysis: AnalysisVersion = { ...realtimeHistory, id: "saved-live-summary", transcript_version_id: "live-source", transcript_kind: "live", version: 2, document_text: "要約\n会議全体の要約" };
     const html = renderToStaticMarkup(<MeetingReviewPanel meetingId="meeting-1" analysis={analysis}
       versions={[{ ...finalVersions[0], id: analysis.id, transcript_kind: "live", version: 2 }]} realtimeHistory={realtimeHistory}
       evidenceSegments={[]} playerAvailable={false} finalTranscriptAvailable={false} />);
     expect(html).toContain("リアルタイム原文からの要約（暫定） v2");
-    expect(html).toContain("要約の編集・確認・質問ができます");
+    expect(html).toContain("要約の全文編集・質問ができます");
     expect(html).toContain("原文と話者は暫定のままです");
     expect(html).not.toContain("高精度版が必要です");
-    expect(html).toContain("確認済みにする");
-    expect(html).toContain(">編集</button>");
+    expect(html).toContain("全文を編集");
+    expect(html).toContain("AIの生成内容・根拠を確認");
+    expect(html).not.toContain("確認済みにする");
     expect(html).not.toContain("確定版 v2");
   });
   it("keeps one protected summary row when a generated summary is also present", () => {

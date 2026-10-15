@@ -96,6 +96,13 @@ class AnalysisVersion(Base):
     template_values: Mapped[list[dict[str, Any]]] = mapped_column(
         JSON().with_variant(JSONB, "postgresql"), nullable=False, default=list
     )
+    document_content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    document_revision: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    document_updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     items: Mapped[list["AnalysisItem"]] = relationship(
         back_populates="analysis_version",

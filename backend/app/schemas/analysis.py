@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.analysis import AnalysisItemKind, AnalysisItemState, AnalysisStatus
 from app.models.transcript import TranscriptKind
+from app.services.analysis_document import render_analysis_document
 
 
 class EvidenceOutput(BaseModel):
@@ -142,6 +143,19 @@ class AnalysisVersionRead(BaseModel):
     template_snapshot: dict[str, Any] | None = None
     template_values: list[dict[str, Any]] = Field(default_factory=list)
     items: list[AnalysisItemRead]
+    document_content: str | None = None
+    document_revision: int = 0
+    document_updated_at: datetime | None = None
+    document_text: str = ""
+
+    @model_validator(mode="after")
+    def fill_document_text(self) -> "AnalysisVersionRead":
+        self.document_text = (
+            self.document_content
+            if self.document_content is not None
+            else render_analysis_document(self.items, self.template_snapshot, self.template_values)
+        )
+        return self
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -209,6 +223,19 @@ class AnalysisItemUpdate(BaseModel):
     assignee: str | None = Field(default=None, max_length=200)
     deadline: date | None = None
     state: AnalysisItemState | None = None
+
+
+class AnalysisDocumentUpdate(BaseModel):
+    content: str = Field(max_length=5_000_000)
+    expected_revision: int = Field(ge=0)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class AnalysisDocumentRead(BaseModel):
+    content: str
+    revision: int
+    updated_at: datetime
 
 
 class BookmarkCreate(BaseModel):

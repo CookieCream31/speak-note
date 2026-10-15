@@ -1120,7 +1120,7 @@ Backendで同じTranscript Versionに存在するIDか検証する。文字起�
 または利用可能なAI Profileなしの場合は質問入力を無効にする。会議終了後の要約のProfileがあれば、
 録音時の会議設定がAIなしでも質問に使用し、会議やリアルタイム解析の設定を変更しない。
 会議中Realtime Snapshotは閲覧用とし、会議後のcompleted AnalysisVersionは原文がLiveでもFinalでも
-同じ項目編集・確認済み操作と質問を利用できる。Live原文と話者が暫定であることは維持する。
+全文編集と質問を利用できる。従来の編集・確認済み項目も保持し、Live原文と話者が暫定であることは維持する。
 質問のPOSTは任意のanalysis_idを受け、その会議のcompleted AnalysisVersionから原文IDを固定する。
 analysis_id省略時は従来のcompleted Finalを優先し、なければactiveの会議後要約を使用する。
 Live原文ではcompleted録音Sessionと非空の保存済み原文を、予約・Worker実行・再試行時に検証する。
@@ -1138,6 +1138,21 @@ MeetingQuestionの既存transcript_version_idを使用し、APIのtranscript_kin
 ## 21. AnalysisVersion
 
 AI結果もVersion管理する。
+
+会議終了後のcompleted AnalysisVersionは、保存済みテンプレートの「確定後」構成から1つの本文を表示する。
+本文は見出し・改行を含むプレーンテキストとし、「全文を編集」で追記・削除・メモを自由に編集・保存する。
+初期本文はsnapshotの表示順・名称・可視性とコア項目・追加フィールドを使い、会議の現在のテンプレートは参照しない。
+テンプレートのない旧履歴も既存項目から本文を組み立て、編集・確認済みの要約を優先する。
+`analysis_versions.document_content`は未編集をnull、明示的な空欄保存を空文字として区別し、空白・改行を保持する。
+`document_revision`（初期0）と`document_updated_at`を保存する。Migrationは0031に続く20261016_0032。
+PATCH `/meetings/{id}/analyses/{analysis_id}/document`はcontentとexpected_revisionを受け、会議行ロック下で停止・原文保存・解析完了を検証する。
+revision不一致は409とし、別画面の変更を上書きしない。初期本文に影響する従来の項目編集もrevisionを更新する。
+API応答のdocument_textは保存本文を優先し、未編集なら既存項目とsnapshotから算出する。読取りでJobやDB更新は行わない。
+AI生成項目・確認済み状態・Evidence・テンプレート値・チャプター・原文は本文編集から変更しない。
+元データは「AIの生成内容・根拠を確認」で閲覧できる。Realtime Snapshotの表示は従来のカードを維持する。
+再生成は新しいAnalysisVersionへ新しい本文を用意し、以前の自由編集本文を変更・移動しない。以前の本文は履歴から再度開ける。
+本文保存失敗時は入力を保持し、二重送信を防ぐ。未保存のまま履歴切替・編集取消・ページ再読込みする際は破棄を確認する。
+本文はHTMLとして解釈しない。ユーザーメモをAI生成の根拠にせず、会議後質問は選択要約の保存済み原文だけを参照する。
 
 ```text
 AnalysisVersion
@@ -1612,9 +1627,9 @@ AI Analysis Job（原文の版と選択設定を固定。Liveからの要約は�
 - 動画・音声はSpaceキーで再生／一時停止を切り替える。Form入力、編集可能要素、Button、Link、Modal操作中はShortcutを発火させない。
 - 音声ファイルのPlayerは画面下部へ固定し、Transcriptや要約をスクロールしても、Chapter Seek、再生時間、再生／一時停止、10秒移動、再生速度、音量を常時操作できるようにする。
 - 「要約」はリアルタイム解析と同様に、要約・決定事項・Action Item・確認ポイント・重要情報を
-  一画面のCard一覧で表示する。チャプター・質問候補は存在する場合に同じ一覧へ追加する。
-  要約Cardは横幅全体、その他は2列、狭い画面では1列で表示する。
-  通常は文章として表示し、編集時だけ入力欄へ切り替える。
+  会議後には1つの本文として表示し、「全文を編集」で入力欄へ切り替える。追加項目・追記・メモも自由に編集する。
+  元のCard・根拠は折りたたみ欄から閲覧できる。会議中のRealtime Snapshotは従来のCard表示で閲覧用とする。
+  狭い画面でも本文・操作を横幅内に収める。
 - 「質問」は選択した会議後要約の保存済み原文（Live / Final）を根拠にした質疑履歴と入力欄を表示する。要約がない場合は従来のFinalを使用する。Evidenceは画面に表示しない。
 - 「文字起こし」はTranscript、Download、Transcript修正をまとめて表示する。話者名をクリックするとその場で編集できる。
   Finalの正式Speaker表示名は文字起こし本文、検索・設定の話者一覧、動画字幕へ即時反映する。
@@ -1632,8 +1647,8 @@ AI Analysis Job（原文の版と選択設定を固定。Liveからの要約は�
 - 外部AI取り込みは狭いペイン内へ展開せず、4段階のModalでプロンプト作成、回答貼り付け、検証、保存を行う。
 - Desktop、Tablet、Mobileのすべてで同じTab順序と初期表示を使用する。
 - 配色、Card、Header、ButtonはHome Dashboardと同じ表示テーマ（ライト・ダーク）へ統一する。43節を参照する。
-- 画面共有・マイク録音のSessionが停止済みなら、Final TranscriptやAI議事録の有無によらず録画操作CardとRealtime専用Panelを表示しない。保存したLive TranscriptとRealtime Snapshotを通常の会議ノートへ表示する。Realtime Snapshotは閲覧用とし、文字起こし本文の修正は高精度版を使用する。会議後に作成した要約はLive原文でも編集・確認・質問を利用できる。保存済みLiveの話者表示名は上記の番号全体への割当で編集できる。「要約を再生成」は保存済みFinal、なければ保存済みLiveから要約だけを生成する。高精度版の文字起こしは「その他」の詳細操作から明示して作成する。完成後もLive版を保持し、版切替で文字起こしと要約を対応させる。マイク録音停止時は全体処理Jobを自動予約しない。
-- 完了後のAI議事録の「履歴」では「リアルタイム解析」、保存済みLive原文から生成した暫定要約、各確定版Versionを選択できる。Realtime SnapshotもAI議事録と同じCard一覧UIへ変換して表示するが、録音中解析の履歴は閲覧用として編集・確認済み操作を提供しない。停止後に生成した暫定要約は通常の編集・確認済み操作を使用でき、次の生成でも保護する。いずれもLive原文・話者を正式確定した意味ではない。
+- 画面共有・マイク録音のSessionが停止済みなら、Final TranscriptやAI議事録の有無によらず録画操作CardとRealtime専用Panelを表示しない。保存したLive TranscriptとRealtime Snapshotを通常の会議ノートへ表示する。Realtime Snapshotは閲覧用とし、文字起こし本文の修正は高精度版を使用する。会議後に作成した要約はLive原文でも全文編集・質問を利用できる。保存済みLiveの話者表示名は上記の番号全体への割当で編集できる。「要約を再生成」は保存済みFinal、なければ保存済みLiveから要約だけを生成する。高精度版の文字起こしは「その他」の詳細操作から明示して作成する。完成後もLive版を保持し、版切替で文字起こしと要約を対応させる。マイク録音停止時は全体処理Jobを自動予約しない。
+- 完了後のAI議事録の「履歴」では「リアルタイム解析」、保存済みLive原文から生成した暫定要約、各確定版Versionを選択できる。Realtime SnapshotもAI議事録と同じCard一覧UIへ変換して表示するが、録音中解析の履歴は閲覧用として編集・確認済み操作を提供しない。停止後に生成した暫定要約は全文編集を使用できる。従来の編集・確認済み項目を保持し、自由編集した本文も生成元の履歴に保存して再生成で上書きしない。いずれもLive原文・話者を正式確定した意味ではない。
 - Realtime履歴の「これまでの要約」には時刻を表示しない。決定事項、Action Item、確認ポイント、重要情報はEvidence全体の開始〜終了時刻を1つの範囲として表示する。
 
 ---
@@ -1885,7 +1900,7 @@ Job.analysis_requestへ接続先・プロファイルID・モデル・Temperatur
 受付と再試行は会議行ロックで直列化する。処理中の全体Jobがあれば新規要求を409で拒否し、同一request_idの再送には既存Jobを返す。TRANSCRIBE Jobの再開は保存済みFinalと解析継続JobのIDを確認し、WhisperXと後続解析を重複実行しない。録音・録画中および保存中には開始しない。外部API・Evidence・設定のエラーでは既存active解析を維持する。ユーザー編集・確認済み項目の保護を維持する。
 
 DB変更は20260927_0022に続く20260927_0023でjobs.analysis_request（JSONB）とrequest_id（nullable UUID、unique）を追加する。POST /meetings/{id}/analysesはprofile_id、template_id、template_revision、request_idを受け、Final待ちの応答ではanalysisをnullとする。既存POST /meetings/{id}/transcriptは文字起こしを明示的に再処理する詳細APIとして残すが、再生成UIからは呼ばない。アップロード会議の自動処理、Live解析、会議後質問を維持する。
-保存済みLive入力の追加は既存のJob JSONと原文のFKを使用するため、この機能自体のDB変更は不要（追加時点のheadは0029）。後続の保存済みLive話者表示名にMigration 0030を追加する。新規APIパラメータはreuse_saved_transcript、原文GETのversion_idを追加する。要約の「その他」に高精度版の全体文字起こし作成を提供する。生成済み暫定要約は通常の項目編集・確認済み操作と保護を使い、録音中Realtime Snapshotの閲覧用表示とは分ける。会議後質問は会議後要約の原文（completed Live / Final）を固定して使う。
+保存済みLive入力の追加は既存のJob JSONと原文のFKを使用するため、この機能自体のDB変更は不要（追加時点のheadは0029）。後続の保存済みLive話者表示名にMigration 0030を追加する。新規APIパラメータはreuse_saved_transcript、原文GETのversion_idを追加する。要約の「その他」に高精度版の全体文字起こし作成を提供する。生成済み暫定要約は全文編集と履歴保存を使い、以前の項目編集・確認済み情報の保護も維持し、録音中Realtime Snapshotの閲覧用表示とは分ける。会議後質問は会議後要約の原文（completed Live / Final）を固定して使う。
 
 
 ---

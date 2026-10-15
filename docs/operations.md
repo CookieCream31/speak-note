@@ -4,7 +4,7 @@
 
 コマンドは `/home/llm/speak-note` で実行します。Docker操作はこのプロジェクトだけを対象にしてください。
 録音・録画中はページ更新やサービス再起動を行わず、まず録音を終了して保存完了を確認します。
-現行ソースのMigration headは`20261014_0031`です。最新変更の反映は[Sonioxへの統一を含む手順](#soniox-realtime-only)を使用してください。過去の機能の節にあるhead番号は、その機能を追加した時点のものです。
+現行ソースのMigration headは`20261016_0032`です。最新変更の反映は[全文編集・Migration 0032の手順](#summary-document)を使用してください。過去の機能の節にあるhead番号は、その機能を追加した時点のものです。
 
 <a id="apply"></a>
 ## 変更の反映
@@ -90,7 +90,7 @@ sudo docker compose stop worker live-worker realtime-ai-worker answer-worker
 sudo docker compose restart backend
 sudo docker compose up -d --wait --no-deps backend
 sudo docker compose exec -T backend alembic current
-# 現行ソースは20261014_0031 (head)を確認してからWorkerを再開
+# 現行ソースは20261016_0032 (head)を確認してからWorkerを再開
 sudo docker compose up -d --no-deps worker live-worker realtime-ai-worker answer-worker
 sudo docker compose restart frontend
 sudo docker compose ps backend frontend worker live-worker realtime-ai-worker answer-worker
@@ -612,6 +612,29 @@ sudo docker compose ps
 
 ブラウザを再読み込みし、[要約再生成の操作と動作確認](usage.md#summary-regeneration)を実行します。Final作成失敗は親の文字起こしJob、要約失敗は解析Jobの「再試行」を使用します。Final保存後に予約が失敗した場合、親Jobの再試行は保存済みFinalを使い、WhisperXを再実行しません。接続先を変更した場合は現在の設定で新しい再生成を開始してください。テンプレート版の競合はダイアログを閉じてページを再読み込みし、選び直します。既存サービス・Docker Volumeは操作しません。
 
+
+<a id="summary-document"></a>
+
+## 会議後要約の全文編集（Migration 0032）
+
+0032は0031に続いて自由編集本文の保存列を追加します。録音・録画・保存と実行中Jobが完了してから反映してください。既存の生成項目・確認済み状態・原文・snapshotを保持します。環境変数・依存の追加はありません。
+
+```bash
+cd /home/llm/speak-note
+git pull --ff-only
+sudo docker compose stop worker live-worker realtime-ai-worker answer-worker
+sudo docker compose restart backend
+sudo docker compose up -d --wait --no-deps backend
+sudo docker compose exec -T backend alembic current
+# 20261016_0032 (head)を確認してからWorkerを再開
+sudo docker compose up -d --no-deps worker live-worker realtime-ai-worker answer-worker
+sudo docker compose restart frontend
+sudo docker compose ps
+```
+
+Backendは起動時に`alembic upgrade head`を実行します。ソースがbind mountされる構成なので、反映作業中は新しい録音を開始しないでください。再起動後にブラウザを再読み込みし、既存の会議後要約で「全文を編集」→メモを追記→保存→再読み込みで残ることを確認します。原文がLiveの会議とFinalの会議、元のAI内容の参照、質問、再生成後に前の本文を履歴から開けることも確認してください。[仕様・検証](summary-document.md)。
+
+以下は質問対応を追加した時点の反映記録です。現在の全文編集を含めて反映する場合は上記0032の手順を使用してください。
 
 <a id="post-meeting-notes"></a>
 

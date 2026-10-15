@@ -231,6 +231,8 @@ Migrationの検証は、バックアップまたは検証用DBを準備してか
 
 ## 会議後要約の編集・質問（2026-10-16）
 
+会議後要約の画面編集は[全文編集](summary-document.md)へまとめています。`services/analysis_document.py`が履歴snapshot・元の項目から初期本文を作り、`AnalysisVersion`の専用列へ自由編集本文を保存します。更新競合をrevisionで拒否し、生成項目・確認状態・根拠・質問用原文は更新しません。Migrationの最新headは`20261016_0032`です。再生成した場合の旧本文は元のAnalysisVersionの履歴に残ります。
+
 2026-10-16の会議後要約の編集・質問では、`questions/processor.py`が`analysis_id`から原文とProfileを解決し、質問行の既存`transcript_version_id`に固定します。API・Worker・再試行と編集APIが停止・保存完了を確認します。`MeetingReviewPanel`はRealtime SnapshotのIDと会議後AnalysisVersionを区別し、原文のkindで編集を制限しません。会議詳細から質問へ選択した原文の版を渡します。関連する新規テスト、既存テストfixtureの更新理由、実行結果は[会議後要約ガイド](post-meeting-notes.md)を参照してください。
 
 ## 作業終了時の報告

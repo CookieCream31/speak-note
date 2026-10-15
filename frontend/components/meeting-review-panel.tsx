@@ -15,6 +15,7 @@ import { REALTIME_ANALYSIS_HISTORY_ID } from "@/lib/realtime-analysis-history";
 import { SummaryRegenerationButton, type SummaryRegenerationProps } from "./final-transcript-button";
 import { ManualAIImport } from "./manual-ai-import";
 import { FinalTranscriptAction } from "./final-transcript-action";
+import { MeetingSummaryDocument } from "./meeting-summary-document";
 import { TemplateAnalysisCards, type TemplateDisplayValue } from "./template-analysis-cards";
 import styles from "./meeting-review-panel.module.css";
 
@@ -84,25 +85,6 @@ function openTranscript(): void {
   window.dispatchEvent(new Event("speak-note:open-transcript"));
 }
 
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api/v1${path}`, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
-  });
-  if (!response.ok) {
-    let message = `処理に失敗しました (${response.status})`;
-    try {
-      const body = await response.json() as { detail?: string };
-      if (body.detail) message = body.detail;
-    } catch {
-      // Keep status-based message.
-    }
-    throw new Error(message);
-  }
-  if (response.status === 204) return undefined as T;
-  return await response.json() as T;
-}
-
 export function MeetingReviewPanel({
   meetingId,
   analysis: initialAnalysis,
@@ -117,11 +99,9 @@ export function MeetingReviewPanel({
   finalTranscription,
 }: MeetingReviewPanelProps) {
   const router = useRouter();
-  const [analysis, setAnalysis] = useState(initialAnalysis);
-  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const analysis = initialAnalysis;
+  const [documentDirty, setDocumentDirty] = useState(false);
   const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
   const highlightRanges = useRef<Array<[number, number]>>([]);
   const highlightIndex = useRef(0);
   const realtimeSnapshot = analysis?.id === REALTIME_ANALYSIS_HISTORY_ID;
@@ -187,64 +167,13 @@ export function MeetingReviewPanel({
     setMessage("全編再生へ戻しました");
   }
 
-  async function saveItem(item: AnalysisItem, fields: Record<string, unknown>) {
-    if (readOnly || busy) return;
-    setBusy(true);
-    setError("");
-    try {
-      const updated = await api<AnalysisItem>(
-        `/meetings/${meetingId}/analyses/${analysis?.id}/items/${item.id}`,
-        { method: "PATCH", body: JSON.stringify(fields) },
-      );
-      setAnalysis((current) => current
-        ? {
-            ...current,
-            items: current.items.map((value) => value.id === updated.id ? updated : value),
-          }
-        : current);
-      setEditingItemId(null);
-      setMessage(fields.state === "confirmed" ? "確認済みにしました" : "修正を保存しました");
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "項目を保存できませんでした");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   function renderItem(item: AnalysisItem) {
-    const editing = !readOnly && editingItemId === item.id;
     return (
       <article className={styles.analysisItem} key={item.id}>
-        {editing ? (
-          <form onSubmit={(event) => {
-            event.preventDefault();
-            const data = new FormData(event.currentTarget);
-            void saveItem(item, {
-              content: String(data.get("content") ?? "").trim(),
-              ...(item.kind === "action_item" ? {
-                assignee: String(data.get("assignee") ?? "").trim() || null,
-                deadline: String(data.get("deadline") ?? "") || null,
-              } : {}),
-            });
-          }}>
-            <textarea name="content" defaultValue={item.content} rows={item.kind === "summary" ? 7 : 4} autoFocus />
-            {item.kind === "action_item" && (
-              <div className={styles.actionFields}>
-                <input name="assignee" defaultValue={item.assignee ?? ""} placeholder="担当者不明" aria-label="担当" />
-                <input name="deadline" type="date" defaultValue={item.deadline ?? ""} aria-label="期限" />
-              </div>
-            )}
-            <div className={styles.editActions}>
-              <button type="submit" disabled={busy}>保存</button>
-              <button type="button" onClick={() => setEditingItemId(null)}>取消</button>
-            </div>
-          </form>
-        ) : (
-          <p className={styles.itemContent}>{item.content}</p>
-        )}
+        <p className={styles.itemContent}>{item.content}</p>
         <div className={styles.itemMeta}>
           <span className={styles.stateBadge} data-state={item.state}>{stateLabels[item.state]}</span>
-          {item.kind === "action_item" && !editing && (
+          {item.kind === "action_item" && (
             <>
               <span className={styles.metaField}>担当 <strong>{item.assignee ?? "担当者不明"}</strong></span>
               {item.deadline && <span className={styles.metaField}>期限 <strong>{item.deadline}</strong></span>}
@@ -257,16 +186,6 @@ export function MeetingReviewPanel({
                 ? `〜${formatTimestamp(item.end_ms)}`
                 : ""}
             </button>
-          )}
-          {!readOnly && !editing && (
-            <span className={styles.itemActions}>
-              <button type="button" onClick={() => setEditingItemId(item.id)}>編集</button>
-              {item.state !== "confirmed" && (
-                <button type="button" disabled={busy} onClick={() => void saveItem(item, { state: "confirmed" })}>
-                  確認済みにする
-                </button>
-              )}
-            </span>
           )}
         </div>
         {item.evidence.length > 0 && (
@@ -326,6 +245,10 @@ export function MeetingReviewPanel({
                 aria-label="履歴"
                 value={analysis?.id ?? ""}
                 onChange={(event) => {
+                  if (documentDirty && !window.confirm("保存していない変更を破棄して履歴を切り替えますか？")) {
+                    event.currentTarget.value = analysis?.id ?? "";
+                    return;
+                  }
                   const kind = event.target.value === REALTIME_ANALYSIS_HISTORY_ID ? "live"
                     : versions.find((version) => version.id === event.target.value)?.transcript_kind ?? "final";
                   router.push(`/meetings/${meetingId}?analysis_id=${event.target.value}&transcript_kind=${kind}`);
@@ -361,9 +284,9 @@ export function MeetingReviewPanel({
         </div>
       </header>
 
-      {(message || error) && (
-        <p className={error ? styles.error : styles.message} role="status">
-          {error || message}
+      {message && (
+        <p className={styles.message} role="status">
+          {message}
         </p>
       )}
 
@@ -372,12 +295,31 @@ export function MeetingReviewPanel({
       ) : analysis?.transcript_kind === "live" ? (
         <p className={styles.notice}>{readOnly
           ? "会議の終了・保存・要約作成の完了後に編集・質問できます。原文と話者は暫定です。"
-          : "会議終了後に保存済みの原文から作成した要約です。要約の編集・確認・質問ができます。原文と話者は暫定のままです。"}</p>
+          : "会議終了後に保存済みの原文から作成した要約です。要約の全文編集・質問ができます。原文と話者は暫定のままです。"}</p>
       ) : null}
 
       {regeneration && <SummaryRegenerationButton key={regenerationKey} {...regeneration} />}
 
-      {!analysis ? (
+      {analysis && !realtimeSnapshot && (
+        <MeetingSummaryDocument key={analysis.id} meetingId={meetingId} analysisId={analysis.id}
+          text={analysis.document_text} revision={analysis.document_revision}
+          edited={analysis.document_content !== null && analysis.document_content !== undefined}
+          readOnly={readOnly} onDirtyChange={setDocumentDirty} />
+      )}
+
+      {analysis && !realtimeSnapshot && <p className={styles.notice}>質問は保存済みの文字起こしを根拠に回答します。追記したメモはAIの根拠やチャプターを変更しません。</p>}
+
+      {analysis && !realtimeSnapshot ? (
+        <details className={styles.generatedReference}>
+          <summary>AIの生成内容・根拠を確認</summary>
+          {renderAnalysis()}
+        </details>
+      ) : renderAnalysis()}
+    </aside>
+  );
+
+  function renderAnalysis() {
+    return !analysis ? (
         <div className={styles.empty}>
           <strong>AI議事録はまだありません</strong>
           <span>文字起こし完了後に生成できます。</span>
@@ -417,7 +359,6 @@ export function MeetingReviewPanel({
             );
           })}
         </div>
-      )}
-    </aside>
-  );
+      );
+  }
 }
