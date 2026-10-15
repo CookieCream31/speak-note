@@ -209,7 +209,7 @@ export function MeetingReviewPanel({
     );
   }
 
-  const templateCoreRows = Object.fromEntries(([...sectionOrder, "highlight"] as AnalysisItemKind[]).map((kind) => {
+  const templateCoreRows = realtimeSnapshot ? Object.fromEntries(([...sectionOrder, "highlight"] as AnalysisItemKind[]).map((kind) => {
     const items = analysis?.items.filter((item) => item.kind === kind).sort((a, b) => a.sequence - b.sequence) ?? [];
     if (kind === "summary" && items.length > 1) {
       const protectedSummary = items
@@ -225,7 +225,7 @@ export function MeetingReviewPanel({
       rowId: kind === "summary" ? "summary:0" : `${kind}:${index}`,
       content: renderItem(item),
     }))];
-  }));
+  })) : {};
 
   return (
     <aside className={styles.panel} aria-label="AIノート">
@@ -309,12 +309,7 @@ export function MeetingReviewPanel({
 
       {analysis && !realtimeSnapshot && <p className={styles.notice}>質問は保存済みの文字起こしを根拠に回答します。追記したメモはAIの根拠やチャプターを変更しません。</p>}
 
-      {analysis && !realtimeSnapshot ? (
-        <details className={styles.generatedReference}>
-          <summary>AIの生成内容・根拠を確認</summary>
-          {renderAnalysis()}
-        </details>
-      ) : renderAnalysis()}
+      {(!analysis || realtimeSnapshot) && renderAnalysis()}
     </aside>
   );
 

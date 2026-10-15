@@ -613,6 +613,21 @@ sudo docker compose ps
 ブラウザを再読み込みし、[要約再生成の操作と動作確認](usage.md#summary-regeneration)を実行します。Final作成失敗は親の文字起こしJob、要約失敗は解析Jobの「再試行」を使用します。Final保存後に予約が失敗した場合、親Jobの再試行は保存済みFinalを使い、WhisperXを再実行しません。接続先を変更した場合は現在の設定で新しい再生成を開始してください。テンプレート版の競合はダイアログを閉じてページを再読み込みし、選び直します。既存サービス・Docker Volumeは操作しません。
 
 
+<a id="summary-document-body"></a>
+
+## 会議後要約を本文だけの表示にする変更
+
+今回の変更はFrontendの表示と関連テスト・ドキュメントです。全文編集のMigration 0032を反映済みなら、録音・録画・保存の終了後に次を実行してください。
+
+```bash
+cd /home/llm/speak-note
+git pull --ff-only
+sudo docker compose restart frontend
+sudo docker compose ps frontend
+```
+
+ブラウザを再読み込みし、会議後要約の参照欄がなく本文が1つだけ表示されること、全文編集・質問・履歴が利用できることを確認します。会議中の要約は従来どおり閲覧用のカードです。[変更・検証](summary-document.md#body-only)。0032未反映の環境では、先に以下の全文編集の反映手順を実行してください。
+
 <a id="summary-document"></a>
 
 ## 会議後要約の全文編集（Migration 0032）
@@ -632,7 +647,7 @@ sudo docker compose restart frontend
 sudo docker compose ps
 ```
 
-Backendは起動時に`alembic upgrade head`を実行します。ソースがbind mountされる構成なので、反映作業中は新しい録音を開始しないでください。再起動後にブラウザを再読み込みし、既存の会議後要約で「全文を編集」→メモを追記→保存→再読み込みで残ることを確認します。原文がLiveの会議とFinalの会議、元のAI内容の参照、質問、再生成後に前の本文を履歴から開けることも確認してください。[仕様・検証](summary-document.md)。
+Backendは起動時に`alembic upgrade head`を実行します。ソースがbind mountされる構成なので、反映作業中は新しい録音を開始しないでください。再起動後にブラウザを再読み込みし、既存の会議後要約で「全文を編集」→メモを追記→保存→再読み込みで残ることを確認します。原文がLiveの会議とFinalの会議で本文が1つだけ表示されること、全文編集・質問、再生成後に前の本文を履歴から開けることも確認してください。[仕様・検証](summary-document.md)。
 
 以下は質問対応を追加した時点の反映記録です。現在の全文編集を含めて反映する場合は上記0032の手順を使用してください。
 

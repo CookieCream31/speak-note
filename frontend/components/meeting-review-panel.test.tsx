@@ -74,11 +74,13 @@ describe("MeetingReviewPanel", () => {
     expect(html).toContain("原文と話者は暫定のままです");
     expect(html).not.toContain("高精度版が必要です");
     expect(html).toContain("全文を編集");
-    expect(html).toContain("AIの生成内容・根拠を確認");
+    expect(html).not.toContain("AIの生成内容・根拠を確認");
+    expect(html.match(/data-summary-document/g)).toHaveLength(1);
+    expect(html).not.toContain("data-analysis-overview");
     expect(html).not.toContain("確認済みにする");
     expect(html).not.toContain("確定版 v2");
   });
-  it("keeps one protected summary row when a generated summary is also present", () => {
+  it("shows the protected document once while preserving original items and snapshot", () => {
     const templateSnapshot: MeetingTemplateSnapshot = {
       template_id: "template-1",
       revision: 1,
@@ -117,10 +119,12 @@ describe("MeetingReviewPanel", () => {
       ...realtimeHistory,
       id: "analysis-final-1",
       version: 1,
+      document_text: "ユーザーが確認した要約",
       template_snapshot: templateSnapshot,
       template_values: [],
       items: [protectedSummary, generatedSummary],
     };
+    const original = JSON.stringify(analysis);
 
     const html = renderToStaticMarkup(
       <MeetingReviewPanel
@@ -136,6 +140,10 @@ describe("MeetingReviewPanel", () => {
 
     expect(html).toContain("ユーザーが確認した要約");
     expect(html).not.toContain("再生成された要約");
+    expect(html.match(/ユーザーが確認した要約/g)).toHaveLength(1);
+    expect(html).not.toContain("data-template-card");
+    expect(html).not.toContain("AIの生成内容・根拠を確認");
+    expect(JSON.stringify(analysis)).toBe(original);
   });
 
   it("shows realtime and final notes in the same history picker and overview", () => {
